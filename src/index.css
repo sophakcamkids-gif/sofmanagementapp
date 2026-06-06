@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@media print {
+  .no-print, header, nav, footer, button, .tabs-container {
+    display: none !important;
+  }
+  body {
+    background-color: white !important;
+    color: black !important;
+  }
+  .print\:p-0 {
+    padding: 0 !important;
+  }
+  .print\:border-none {
+    border: none !important;
+  }
+  .print\:shadow-none {
+    box-shadow: none !important;
+  }
+}

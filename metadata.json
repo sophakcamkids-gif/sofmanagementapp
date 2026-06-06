@@ -1,0 +1,6 @@
+{
+  "name": "ក្រុមសន្សំប្រាក់អនាគតយើង",
+  "description": "Savings Group Management System built with React, Supabase, and Tailwind CSS.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,3176 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { 
+  Bell, Settings, Users, Wallet, 
+  FileText, PieChart, Home, Heart, MessageSquare, 
+  Menu, Bot, BarChart3, Receipt, HandCoins, 
+  ShieldCheck, Calendar, BookOpen, Sparkles, TrendingUp,
+  ChevronLeft, Plus, Download, Search, Upload, LogIn, UserCheck, Key, Lock, Eye, EyeOff, Save, X
+} from 'lucide-react';
+
+export default function App() {
+  const [userRole, setUserRole] = useState<string | null>(localStorage.getItem('userRole'));
+  const [memberId, setMemberId] = useState<string | null>(localStorage.getItem('memberId'));
+
+  return (
+    <Router>
+      <div className="min-h-screen lg:bg-slate-950 bg-[#eef8f2] text-slate-800 font-sans lg:flex lg:items-center lg:justify-center lg:py-6">
+        <div className="w-full min-h-screen lg:min-h-[780px] lg:max-h-[780px] bg-[#eef8f2] pb-28 overflow-y-auto overflow-x-hidden relative flex flex-col lg:w-[390px] lg:h-[780px] lg:rounded-[48px] lg:border-[8px] lg:border-slate-800 lg:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] lg:my-4">
+          {/* Header */}
+          <header className="px-6 pt-12 pb-6 md:pt-12 max-w-5xl mx-auto flex justify-between items-start shrink-0">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-xl flex items-center justify-center shadow-sm overflow-hidden p-1 border border-slate-100 shrink-0 mt-0.5">
+              <img src="https://i.ibb.co/Kp7CxnjC/Picture1.jpg" alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+            </div>
+            <div>
+              <h1 className="text-xl md:text-2xl font-black text-[#0a6652] tracking-tight mb-0.5 leading-tight">
+                ក្រុមសន្សំប្រាក់អនាគតយើង
+              </h1>
+              <p className="text-[#1fb487] font-bold text-xs md:text-sm">Saving For Our Future</p>
+            </div>
+          </div>
+          <div className="flex gap-3 items-center">
+            {userRole && (
+              <div className="hidden sm:flex flex-col items-end mr-1">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">គណនីបច្ចុប្បន្ន</span>
+                <span className={`text-xs font-black ${userRole === 'admin' ? 'text-[#0a6652]' : 'text-blue-600'}`}>
+                  {userRole === 'admin' ? 'អ្នកគ្រប់គ្រង (Admin)' : `សមាជិក (${memberId || 'Member'})`}
+                </span>
+              </div>
+            )}
+            <div className="relative">
+              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-yellow-500 border-2 border-white border-opacity-50">
+                <Bell className="w-6 h-6 fill-yellow-500 text-yellow-500" />
+              </div>
+              <span className="absolute -top-1 -right-1 w-[22px] h-[22px] bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-[#eef8f2]">3</span>
+            </div>
+            {userRole && (
+              <button 
+                onClick={() => {
+                  localStorage.removeItem('userRole');
+                  localStorage.removeItem('memberId');
+                  setUserRole(null);
+                  setMemberId(null);
+                  window.location.href = '/login';
+                }}
+                className="w-12 h-12 bg-red-50 text-red-600 border border-red-100 rounded-full flex items-center justify-center shadow-sm hover:bg-red-100 transition-colors"
+                title="ចាកចេញ (Logout)"
+              >
+                <LogIn size={20} className="rotate-180" />
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* Main Content Grid */}
+        <main className="px-6 max-w-5xl mx-auto">
+          <Routes>
+            <Route path="/" element={<MemberLogin onLogin={(role, id) => { setUserRole(role); setMemberId(id); }} />} />
+            <Route path="/login" element={<MemberLogin onLogin={(role, id) => { setUserRole(role); setMemberId(id); }} />} />
+            
+            <Route path="/admin" element={
+              <AdminGuard userRole={userRole}>
+                <DashboardGeneral />
+              </AdminGuard>
+            } />
+            <Route path="/dashboard" element={
+              <AdminGuard userRole={userRole}>
+                <DashboardGeneral />
+              </AdminGuard>
+            } />
+            <Route path="/members" element={
+              <AdminGuard userRole={userRole}>
+                <Members />
+              </AdminGuard>
+            } />
+            <Route path="/savings" element={
+              <AdminGuard userRole={userRole}>
+                <Savings />
+              </AdminGuard>
+            } />
+            <Route path="/loans" element={
+              <AdminGuard userRole={userRole}>
+                <Loans />
+              </AdminGuard>
+            } />
+            <Route path="/payroll" element={
+              <AdminGuard userRole={userRole}>
+                <Payroll />
+              </AdminGuard>
+            } />
+            <Route path="/reports" element={
+              <AdminGuard userRole={userRole}>
+                <Reports />
+              </AdminGuard>
+            } />
+            <Route path="/history" element={
+              <AdminGuard userRole={userRole}>
+                <History />
+              </AdminGuard>
+            } />
+            <Route path="/settings" element={
+              <AdminGuard userRole={userRole}>
+                <SettingsPage />
+              </AdminGuard>
+            } />
+            
+            <Route path="/member-report" element={
+              <MemberGuard userRole={userRole}>
+                <MemberReport />
+              </MemberGuard>
+            } />
+          </Routes>
+        </main>
+
+        {/* Bottom Navigation */}
+        <nav className="fixed lg:absolute bottom-0 left-0 right-0 bg-white rounded-t-[32px] px-6 pt-4 pb-6 flex justify-start gap-[14px] items-center z-50 shadow-[0_-4px_25px_rgba(0,100,50,0.05)]">
+           <div className="flex flex-col items-center gap-1.5 text-[#ff6b35] cursor-pointer" onClick={() => {
+             if (userRole === 'admin') window.location.href = '/admin';
+             else if (userRole === 'member') window.location.href = '/member-report';
+             else window.location.href = '/login';
+           }}>
+              <Home className="w-6 h-6" strokeWidth={2.5} />
+              <span className="text-[10px] font-extrabold">ទំព័រដើម</span>
+           </div>
+           <div className="flex flex-col items-center gap-1.5 text-slate-400 hover:text-[#ff6b35] transition-colors cursor-pointer">
+              <Heart className="w-6 h-6" strokeWidth={2.5} />
+              <span className="text-[10px] font-bold">ចំណូលចិត្ត</span>
+           </div>
+           <div className="flex flex-col items-center gap-1.5 text-slate-400 hover:text-[#ff6b35] transition-colors cursor-pointer">
+              <MessageSquare className="w-6 h-6" strokeWidth={2.5} />
+              <span className="text-[10px] font-bold">សារ</span>
+           </div>
+           <div className="flex flex-col items-center gap-1.5 text-slate-400 hover:text-[#ff6b35] transition-colors cursor-pointer mr-2">
+              <Menu className="w-6 h-6" strokeWidth={2.5} />
+              <span className="text-[10px] font-bold">ម៉ឺនុយ</span>
+           </div>
+
+           {/* Floating Action Bot Button */}
+           <div className="absolute right-5 -top-8 w-[64px] h-[64px] bg-gradient-to-b from-green-50 to-green-200 rounded-full flex items-center justify-center shadow-lg border-[6px] border-[#eef8f2] z-50 cursor-pointer hover:scale-105 transition-transform">
+              <Bot className="w-7 h-7 text-[#0a6652]" />
+           </div>
+        </nav>
+        </div>
+      </div>
+    </Router>
+  );
+}
+
+function AdminGuard({ children, userRole }: { children: React.ReactNode, userRole: string | null }) {
+  const navigate = useNavigate();
+  React.useEffect(() => {
+    if (userRole !== 'admin') {
+      navigate('/login?tab=admin');
+    }
+  }, [userRole, navigate]);
+
+  if (userRole !== 'admin') {
+    return (
+      <div className="max-w-md mx-auto text-center py-20 bg-white rounded-3xl border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] mt-12 p-8">
+        <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-100">
+          <Lock size={32} />
+        </div>
+        <h3 className="text-xl font-bold text-slate-800 mb-2">គ្មានសិទ្ធិចូលប្រើប្រាស់</h3>
+        <p className="text-slate-500 mb-6 font-medium text-sm leading-relaxed">ទំព័រនេះត្រូវបានកំណត់សម្រាប់តែផ្នែកអ្នកគ្រប់គ្រង (Admin) ប៉ុណ្ណោះ។ សូមចូលគណនីជាអ្នកគ្រប់គ្រងដើម្បីបើកមើល។</p>
+        <button onClick={() => navigate('/login?tab=admin')} className="bg-[#0a6652] text-white font-bold py-3 px-6 rounded-2xl text-sm transition-colors hover:bg-[#084f40] shadow-md shadow-emerald-900/10">
+          ចូលគណនីអ្នកគ្រប់គ្រង (Admin)
+        </button>
+      </div>
+    );
+  }
+  return <>{children}</>;
+}
+
+function MemberGuard({ children, userRole }: { children: React.ReactNode, userRole: string | null }) {
+  const navigate = useNavigate();
+  React.useEffect(() => {
+    if (userRole !== 'member' && userRole !== 'admin') {
+      navigate('/login');
+    }
+  }, [userRole, navigate]);
+
+  if (userRole !== 'member' && userRole !== 'admin') {
+    return (
+      <div className="max-w-md mx-auto text-center py-20 bg-white rounded-3xl border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] mt-12 p-8">
+        <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-100">
+          <Lock size={32} />
+        </div>
+        <h3 className="text-xl font-bold text-slate-800 mb-2">សូមចូលគណនីសមាជិក</h3>
+        <p className="text-slate-500 mb-6 font-medium text-sm leading-relaxed">សូមចូលគណនីសមាជិករបស់អ្នកដើម្បីមើលព័ត៌មាន និងរបាយការណ៍សន្សំ/កម្ចីលម្អិត។</p>
+        <button onClick={() => navigate('/login')} className="bg-[#0a6652] text-white font-bold py-3 px-6 rounded-2xl text-sm transition-colors hover:bg-[#084f40] shadow-md shadow-emerald-900/10">
+          ចូលគណនីសមាជិក (Member)
+        </button>
+      </div>
+    );
+  }
+  return <>{children}</>;
+}
+
+function PageView({ 
+  title, 
+  children,
+  hideUpload = false,
+  hideAdd = false,
+  downloadLabel = "ទាញយក",
+  backPath,
+  hideBack = false,
+  hideDownload = false,
+  onBack
+}: { 
+  title: React.ReactNode | string; 
+  children: React.ReactNode;
+  hideUpload?: boolean;
+  hideAdd?: boolean;
+  downloadLabel?: string;
+  backPath?: string;
+  hideBack?: boolean;
+  hideDownload?: boolean;
+  onBack?: () => void;
+}) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else if (backPath) {
+      navigate(backPath);
+    } else if (location.pathname === '/' || location.pathname === '/login') {
+      navigate('/admin');
+    } else if (location.pathname === '/member-report') {
+      navigate('/login');
+    } else if (location.pathname === '/admin') {
+      navigate('/');
+    } else {
+      navigate('/admin');
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-[28px] p-6 md:p-8 shadow-[0_4px_15px_rgba(0,100,50,0.03)] min-h-[500px]">
+       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 border-b border-green-50 pb-6">
+         <h2 className="text-xl md:text-2xl font-bold text-[#0a6652]">{title}</h2>
+         <div className="flex flex-wrap gap-2">
+            {!hideUpload && (
+              <button className="flex text-sm items-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-full font-bold hover:bg-slate-200 transition-colors">
+                <Upload size={16} strokeWidth={2.5} /> នាំយកពីកុំព្យូទ័រ
+              </button>
+            )}
+            {!hideDownload && (
+              <button className="flex text-sm items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-full font-bold hover:bg-indigo-100 transition-colors">
+                <Download size={16} strokeWidth={2.5} /> {downloadLabel}
+              </button>
+            )}
+            {!hideAdd && (
+              <button className="flex text-sm items-center gap-2 bg-[#0a6652] text-white px-4 py-2 rounded-full font-bold shadow-md hover:bg-[#084f40] transition-colors">
+                <Plus size={16} strokeWidth={2.5} /> បន្ថែមថ្មី
+              </button>
+            )}
+         </div>
+       </div>
+       <div className="text-slate-600">
+         {children}
+       </div>
+       {!hideBack && (
+         <div className="mt-8 pt-6 border-t border-slate-100 flex justify-start">
+           <button onClick={handleBack} className="flex items-center gap-2 text-slate-400 hover:text-[#0a6652] font-semibold transition-colors">
+              <ChevronLeft size={20} strokeWidth={2.5} /> <span className="text-sm">ត្រឡប់ក្រោយ</span>
+           </button>
+         </div>
+       )}
+    </div>
+  )
+}
+
+// ----------------------------------------------------
+// Dummy Views for each section
+// ----------------------------------------------------
+
+function DashboardGeneral() {
+  const navigate = useNavigate();
+
+  return (
+    <PageView title="ផ្ទាំងគ្រប់គ្រងទូទៅ (Dashboard)" hideBack={true} hideUpload={true} hideDownload={true} hideAdd={true}>
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        {[
+          { label: 'ទុនសន្សំសមាជិកសកម្ម', value: '$24,500.00', color: 'text-[#0a6652]' },
+          { label: 'ទុនសន្សំសមាជិកបញ្ញើ', value: '$12,320.00', color: 'text-blue-600' },
+          { label: 'ទុនសន្សំក្រុម(ខាងក្រៅ)', value: '$5,000.00', color: 'text-amber-600' },
+          { label: 'ទុនសន្សំមានកាលកំណត់', value: '$3,000.00', color: 'text-indigo-600' },
+          { label: 'ទុនបម្រុង', value: '$1,000.00', color: 'text-rose-500' },
+          { label: 'ទុនសង្គម', value: '$500.00', color: 'text-violet-600' }
+        ].map((stat, i) => (
+          <div key={i} className="bg-[#eef8f2] p-4 md:p-5 rounded-2xl border border-green-100">
+            <div className="text-[10px] md:text-xs font-bold text-slate-500 mb-1 leading-tight truncate-2-lines line-clamp-2 h-8 flex items-center">{stat.label}</div>
+            <div className={`text-base md:text-lg lg:text-xl font-black ${stat.color}`}>{stat.value}</div>
+          </div>
+        ))}
+      </div>
+      
+      <div className="flex items-center justify-center p-12 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50 mb-8">
+        <p className="text-slate-400 font-medium text-xs">មិនទាន់មានទិន្នន័យក្រាហ្វិកនៅឡើយទេ</p>
+      </div>
+
+      {/* ផ្នែកគ្រប់គ្រងប្រព័ន្ធជម្រើស (Admin Management Quick Options List) */}
+      <div className="space-y-4">
+        <h3 className="text-xs font-black text-[#0a6652] uppercase tracking-wider flex items-center gap-2">
+          <Menu size={16} />
+          <span>ជម្រើសគ្រប់គ្រងគណនេយ្យ និងប្រព័ន្ធ</span>
+        </h3>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[
+            { 
+              title: "ព័ត៌មានសមាជិក (Members)", 
+              desc: "គ្រប់គ្រង និងមើលប្រវត្តិរូបសមាជិកសកម្ម/បញ្ញើ", 
+              path: "/members", 
+              icon: <Users className="w-5 h-5" />, 
+              color: "bg-teal-50 text-[#0a6652] border-teal-100/60 hover:bg-teal-100/90" 
+            },
+            { 
+              title: "ការសន្សំប្រាក់ (Savings)", 
+              desc: "កត់ត្រា និងគ្រប់គ្រងការសន្សំប្រាក់របស់សមាជិក", 
+              path: "/savings", 
+              icon: <Wallet className="w-5 h-5" />, 
+              color: "bg-emerald-50 text-emerald-600 border-emerald-100/60 hover:bg-emerald-100/90" 
+            },
+            { 
+              title: "ការផ្តល់កម្ចីប្រាក់ (Loans)", 
+              desc: "គ្រប់គ្រងទិន្នន័យកម្ចី លក្ខខណ្ឌ និងតារាងបង់រំលស់", 
+              path: "/loans", 
+              icon: <HandCoins className="w-5 h-5" />, 
+              color: "bg-amber-50 text-amber-600 border-amber-100/60 hover:bg-amber-100/90" 
+            },
+            { 
+              title: "បើកប្រាក់បៀវត្សរ៍ (Payroll)", 
+              desc: "ចាត់ចែងបើកប្រាក់បៀវត្សរ៍ប្រចាំខែ", 
+              path: "/payroll", 
+              icon: <Receipt className="w-5 h-5" />, 
+              color: "bg-blue-50 text-blue-600 border-blue-100/60 hover:bg-blue-100/90" 
+            },
+            { 
+              title: "របាយការណ៍ហិរញ្ញវត្ថុ (Reports)", 
+              desc: "មើលតារាងតុល្យការ ចំណូលចំណាយ និងវិភាគសង្ខេប", 
+              path: "/reports", 
+              icon: <BarChart3 className="w-5 h-5" />, 
+              color: "bg-indigo-50 text-indigo-600 border-indigo-100/60 hover:bg-indigo-100/90" 
+            },
+            { 
+              title: "ប្រវត្តិប្រតិបត្តិការ (History)", 
+              desc: "ពិនិត្យមើលរាល់សកម្មភាព និងប្រតិបត្តិការក្នុងប្រព័ន្ធ", 
+              path: "/history", 
+              icon: <TrendingUp className="w-5 h-5" />, 
+              color: "bg-rose-50 text-rose-600 border-rose-100/60 hover:bg-rose-100/90" 
+            },
+            { 
+              title: "ការកំណត់ប្រព័ន្ធ (Settings)", 
+              desc: "កែសម្រួលគណនី លេខសម្ងាត់ និងការកំណត់ផ្សេងៗ", 
+              path: "/settings", 
+              icon: <Settings className="w-5 h-5" />, 
+              color: "bg-slate-50 text-slate-600 border-slate-200/60 hover:bg-slate-100" 
+            }
+          ].map((item) => (
+            <button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              className={`flex items-start gap-4 p-4 rounded-2xl border text-left transition-all duration-200 active:scale-[0.98] cursor-pointer ${item.color}`}
+            >
+              <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-100/30">
+                {item.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-extrabold text-xs text-slate-800 mb-1">{item.title}</h4>
+                <p className="text-[10px] text-slate-500 font-bold leading-normal truncate">{item.desc}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </PageView>
+  );
+}
+
+function Members() {
+  const [activeTab, setActiveTab] = useState('list');
+
+  const profileData = [
+    { id: '១ C001', name: 'ឆន សុភ័ក្រ', gender: 'ប្រុស', role: 'ប្រធាន & ម្ចាស់ភាគហ៊ុន', job: 'បុគ្គលិកអង្គការ', spouse: '-', address: 'ក្រាំងពន្លៃ ឃុំ ឬស្សីសាញ់', phone: '092123051', email: 'phornsophak@gmail.com', facebook: 'Prom Sophak', bankName: '093539878', bankAcc: '-', dob: '3/6/1988', idCard: '030531819', heir: 'ឆន រិទ្ធិស័ក្ត', relation: 'កូន', img: 'https://i.pravatar.cc/150?u=1' },
+    { id: '២ C003', name: 'លី រ៉ា', gender: 'ប្រុស', role: 'អភិបាល & ម្ចាស់ភាគហ៊ុន', job: '-', spouse: '-', address: '-', phone: '086312254', email: '-', facebook: 'Vy Laur', bankName: '086312254', bankAcc: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?u=2' },
+    { id: '៣ C006', name: 'គង់ សុគមន៍', gender: 'ប្រុស', role: 'ម្ចាស់ភាគហ៊ុន', job: 'សាស្ត្រាចារ្យ', spouse: '-', address: '-', phone: '0964308796', email: '-', facebook: 'គង់ សុគមន៍', bankName: '0964308796', bankAcc: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?u=3' },
+    { id: '៤ C008', name: 'រ៉ន ចាន់សោភា', gender: 'ប្រុស', role: 'ម្ចាស់ភាគហ៊ុន', job: '-', spouse: '-', address: '-', phone: '015517763', email: '-', facebook: 'Vorn Chansorphea', bankName: '015517763', bankAcc: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?u=4' },
+    { id: '៥ C011', name: 'អៀង វាសនា', gender: 'ស្រី', role: 'ម្ចាស់ភាគហ៊ុន', job: 'គ្រូបង្រៀន', spouse: '-', address: '-', phone: '069396949', email: '-', facebook: 'Veasna Theang', bankName: '069396949', bankAcc: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?u=5' }
+  ];
+
+  const depositProfileData = [
+    { id: '១', code: 'D001', name: 'ឈៀវ គឹមឡាយ', gender: 'ស្រី', job: '-', spouse: '-', address: '-', phone: '-', facebook: 'Kimlay Chiev', telegram: '-', joinDate: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?img=1' },
+    { id: '២', code: 'D002', name: 'ឈៀវ គឹមលន់', gender: 'ស្រី', job: '-', spouse: '-', address: '-', phone: '-', facebook: 'Kim Lon', telegram: '-', joinDate: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?img=5' },
+    { id: '៣', code: 'D004', name: 'សែន សុម៉ាន់', gender: 'ប្រុស', job: '-', spouse: '-', address: '-', phone: '-', facebook: '-', telegram: '-', joinDate: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?img=11' },
+    { id: '៤', code: 'D006', name: 'តួង បូរិន', gender: 'ប្រុស', job: '-', spouse: '-', address: '-', phone: '-', facebook: 'HengBuritn', telegram: '-', joinDate: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?img=12' },
+    { id: '៥', code: 'D007', name: 'រ៉ស់ ដុល្លា', gender: 'ប្រុស', job: '-', spouse: '-', address: '-', phone: '-', facebook: '-', telegram: '-', joinDate: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?img=15' },
+    { id: '៦', code: 'D008', name: 'រ៉ស់ ភារុណ', gender: 'ស្រី', job: '-', spouse: '-', address: '-', phone: '-', facebook: 'Chhayhnon Rv', telegram: '-', joinDate: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?img=20' },
+  ];
+
+  const memberListData = [
+    { id: '១', code: 'C001', name: 'ឆន សុភ័ក្រ', gender: 'ប្រុស', type: '-' },
+    { id: '២', code: 'C002', name: 'សាន កិត្យាផល', gender: 'ប្រុស', type: '-' },
+    { id: '៣', code: 'C003', name: 'លី រ៉ា', gender: 'ប្រុស', type: '-' },
+    { id: '៤', code: 'C004', name: 'គឹម សុភ័ក្រ្តា', gender: 'ប្រុស', type: '-' },
+    { id: '៥', code: 'C005', name: 'ញាណ ផល្លី', gender: 'ប្រុស', type: '-' },
+    { id: '៦', code: 'C006', name: 'គង់ សុគមន៍', gender: 'ប្រុស', type: '-' },
+  ];
+
+  return (
+    <PageView title="ពត៌មានសមាជិក (Members)">
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-3 mb-6">
+        <button 
+          onClick={() => setActiveTab('list')}
+          className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'list' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          បញ្ជីសមាជិក
+        </button>
+        <button 
+          onClick={() => setActiveTab('profile')}
+          className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'profile' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          ប្រវតិ្តរូបសមាជិកសកម្ម
+        </button>
+        <button 
+          onClick={() => setActiveTab('deposit_profile')}
+          className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'deposit_profile' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          ប្រវតិ្តរូបសមាជិកបញ្ញើ
+        </button>
+      </div>
+
+      {activeTab === 'list' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
+          <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-full px-4 py-2 w-full md:w-96 mb-6">
+            <Search size={18} className="text-slate-400" />
+            <input type="text" placeholder="ស្វែងរកឈ្មោះសមាជិក..." className="bg-transparent border-none outline-none w-full text-sm font-medium" />
+          </div>
+          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+            <table className="w-full text-left border-collapse text-sm min-w-[800px]">
+              <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
+                <tr>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle">ល.រ</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle">លេខ ID</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle">ឈ្មោះ</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle">ភេទ</th>
+                  <th className="px-3 py-3 align-middle">ប្រភេទសមាជិក</th>
+                </tr>
+              </thead>
+              <tbody>
+                {memberListData.map((row, i) => (
+                  <tr key={i} className="border-b border-slate-300 hover:bg-slate-50 transition-colors">
+                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-slate-500">{row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.code}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
+                    <td className="px-3 py-2 text-center text-slate-600">{row.type}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'profile' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
+          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+            <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
+              <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
+                <tr>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ល.រ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle min-w-[140px]">ឈ្មោះ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ភេទ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">តួនាទីក្នុងក្រុម</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">មុខរបរបច្ចុប្បន្ន</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ស្វាមី/ភរិយា</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">អាសយដ្ឋាន</th>
+                  <th colSpan={3} className="px-3 py-2 border-r border-b border-slate-300">ទំនាក់ទំនង</th>
+                  <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-300">គណនីធនាគារ</th>
+                  <th colSpan={4} className="px-3 py-2 border-r border-b border-slate-300">អត្តសញ្ញាណ</th>
+                  <th rowSpan={2} className="px-3 py-3 align-middle">រូបថត</th>
+                </tr>
+                <tr>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">លេខទូរស័ព្ទ</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">អុីម៉ែល</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">ហ្វេសប៊ុក</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">ឈ្មោះ</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">លេខកុង</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">ថ្ងៃខែឆ្នាំកំណើត</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">លេខអត្តសញ្ញាណប័ណ្ណ</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">អ្នកទទួលមរតក</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">ត្រូវជា</th>
+                </tr>
+              </thead>
+              <tbody>
+                {profileData.map((row, i) => (
+                  <tr key={i} className="border-b border-slate-300 hover:bg-slate-50 transition-colors">
+                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-slate-500">{row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-left text-slate-600 text-xs">{row.role}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-left text-slate-600 text-xs">{row.job}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 text-xs">{row.spouse}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-left text-slate-500 text-xs whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]">{row.address}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-xs">{row.phone}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-indigo-600 text-xs">{row.email}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.facebook}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.bankName}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.bankAcc}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.dob}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.idCard}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.heir}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.relation}</td>
+                    <td className="px-3 py-2 text-center align-middle">
+                      <img src={row.img} alt={row.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full mx-auto object-cover border border-slate-200" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'deposit_profile' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
+          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+            <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
+              <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
+                <tr>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ល.រ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">លេខកូដ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle min-w-[140px]">ឈ្មោះ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ភេទ</th>
+                  <th colSpan={7} className="px-3 py-2 border-r border-b border-slate-300">ព័ត៌មានទំនាក់ទំនង</th>
+                  <th colSpan={4} className="px-3 py-2 border-r border-b border-slate-300">ប្រវត្តិរូបសមាជិក</th>
+                  <th rowSpan={2} className="px-3 py-3 align-middle">រូបថត</th>
+                </tr>
+                <tr>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">មុខរបរបច្ចុប្បន្ន</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">ស្វាមី/ភរិយា</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">អាសយដ្ឋាន</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">លេខទូរស័ព្ទ</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">ហ្វេសប៊ុក</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">តេឡេក្រាម</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs whitespace-nowrap">កាលបរិច្ឆេទចូលជាសមាជិក</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs whitespace-nowrap">ថ្ងៃខែឆ្នាំកំណើត</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs whitespace-nowrap">លេខអត្តសញ្ញាណប័ណ្ណ</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs whitespace-nowrap">អ្នកទទួលមរតក</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">ត្រូវជា</th>
+                </tr>
+              </thead>
+              <tbody>
+                {depositProfileData.map((row, i) => (
+                  <tr key={i} className="border-b border-slate-300 hover:bg-slate-50 transition-colors">
+                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-slate-500">{row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.code}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-left text-slate-600 text-xs">{row.job}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 text-xs">{row.spouse}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-left text-slate-500 text-xs whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]">{row.address}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-xs">{row.phone}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.facebook}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.telegram}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.joinDate}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.dob}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.idCard}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.heir}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.relation}</td>
+                    <td className="px-3 py-2 text-center align-middle">
+                      <img src={row.img} alt={row.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full mx-auto object-cover border border-slate-200" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </PageView>
+  );
+}
+
+function Savings() {
+  const [selectedMonth, setSelectedMonth] = useState('មេសា ២០២៦');
+  const [activeTab, setActiveTab] = useState('members');
+  const months = ['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'];
+
+  const savingData = [
+    { id: 'C001', name: 'ឆន សុភ័ក្រ', gender: 'ប្រុស', startCapital: '945.69', share: '1.31%', addSaving: '30.00', profit: '5.938979617', withdraw: '-', deductFee: '-', actualFee: '-', total: '981.63', checked: true },
+    { id: 'C002', name: 'សាន កិត្យាផល', gender: 'ប្រុស', startCapital: '145.85', share: '0.20%', addSaving: '-', profit: '0.915948925', withdraw: '-', deductFee: '-', actualFee: '-', total: '146.77', checked: true },
+    { id: 'C003', name: 'លី រ៉ា', gender: 'ប្រុស', startCapital: '849.78', share: '1.18%', addSaving: '5.00', profit: '5.336650621', withdraw: '-', deductFee: '-', actualFee: '-', total: '860.12', checked: true },
+    { id: 'C004', name: 'គីម សុភ័ក្រ្តា', gender: 'ប្រុស', startCapital: '550.63', share: '0.77%', addSaving: '-', profit: '3.457965883', withdraw: '-', deductFee: '-', actualFee: '-', total: '554.09', checked: true },
+    { id: 'C005', name: 'ញាណ ផល្លី', gender: 'ប្រុស', startCapital: '433.28', share: '0.60%', addSaving: '-', profit: '2.720984666', withdraw: '-', deductFee: '-', actualFee: '-', total: '436.00', checked: true },
+    { id: 'C006', name: 'គង់ សុគមន៍', gender: 'ប្រុស', startCapital: '1,260.05', share: '1.75%', addSaving: '-', profit: '7.913150809', withdraw: '-', deductFee: '-', actualFee: '-', total: '1,267.96', checked: true },
+    { id: 'C007', name: 'វង្ស វិសាល', gender: 'ប្រុស', startCapital: '465.49', share: '0.65%', addSaving: '-', profit: '2.923260657', withdraw: '-', deductFee: '-', actualFee: '-', total: '468.41', checked: true },
+    { id: 'C008', name: 'រ៉ន ចាន់សោភា', gender: 'ប្រុស', startCapital: '492.60', share: '0.68%', addSaving: '5.00', profit: '3.093531719', withdraw: '-', deductFee: '-', actualFee: '-', total: '500.69', checked: true },
+    { id: 'C009', name: 'កង ធី', gender: 'ប្រុស', startCapital: '116.47', share: '0.16%', addSaving: '-', profit: '0.731440425', withdraw: '-', deductFee: '-', actualFee: '-', total: '117.20', checked: true },
+    { id: 'C010', name: 'ថា សុគន្ធា', gender: 'ស្រី', startCapital: '466.52', share: '0.65%', addSaving: '-', profit: '2.929764473', withdraw: '-', deductFee: '-', actualFee: '-', total: '469.45', checked: true },
+  ];
+
+  const groupData = [
+    { id: 'R001', name: 'ទុនបម្រុង', gender: 'ក្រុម', startCapital: '10,466.40', share: '14.54%', addSaving: '83.96', profit: '65.72918927', withdraw: '-', deductFee: '-', actualFee: '-', total: '10,616.08', checked: true },
+    { id: 'R002', name: 'ទុនសង្គម', gender: 'ក្រុម', startCapital: '505.23', share: '0.70%', addSaving: '4.20', profit: '3.172876304', withdraw: '-', deductFee: '-', actualFee: '-', total: '512.60', checked: true },
+    { id: 'R003', name: 'ទុនក្រុមយេស (YES)', gender: 'ក្រុម', startCapital: '631.11', share: '0.88%', addSaving: '1.00', profit: '3.963403787', withdraw: '-', deductFee: '-', actualFee: '-', total: '636.08', checked: true },
+    ...Array(6).fill(null).map((_, i) => ({ id: `R00${i + 4}`, name: '0 0 0', gender: '###', startCapital: '-', share: '0.00%', addSaving: '-', profit: '0', withdraw: '-', deductFee: '-', actualFee: '-', total: '-', checked: true }))
+  ];
+
+  const depositData = [
+    { id: 'D001', name: 'ឈៀវ គឹមឡាយ', gender: 'ស្រី', village: '0', startCapital: '226.27', addSaving: '10.00', profit: '1.13', withdraw: '-', deductFee: '-', actualFee: '-', total: '237.40', checked: true },
+    { id: 'D002', name: 'ឈៀវ គឹមលន់', gender: 'ស្រី', village: '0', startCapital: '19.01', addSaving: '-', profit: '0.10', withdraw: '-', deductFee: '-', actualFee: '-', total: '19.11', checked: true },
+    { id: 'D004', name: 'សែន សុម៉ាន់', gender: 'ប្រុស', village: '0', startCapital: '692.18', addSaving: '-', profit: '3.46', withdraw: '-', deductFee: '-', actualFee: '-', total: '695.64', checked: true },
+    { id: 'D006', name: 'តួង បូរិន', gender: 'ប្រុស', village: '0', startCapital: '30.89', addSaving: '-', profit: '0.15', withdraw: '-', deductFee: '-', actualFee: '-', total: '31.04', checked: true },
+    { id: 'D007', name: 'រ៉ស់ ដុល្លា', gender: 'ប្រុស', village: '0', startCapital: '9.71', addSaving: '-', profit: '0.05', withdraw: '-', deductFee: '-', actualFee: '-', total: '9.76', checked: true },
+    { id: 'D008', name: 'តៀវ ឆៃដន់', gender: 'ស្រី', village: '0', startCapital: '43.88', addSaving: '-', profit: '0.22', withdraw: '-', deductFee: '-', actualFee: '-', total: '44.10', checked: true },
+    { id: 'D009', name: 'ពៅ សុគន្ធា', gender: 'ស្រី', village: '0', startCapital: '454.01', addSaving: '-', profit: '2.27', withdraw: '-', deductFee: '-', actualFee: '-', total: '456.28', checked: true },
+    { id: 'D010', name: 'សុខ នីដា', gender: 'ស្រី', village: '0', startCapital: '5.25', addSaving: '-', profit: '0.03', withdraw: '-', deductFee: '-', actualFee: '-', total: '5.28', checked: true },
+  ];
+
+  return (
+    <PageView title={
+      <div className="flex flex-col md:flex-row md:items-center gap-3">
+        <span>របាយការណ៍សន្សំប្រាក់{activeTab === 'group' ? 'ក្រុម' : activeTab === 'deposit' ? 'សមាជិកបញ្ញើសន្សំ' : 'សមាជិកសកម្ម'} - </span>
+        <select 
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
+          className="text-lg md:text-xl font-bold bg-[#eef8f2] border border-green-200 text-[#0a6652] px-3 py-1 rounded-lg outline-none cursor-pointer shadow-sm w-fit"
+        >
+          {months.map(m => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+      </div>
+    }>
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-3 mb-6">
+        <button 
+          onClick={() => setActiveTab('members')}
+          className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'members' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          សមាជិកសកម្ម
+        </button>
+        <button 
+          onClick={() => setActiveTab('deposit')}
+          className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'deposit' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          សមាជិកបញ្ញើ
+        </button>
+        <button 
+          onClick={() => setActiveTab('group')}
+          className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'group' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          សមាជិកជាក្រុម
+        </button>
+      </div>
+
+      {activeTab === 'members' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
+          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+            <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
+              <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
+                <tr>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ល.រ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle min-w-[140px]">ឈ្មោះ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ភេទ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ទុនចាប់ផ្តើម</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ភាគហ៊ុនជា%</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ទុនសន្សំបន្ថែម</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ប្រាក់ចំណេញ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ដកទុន</th>
+                  <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-300">ប្រាក់ពិន័យ/សមាជិកភាព</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle shadow-[-4px_0_10px_rgba(0,0,0,0.02)] bg-[#f3faf6] text-[#084f40]">ប្រាក់សន្សំសរុប</th>
+                  <th rowSpan={2} className="px-3 py-3 align-middle">កំណត់សំគាល់</th>
+                </tr>
+                <tr>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">កាត់ទុន</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">ជាក់ស្តែង</th>
+                </tr>
+              </thead>
+              <tbody>
+                {savingData.map((row) => (
+                  <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.startCapital}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right text-slate-500 text-xs">{row.share}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.addSaving !== '-' ? row.addSaving : <span className="text-slate-300">-</span>}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.profit}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.withdraw}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.deductFee}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.actualFee}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">{row.total}</td>
+                    <td className="px-3 py-2 text-center text-green-600 font-bold">{row.checked ? '✓' : ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'group' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
+          <h3 className="font-bold text-slate-800 text-lg mb-4">ទុនរក្សាទុកក្រុម</h3>
+          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+            <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
+              <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
+                <tr>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ល.រ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle min-w-[140px]">ឈ្មោះ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ភេទ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ទុនចាប់ផ្តើម</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ភាគហ៊ុនជា%</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ទុនសន្សំបន្ថែម</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ប្រាក់ចំណេញ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ដកទុន</th>
+                  <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-300">ប្រាក់ពិន័យ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle shadow-[-4px_0_10px_rgba(0,0,0,0.02)] bg-[#f3faf6] text-[#084f40]">ប្រាក់សន្សំសរុប</th>
+                  <th rowSpan={2} className="px-3 py-3 align-middle">កំណត់សំគាល់</th>
+                </tr>
+                <tr>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">កាត់ទុន</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">សាច់ប្រាក់ជាក់ស្តែង</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groupData.map((row) => (
+                  <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.startCapital}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right text-slate-500 text-xs">{row.share}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.addSaving !== '-' ? row.addSaving : <span className="text-slate-300">-</span>}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.profit}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.withdraw}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.deductFee}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.actualFee}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">{row.total}</td>
+                    <td className="px-3 py-2 text-center text-green-600 font-bold">{row.checked ? '✓' : ''}</td>
+                  </tr>
+                ))}
+                <tr className="bg-slate-50 text-slate-800 font-bold !border-t-2 !border-slate-800 h-12">
+                  <td colSpan={3} className="px-3 py-2 border-r border-slate-300 text-center">សរុប</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">11,602.74</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">16.12%</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">89.15</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">72.87</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">-</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">-</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">-</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right text-[#0a6652] bg-[#fafdfa]">11,764.76</td>
+                  <td className="px-3 py-2"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'deposit' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
+          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+            <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
+              <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
+                <tr>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ល.រ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle min-w-[140px]">ឈ្មោះ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ភេទ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ភូមិ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ទុនចាប់ផ្តើម</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ទុនសន្សំបន្ថែម</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ប្រាក់ចំណេញ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ដកទុន</th>
+                  <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-300">ប្រាក់ពិន័យ/សមាជិកភាព</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle shadow-[-4px_0_10px_rgba(0,0,0,0.02)] bg-[#f3faf6] text-[#084f40]">ប្រាក់សន្សំសរុប</th>
+                  <th rowSpan={2} className="px-3 py-3 align-middle">កំណត់សំគាល់</th>
+                </tr>
+                <tr>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">កាត់ទុន</th>
+                  <th className="px-3 py-2 border-r border-slate-300 text-xs">ជាក់ស្តែង</th>
+                </tr>
+              </thead>
+              <tbody>
+                {depositData.map((row) => (
+                  <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.village}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.startCapital}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.addSaving !== '-' ? row.addSaving : <span className="text-slate-300">-</span>}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.profit}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.withdraw}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.deductFee}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.actualFee}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">{row.total}</td>
+                    <td className="px-3 py-2 text-center text-green-600 font-bold">{row.checked ? '✓' : ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </PageView>
+  );
+}
+
+function Loans() {
+  const [selectedMonth, setSelectedMonth] = useState('មេសា ២០២៦');
+  const [activeTab, setActiveTab] = useState('members');
+  const months = ['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'];
+
+  const loanData = [
+    { id: 'C001', name: 'ឆន សុភ័ក្រ', gender: 'ប្រុស', loanValue: '500.00', repayment: '500.00', interest: '7.50', newLoan: '-', remaining: '-', interestPaid: '7.50', checked: true },
+    { id: 'C002', name: 'សាន កិត្យាផល', gender: 'ប្រុស', loanValue: '-', repayment: '-', interest: '-', newLoan: '-', remaining: '-', interestPaid: '-', checked: true },
+    { id: 'C003', name: 'លី រ៉ា', gender: 'ប្រុស', loanValue: '-', repayment: '-', interest: '-', newLoan: '-', remaining: '-', interestPaid: '-', checked: true },
+    { id: 'C004', name: 'គឹម សុភ័ក្រ្តា', gender: 'ប្រុស', loanValue: '-', repayment: '-', interest: '-', newLoan: '-', remaining: '-', interestPaid: '-', checked: true },
+    { id: 'C005', name: 'ញាណ ផល្លី', gender: 'ប្រុស', loanValue: '-', repayment: '-', interest: '-', newLoan: '-', remaining: '-', interestPaid: '-', checked: true },
+    { id: 'C006', name: 'គង់ សុគមន៍', gender: 'ប្រុស', loanValue: '-', repayment: '-', interest: '-', newLoan: '-', remaining: '-', interestPaid: '-', checked: true },
+    { id: 'C007', name: 'វង្ស វិសាល', gender: 'ប្រុស', loanValue: '-', repayment: '-', interest: '-', newLoan: '-', remaining: '-', interestPaid: '-', checked: true },
+    { id: 'C008', name: 'រ៉ន ចាន់សោភា', gender: 'ប្រុស', loanValue: '2,730.25', repayment: '49.05', interest: '40.95', newLoan: '-', remaining: '2,681.20', interestPaid: '40.95', checked: true },
+    { id: 'C009', name: 'កង ធី', gender: 'ប្រុស', loanValue: '467.55', repayment: '-', interest: '7.01', newLoan: '7.01', remaining: '474.56', interestPaid: '7.01', checked: true },
+    { id: 'C010', name: 'ថា សុគន្ធា', gender: 'ស្រី', loanValue: '1,932.30', repayment: '-', interest: '28.98', newLoan: '28.98', remaining: '1,961.28', interestPaid: '28.98', checked: true },
+  ];
+
+  const externalLoanData = [
+    { id: 'I01', name: 'កម្ចីទទួលបានពី LSG', gender: 'ក្រុម', received: '-', repayment: '-', interestRate: '1.20%', duration: '', newLoan: '-', remaining: '-', interest: '-', totalToPay: '-', note: '' },
+    ...Array(11).fill(null).map((_, i) => ({ id: `I${(i + 2).toString().padStart(2, '0')}`, name: '-', gender: '-', received: '-', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '-', interest: '-', totalToPay: '-', note: '' }))
+  ];
+
+  const externalProvidedData = [
+    { id: 'O01', name: 'ដៃគូ SIG', gender: '-', received: '391.70', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '391.70', interest: '-', totalToPay: '-', note: '' },
+    { id: 'O02', name: 'ដៃគូ ឃ្លាំង', gender: '-', received: '2,870.91', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '2,870.91', interest: '-', totalToPay: '-', note: '' },
+    { id: 'O03', name: 'ដៃគូ SOF', gender: '-', received: '7,286.91', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '7,286.91', interest: '-', totalToPay: '-', note: '' },
+    ...Array(8).fill(null).map((_, i) => ({ id: `O${(i + 4).toString().padStart(2, '0')}`, name: '-', gender: '-', received: '-', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '-', interest: '-', totalToPay: '-', note: '' }))
+  ];
+
+  return (
+    <PageView title={
+      <div className="flex flex-col md:flex-row md:items-center gap-3">
+        <span>របាយការណ៍កម្ចី - </span>
+        <select 
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
+          className="text-lg md:text-xl font-bold bg-[#eef8f2] border border-green-200 text-[#0a6652] px-3 py-1 rounded-lg outline-none cursor-pointer shadow-sm w-fit"
+        >
+          {months.map(m => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+      </div>
+    }>
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-3 mb-6">
+        <button 
+          onClick={() => setActiveTab('members')}
+          className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'members' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          ប្រាក់កម្ចីសមាជិក
+        </button>
+        <button 
+          onClick={() => setActiveTab('group')}
+          className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'group' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          កម្ចីទទួលបានពីខាងក្រៅ
+        </button>
+        <button 
+          onClick={() => setActiveTab('external_provided')}
+          className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'external_provided' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          កម្ចីផ្តល់ទៅខាងក្រៅ
+        </button>
+      </div>
+
+      {activeTab === 'members' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
+          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+            <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
+              <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
+                <tr>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle">ល.រ</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle min-w-[140px]">ឈ្មោះ</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle">ភេទ</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចី</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីសងត្រឡប់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">ការប្រាក់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីថ្មី</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីនៅសល់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right text-[#084f40] bg-[#f3faf6] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">ការប្រាក់បានបង់</th>
+                  <th className="px-3 py-3 align-middle">កំណត់សំគាល់</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loanData.map((row) => (
+                  <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">
+                      {row.loanValue !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
+                      {row.loanValue}
+                    </td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-amber-600">
+                      {row.repayment !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
+                      {row.repayment}
+                    </td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-indigo-600">
+                      {row.interest !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
+                      {row.interest}
+                    </td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-emerald-600">
+                      {row.newLoan !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
+                      {row.newLoan}
+                    </td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium bg-slate-50">
+                      {row.remaining !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
+                      {row.remaining}
+                    </td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">
+                      {row.interestPaid !== '-' ? <span className="text-[#0a6652]/60 mr-1">$</span> : null}
+                      {row.interestPaid}
+                    </td>
+                    <td className="px-3 py-2 text-center text-green-600 font-bold">{row.checked ? '✓' : ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'group' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
+          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+            <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
+              <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
+                <tr>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle">លរ</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle min-w-[200px]">ឈ្មោះ</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle">ភេទ</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចី<br/>ទទួលបាន</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចី<br/>សងត្រឡប់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-center">អត្រាការប្រាក់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-center">រយៈពេល</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីថ្មី</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចី<br/>នៅសល់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">ការប្រាក់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right text-[#084f40] bg-[#f3faf6] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">ប្រាក់ត្រូវបង់<br/>សរុប</th>
+                  <th className="px-3 py-3 align-middle">សំគាល់</th>
+                </tr>
+              </thead>
+              <tbody>
+                {externalLoanData.map((row) => (
+                  <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.received}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-amber-600">{row.repayment}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium">{row.interestRate}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium">{row.duration}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-emerald-600">{row.newLoan}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium bg-slate-50">{row.remaining}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-indigo-600">{row.interest}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">
+                      <div className={`w-16 h-6 ml-auto ${row.id === 'I06' ? 'border border-green-500 rounded bg-green-50/50' : ''}`}>
+                        {row.totalToPay}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-center text-slate-500">{row.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'external_provided' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
+          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+            <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
+              <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
+                <tr>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle">លរ</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle min-w-[200px]">ឈ្មោះ</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle">ភេទ</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចី<br/>ទទួលបាន</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចី<br/>សងត្រឡប់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-center">អត្រាការប្រាក់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-center">រយៈពេល</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីថ្មី</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចី<br/>នៅសល់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">ការប្រាក់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right text-[#084f40] bg-[#f3faf6] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">ប្រាក់ត្រូវបង់<br/>សរុប</th>
+                  <th className="px-3 py-3 align-middle">សំគាល់</th>
+                </tr>
+              </thead>
+              <tbody>
+                {externalProvidedData.map((row) => (
+                  <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.received}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-amber-600">{row.repayment}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium">{row.interestRate}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium">{row.duration}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-emerald-600">{row.newLoan}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium bg-slate-50">{row.remaining}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-indigo-600">{row.interest}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">
+                      {row.totalToPay}
+                    </td>
+                    <td className="px-3 py-2 text-center text-slate-500">{row.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </PageView>
+  );
+}
+
+function Payroll() {
+  return (
+    <PageView title="បើកប្រាក់ខែ (Payroll)">
+      <p className="text-slate-500 font-medium mb-6">ទូទាត់ប្រាក់ខែ និងកាត់ប្រាក់សន្សំដោយស្វ័យប្រវត្តិ។</p>
+      <div className="flex items-center justify-center h-48 bg-blue-50 text-blue-600 rounded-2xl font-bold border border-blue-100">
+        កុំព្យូទ័រគណនាប្រាក់ខែ និងទម្រង់ Import Excel
+      </div>
+    </PageView>
+  );
+}
+
+function Reports() {
+  const [activeTab, setActiveTab] = useState('balance');
+  const [selectedMonth, setSelectedMonth] = useState('មេសា ២០២៦');
+  const months = ['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'];
+
+  return (
+    <PageView 
+      hideUpload={true} 
+      hideDownload={true} 
+      hideAdd={true}
+      title={
+        <div className="flex flex-wrap items-center gap-3">
+          <span>របាយការណ៍ហិរញ្ញវត្ថុ - </span>
+          <select 
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="text-lg md:text-xl font-bold bg-[#eef8f2] border border-green-200 text-[#0a6652] px-3 py-1 rounded-lg outline-none cursor-pointer shadow-sm"
+          >
+            {months.map(m => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+        </div>
+      }
+    >
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-3 mb-8">
+        <button 
+          onClick={() => setActiveTab('balance')}
+          className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'balance' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          តារាងតុល្យការ
+        </button>
+        <button 
+          onClick={() => setActiveTab('cashflow')}
+          className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'cashflow' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          លំហូរសាច់ប្រាក់
+        </button>
+        <button 
+          onClick={() => setActiveTab('income')}
+          className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'income' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          របាយការណ៍ចំណូល
+        </button>
+        <button 
+          onClick={() => setActiveTab('expense')}
+          className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'expense' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          របាយការណ៍ចំណាយ
+        </button>
+      </div>
+
+      {activeTab === 'balance' && (
+        <>
+          {/* Overview Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="bg-[#eef8f2] p-5 rounded-2xl border border-green-200 shadow-sm flex flex-col items-center justify-center text-center">
+              <div className="text-sm font-bold text-slate-500 mb-1">សរុបទ្រព្យសម្បត្តិ</div>
+              <div className="text-2xl font-black text-[#0a6652]">83,104.36</div>
+            </div>
+            <div className="bg-orange-50 p-5 rounded-2xl border border-orange-200 shadow-sm flex flex-col items-center justify-center text-center">
+              <div className="text-sm font-bold text-slate-500 mb-1">សរុបបំណុល</div>
+              <div className="text-2xl font-black text-orange-600">71,339.60</div>
+            </div>
+            <div className="bg-indigo-50 p-5 rounded-2xl border border-indigo-200 shadow-sm flex flex-col items-center justify-center text-center">
+              <div className="text-sm font-bold text-slate-500 mb-1">សរុបដើមទុន</div>
+              <div className="text-2xl font-black text-indigo-600">11,764.76</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Assets Section */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+              <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
+                <h3 className="font-bold text-slate-800 text-lg">ទ្រព្យសកម្ម (Assets)</h3>
+              </div>
+              <div className="p-6 space-y-4 flex-1">
+                <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                  <span>សាច់ប្រាក់នៅក្នុងដៃ</span>
+                  <span className="font-bold">7,800.60</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                  <span>សមតុល្យនៅធនាគារ</span>
+                  <span className="text-slate-400">-</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                  <span>ប្រាក់ផ្តល់កម្ចីឱ្យសមាជិក</span>
+                  <span className="font-bold">61,754.25</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                  <span>ប្រាក់ផ្តល់កម្ចីទៅខាងក្រៅ</span>
+                  <span className="font-bold">13,549.52</span>
+                </div>
+              </div>
+              <div className="bg-[#eef8f2] px-6 py-4 border-t border-green-100 flex justify-between items-center">
+                <span className="font-bold text-[#0a6652]">សរុបទ្រព្យសម្បត្តិ</span>
+                <span className="font-black text-[#0a6652] text-lg">83,104.36</span>
+              </div>
+            </div>
+
+            {/* Liabilities & Equity Section */}
+            <div className="space-y-6">
+              {/* Liabilities */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
+                  <h3 className="font-bold text-slate-800 text-lg">បំណុល (Liabilities)</h3>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                    <span>ប្រាក់សន្សំរបស់សមាជិកសន្សំ</span>
+                    <span className="font-bold">61,054.62</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                    <span>ប្រាក់សន្សំរបស់សមាជិកបញ្ញើ</span>
+                    <span className="font-bold">1,959.98</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                    <span>កម្ចីទទួលបានពីខាងក្រៅ</span>
+                    <span className="font-bold">8,325.00</span>
+                  </div>
+                </div>
+                <div className="bg-orange-50 px-6 py-4 border-t border-orange-100 flex justify-between items-center">
+                  <span className="font-bold text-orange-700">សរុបបំណុល</span>
+                  <span className="font-black text-orange-700 text-lg">71,339.60</span>
+                </div>
+              </div>
+
+              {/* Equity */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
+                  <h3 className="font-bold text-slate-800 text-lg">មូលធន (ដើមទុន)</h3>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                    <span>ទុនបម្រុង</span>
+                    <span className="font-bold">10,616.08</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                    <span>ទុនសង្គម</span>
+                    <span className="font-bold">512.60</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                    <span>ទុនក្រុមយេស (YES)</span>
+                    <span className="font-bold">636.08</span>
+                  </div>
+                </div>
+                <div className="bg-indigo-50 px-6 py-4 border-t border-indigo-100 flex justify-between items-center">
+                  <span className="font-bold text-indigo-700">សរុបដើមទុន</span>
+                  <span className="font-black text-indigo-700 text-lg">11,764.76</span>
+                </div>
+              </div>
+              
+              <div className="bg-slate-800 rounded-2xl px-6 py-5 flex justify-between items-center text-white shadow-md">
+                <span className="font-bold">សរុបបំណុល និងមូលធន</span>
+                <span className="font-black text-xl">83,104.36</span>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {activeTab === 'cashflow' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Cash Inflow Section */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
+              <h3 className="font-bold text-slate-800 text-lg">ប្រាក់ហូរចូល</h3>
+            </div>
+            <div className="p-6 space-y-4 flex-1">
+              {[
+                { label: 'សាច់ប្រាក់នៅក្នុងហ៊ីបប្រាក់', value: '3,083.71' },
+                { label: 'សាច់ប្រាក់នៅធនាគារ', value: '-' },
+                { label: 'ប្រាក់ដាក់សន្សំសមាជិកម្ចាស់ភាគហ៊ុន', value: '309.75' },
+                { label: 'ប្រាក់សន្សំសមាជិកបញ្ញើសន្សំ', value: '10.00' },
+                { label: 'ប្រាក់បង់រំលោះ', value: '3,936.61' },
+                { label: 'ទុនសន្សំបន្ថែមក្រុម', value: '1.00' },
+                { label: 'ទទួលប្រាក់កម្ចីពីខាងក្រៅ', value: '150.00' },
+                { label: 'ប្រាក់ពិន័យ/សមាជិកភាព', value: '-' },
+                { label: 'ការប្រាក់ទទួលបាន', value: '839.57' },
+                { label: 'ចំណូលផ្សេងៗ', value: '-' },
+                { label: 'ការប្រាក់ពីធនាគារ', value: '-' },
+                { label: 'ប្រាក់លំអៀង', value: '-' }
+              ].map((item, i) => (
+                <div key={i} className="flex justify-between items-center text-sm font-medium text-slate-700">
+                  <span>{item.label}</span>
+                  <span className={item.value !== '-' ? "font-bold" : "text-slate-400"}>{item.value}</span>
+                </div>
+              ))}
+            </div>
+            <div className="bg-[#eef8f2] px-6 py-4 border-t border-green-100 flex justify-between items-center">
+              <span className="font-bold text-[#0a6652]">សរុប</span>
+              <span className="font-black text-[#0a6652] text-lg">8,330.64</span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center p-12 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
+            <p className="text-slate-400 font-medium">មិនទាន់មានទិន្នន័យប្រាក់ហូរចេញ</p>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'income' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col max-w-3xl mx-auto">
+          <div className="p-6 md:p-8 space-y-6">
+            {/* Income Section */}
+            <div>
+              <h3 className="font-bold text-slate-800 text-lg mb-4">ចំណូល</h3>
+              <div className="space-y-3 pl-4">
+                <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                  <span>ការប្រាក់សមាជិកកម្ចី</span>
+                  <span className="font-bold">839.57</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                  <span>ចំណូលផ្សេងៗ</span>
+                  <span className="text-slate-400">-</span>
+                </div>
+              </div>
+              <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-200">
+                 <span className="font-bold text-slate-800">សរុបចំណូល</span>
+                 <span className="font-black text-[#0a6652] text-lg">839.57</span>
+              </div>
+            </div>
+
+            {/* Cost of Funds */}
+            <div>
+              <div className="space-y-3 pl-4">
+                <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                  <span>ការប្រាក់សមាជិកបញ្ញើ</span>
+                  <span className="font-bold">9.70</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                  <span>កម្ចីពីខាងក្រៅ</span>
+                  <span className="text-slate-400">-</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                  <span>ការប្រាក់គណនីមានកាលកំណត់</span>
+                  <span className="font-bold">81.75</span>
+                </div>
+              </div>
+              <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-200">
+                 <span className="font-bold text-slate-800">ចំណេញដុល</span>
+                 <span className="font-black text-indigo-600 text-lg">748.12</span>
+              </div>
+            </div>
+
+            {/* Operating Expenses & Other deductions */}
+            <div>
+              <div className="space-y-3 pl-4">
+                <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                  <span>ចំណាយប្រតិបត្តិការ</span>
+                  <span className="font-bold">208.00</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                  <span>ទុនបម្រុង</span>
+                  <span className="font-bold">83.96</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                  <span>ទុនសង្គម</span>
+                  <span className="font-bold">4.20</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-[#eef8f2] px-6 md:px-8 py-5 border-t border-green-100 flex justify-between items-center">
+            <span className="font-bold text-[#0a6652] text-lg">ប្រាក់ចំណេញសរុប</span>
+            <span className="font-black text-[#0a6652] text-xl">451.96</span>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'expense' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-6 md:p-8">
+           <h3 className="font-bold text-slate-800 text-lg mb-6">ចំណាយប្រតិបត្តិការ</h3>
+           
+           <div className="overflow-x-auto mb-10 border border-slate-200 rounded-xl">
+             <table className="w-full text-left min-w-[700px] border-collapse">
+               <thead>
+                 <tr className="bg-slate-50 border-b border-slate-200 text-sm h-11 text-slate-700">
+                   <th className="px-4 py-2 border-r border-slate-200 font-bold whitespace-nowrap">ថ្ងៃទីខែឆ្នាំ</th>
+                   <th className="px-4 py-2 border-r border-slate-200 font-bold whitespace-nowrap">អ្នកផ្គត់ផ្គង់</th>
+                   <th className="px-4 py-2 border-r border-slate-200 font-bold whitespace-nowrap">អត្តសញ្ញាណ</th>
+                   <th className="px-4 py-2 border-r border-slate-200 font-bold min-w-[200px]">មុខចំណាយ</th>
+                   <th className="px-4 py-2 border-r border-slate-200 font-bold text-center whitespace-nowrap">ឯកតា</th>
+                   <th className="px-4 py-2 border-r border-slate-200 font-bold text-right whitespace-nowrap">តម្លៃ</th>
+                   <th className="px-4 py-2 font-bold text-right whitespace-nowrap">សរុប</th>
+                 </tr>
+               </thead>
+               <tbody className="text-sm">
+                 <tr className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                   <td className="px-4 py-3 border-r border-slate-200">15-Apr-26</td>
+                   <td className="px-4 py-3 border-r border-slate-200">SOF</td>
+                   <td className="px-4 py-3 border-r border-slate-200"></td>
+                   <td className="px-4 py-3 border-r border-slate-200">ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់ លី រ៉ា</td>
+                   <td className="px-4 py-3 border-r border-slate-200 text-center">1</td>
+                   <td className="px-4 py-3 border-r border-slate-200 text-right font-medium">$ 170.00</td>
+                   <td className="px-4 py-3 text-right font-bold text-[#0a6652]">$ 170.00</td>
+                 </tr>
+                 <tr className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                   <td className="px-4 py-3 border-r border-slate-200">15-Apr-26</td>
+                   <td className="px-4 py-3 border-r border-slate-200">SOF</td>
+                   <td className="px-4 py-3 border-r border-slate-200"></td>
+                   <td className="px-4 py-3 border-r border-slate-200">ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់ ផាត សុភាព</td>
+                   <td className="px-4 py-3 border-r border-slate-200 text-center">1</td>
+                   <td className="px-4 py-3 border-r border-slate-200 text-right font-medium">$ 30.00</td>
+                   <td className="px-4 py-3 text-right font-bold text-[#0a6652]">$ 30.00</td>
+                 </tr>
+                 <tr className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                   <td className="px-4 py-3 border-r border-slate-200">15-Apr-26</td>
+                   <td className="px-4 py-3 border-r border-slate-200">SOF</td>
+                   <td className="px-4 py-3 border-r border-slate-200"></td>
+                   <td className="px-4 py-3 border-r border-slate-200">កាតទូរស័ព្ទប្រចាំខែសម្រាប់ លី រ៉ា</td>
+                   <td className="px-4 py-3 border-r border-slate-200 text-center">2</td>
+                   <td className="px-4 py-3 border-r border-slate-200 text-right font-medium">$ 4.00</td>
+                   <td className="px-4 py-3 text-right font-bold text-[#0a6652]">8.00</td>
+                 </tr>
+                 {[...Array(4)].map((_, idx) => (
+                   <tr key={idx} className="border-b border-slate-200 h-10">
+                     <td className="border-r border-slate-200 px-4"></td>
+                     <td className="border-r border-slate-200 px-4"></td>
+                     <td className="border-r border-slate-200 px-4"></td>
+                     <td className="border-r border-slate-200 px-4"></td>
+                     <td className="border-r border-slate-200 px-4"></td>
+                     <td className="border-r border-slate-200 px-4"></td>
+                     <td className="text-right text-slate-400 px-4">-</td>
+                   </tr>
+                 ))}
+                 <tr className="bg-slate-50 hover:bg-slate-100 transition-colors">
+                   <td colSpan={6} className="px-4 py-3 border-r border-slate-200 text-center font-bold text-slate-800">សរុប</td>
+                   <td className="px-4 py-3 text-right font-black text-slate-800">208.00</td>
+                 </tr>
+               </tbody>
+             </table>
+           </div>
+           
+           <div className="space-y-4 max-w-md pl-2 md:pl-4">
+              <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                <span>ការប្រាក់</span>
+                <span className="text-slate-400">-</span>
+              </div>
+              <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                <span>បំណុលអាក្រក់</span>
+                <span className="text-slate-400">-</span>
+              </div>
+              <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                <span>ចំណាយផ្សេងៗ</span>
+                <span className="text-slate-400">-</span>
+              </div>
+           </div>
+        </div>
+      )}
+    </PageView>
+  );
+}
+
+function History() {
+  return (
+    <PageView title="កំណត់ត្រាប្រវត្តិ (History)" hideUpload={true} hideDownload={true} hideAdd={true}>
+      <p className="text-slate-500 font-medium mb-6">ប្រវត្តិប្រតិបត្តិការទាំងអស់ ដែលបានធ្វើឡើងនៅក្នុងប្រព័ន្ធ។</p>
+      <div className="flex items-center justify-center h-48 bg-amber-50 text-amber-600 rounded-2xl font-bold border border-amber-100">
+        បញ្ជីប្រតិបត្តិការ (Log History)
+      </div>
+    </PageView>
+  );
+}
+
+function SettingsPage() {
+  const [interestRate, setInterestRate] = useState('1.5%');
+  const [telegramNotification, setTelegramNotification] = useState(true);
+
+  return (
+    <PageView title="បញ្ជូល និងកំណត់ទិន្នន័យ (Settings)" hideUpload={true} hideDownload={true} hideAdd={true}>
+      <p className="text-slate-500 font-medium text-xs mb-6">ការកំណត់ប្រព័ន្ធ អត្រាការប្រាក់ និងការនាំចេញទិន្នន័យគម្រោង។</p>
+      
+      {/* System Settings Form */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4 mb-6">
+        <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2 pb-2 border-b border-slate-100">
+          <Settings size={16} className="text-[#0a6652]" />
+          <span>ការកំណត់ប្រព័ន្ធទូទៅ (General Settings)</span>
+        </h3>
+        
+        <div className="space-y-3">
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 mb-1">អត្រាការប្រាក់ប្រចាំខែ (Monthly Interest Rate)</label>
+            <input 
+              type="text" 
+              value={interestRate} 
+              onChange={(e) => setInterestRate(e.target.value)}
+              className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:border-[#0a6652] outline-none"
+            />
+          </div>
+
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-800">ផ្ញើដំណឹងទៅ Telegram Bot</label>
+              <span className="text-[9px] text-slate-400">ផ្ញើរបាយការណ៍ប្រតិបត្តិការចូលគ្រុបស្វ័យប្រវត្ត</span>
+            </div>
+            <button 
+              onClick={() => setTelegramNotification(!telegramNotification)}
+              className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none ${telegramNotification ? 'bg-[#0a6652]' : 'bg-slate-300'}`}
+            >
+              <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-200 ${telegramNotification ? 'translate-x-4' : 'translate-x-0'}`} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Export & Download Section for Claude / Developers */}
+      <div className="bg-gradient-to-br from-[#0a6652] to-[#164e41] p-5 rounded-2xl text-white shadow-md space-y-4 relative overflow-hidden">
+        <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/5 rounded-full pointer-events-none" />
+        
+        <h3 className="text-xs font-black uppercase tracking-wider flex items-center gap-2">
+          <Sparkles size={16} className="text-yellow-300 animate-pulse" />
+          <span>នាំចេញកូដគម្រោងដើម្បីបន្តជាមួយ Claude</span>
+        </h3>
+
+        <p className="text-[10px] text-teal-100 leading-relaxed font-medium">
+          ដើម្បីទាញយកកូដគម្រោង (Codebase) ទាំងអស់យកទៅដំណើរការនៅលើកុំព្យូទ័រផ្ទាល់ខ្លួន ឬយកទៅបន្តការងារជាមួយ Claude, ChatGPT ឬ AI ផ្សេងទៀត៖
+        </p>
+
+        <div className="space-y-2 bg-black/15 p-3.5 rounded-xl text-[10px] border border-white/10 font-mono">
+          <div className="flex gap-2 items-start">
+            <span className="bg-yellow-400 text-slate-950 font-black w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 mt-0.5">1</span>
+            <p className="text-white">ក្រឡេកទៅមើល <span className="font-bold underline text-yellow-300">ម៉ឺនុយការកំណត់ (Settings Icon)</span> នៅផ្នែកខាងលើស្តាំបំផុតនៃកម្មវិធី Google AI Studio។</p>
+          </div>
+          <div className="flex gap-2 items-start mt-2">
+            <span className="bg-yellow-400 text-slate-950 font-black w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 mt-0.5">2</span>
+            <p className="text-white">ស្វែងរកពាក្យ <span className="font-bold text-yellow-300">"Export to ZIP"</span> ដើម្បីទាញយកកូដទាំងអស់ជា file ZIP តែមួយដោយស្វ័យប្រវត្តិ។</p>
+          </div>
+          <div className="flex gap-2 items-start mt-2">
+            <span className="bg-yellow-400 text-slate-950 font-black w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 mt-0.5">3</span>
+            <p className="text-white">ឬជ្រើសរើស <span className="font-bold text-yellow-300">"Export to GitHub"</span> ដើម្បីបញ្ជូនកូដទាំងអស់ទៅកាន់ GitHub Repository របស់អ្នកភ្លាមៗ។</p>
+          </div>
+        </div>
+
+        <div className="pt-1 flex flex-col gap-2">
+          <div className="bg-white/10 p-2.5 rounded-xl border border-white/5 text-[9px] text-[#e3f4ee] flex items-center gap-2">
+            <Download size={14} className="text-yellow-300 shrink-0" />
+            <span>អ្នកអាចទាញយកដោយផ្ទាល់ត្រង់ផ្ទាំងបញ្ជារបស់ Google AI Studio Workspace!</span>
+          </div>
+        </div>
+      </div>
+    </PageView>
+  );
+}
+
+function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isInitiallyAdmin = location.search.includes('tab=admin');
+  
+  const [loginType, setLoginType] = useState<'member' | 'admin'>(isInitiallyAdmin ? 'admin' : 'member');
+  const [loginId, setLoginId] = useState('');
+  const [password, setPassword] = useState('');
+  const [adminUsername, setAdminUsername] = useState('admin');
+  const [adminPassword, setAdminPassword] = useState('admin123');
+  const [showPassword, setShowPassword] = useState(false);
+
+  React.useEffect(() => {
+    if (location.search.includes('tab=admin')) {
+      setLoginType('admin');
+    } else if (location.search.includes('tab=member')) {
+      setLoginType('member');
+    }
+  }, [location.search]);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loginType === 'member') {
+      if (loginId.trim()) {
+        localStorage.setItem('userRole', 'member');
+        localStorage.setItem('memberId', loginId);
+        onLogin('member', loginId);
+        navigate(`/member-report?id=${loginId}`);
+      }
+    } else {
+      if (adminUsername.trim() === 'admin' && adminPassword === 'admin123') {
+        localStorage.setItem('userRole', 'admin');
+        onLogin('admin', '');
+        navigate('/admin');
+      } else {
+        alert('គណនីអ្នកគ្រប់គ្រងមិនត្រឹមត្រូវទេ! (គណនីសាកល្បង៖ admin / admin123)');
+      }
+    }
+  };
+
+  return (
+    <PageView title="ច្រកចូលប្រព័ន្ធ (System Login)" hideUpload hideAdd hideBack hideDownload>
+      <div className="max-w-md mx-auto bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm mt-4">
+        
+        {/* Toggle Admin vs Member Tab */}
+        <div className="flex p-1 bg-slate-100 rounded-2xl mb-8">
+          <button 
+            type="button"
+            onClick={() => {
+              setLoginType('member');
+              navigate('/login?tab=member');
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm transition-all ${
+              loginType === 'member'
+                ? 'bg-white text-[#0a6652] shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <UserCheck size={18} /> សមាជិក (Member)
+          </button>
+          <button 
+            type="button"
+            onClick={() => {
+              setLoginType('admin');
+              navigate('/login?tab=admin');
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm transition-all ${
+              loginType === 'admin'
+                ? 'bg-white text-rose-600 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <ShieldCheck size={18} /> គណៈកម្មការ (Admin)
+          </button>
+        </div>
+
+        <div className="text-center mb-6">
+          <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-sm ${
+            loginType === 'admin' ? 'bg-rose-50 text-rose-600' : 'bg-teal-50 text-[#0a6652]'
+          }`}>
+            {loginType === 'admin' ? <Lock size={36} strokeWidth={2} /> : <UserCheck size={36} strokeWidth={2} />}
+          </div>
+          <h2 className="text-2xl font-black text-slate-800">
+            {loginType === 'admin' ? 'ចូលគណនីអ្នកគ្រប់គ្រង' : 'ស្វាគមន៍សមាជិក'}
+          </h2>
+          <p className="text-slate-500 mt-2 font-medium text-sm">
+            {loginType === 'admin' 
+              ? 'បញ្ចូលគណនីគណៈកម្មការ ដើម្បីគ្រប់គ្រងទិន្នន័យ' 
+              : 'សូមបញ្ចូលលេខសម្គាល់គណនី និងពាក្យសម្ងាត់'
+            }
+          </p>
+        </div>
+        
+        <form onSubmit={handleLogin} className="space-y-5">
+          {loginType === 'member' ? (
+            <>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">លេខ ID សមាជិក ឬ លេខទូរស័ព្ទ</label>
+                <input 
+                  type="text" 
+                  value={loginId}
+                  onChange={(e) => setLoginId(e.target.value)}
+                  placeholder="ឧទាហរណ៍: CM008 ឬ 012345678" 
+                  className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0a6652] focus:border-transparent font-bold text-slate-800 placeholder:font-normal placeholder:text-slate-400"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">ពាក្យសម្ងាត់</label>
+                <div className="relative">
+                  <input 
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="ពាក្យសម្ងាត់..." 
+                    className="w-full pl-5 pr-12 py-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0a6652] focus:border-transparent font-bold text-slate-800 placeholder:font-normal placeholder:text-slate-400"
+                    required
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+              <button type="submit" className="w-full h-14 bg-[#0a6652] text-white font-bold py-3 px-4 rounded-2xl shadow-lg shadow-teal-900/20 hover:bg-[#084f40] transition-colors flex items-center justify-center gap-2 mt-4">
+                <LogIn size={20} /> ចូលគណនីសមាជិក
+              </button>
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">ឈ្មោះគណនីអ្នកគ្រប់គ្រង</label>
+                <input 
+                  type="text" 
+                  value={adminUsername}
+                  onChange={(e) => setAdminUsername(e.target.value)}
+                  placeholder="admin" 
+                  className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent font-bold text-slate-800 placeholder:font-normal placeholder:text-slate-400"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">ពាក្យសម្ងាត់អ្នកគ្រប់គ្រង</label>
+                <div className="relative">
+                  <input 
+                    type={showPassword ? "text" : "password"}
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    placeholder="admin123" 
+                    className="w-full pl-5 pr-12 py-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent font-bold text-slate-800 placeholder:font-normal placeholder:text-slate-400"
+                    required
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-xs font-bold text-slate-500 leading-normal">
+                💡 គណនីសាកល្បង៖ <span className="text-rose-600">admin</span> / លេខកូដ៖ <span className="text-rose-600">admin123</span>
+              </div>
+
+              <button type="submit" className="w-full h-14 bg-rose-600 text-white font-bold py-3 px-4 rounded-2xl shadow-lg shadow-rose-950/20 hover:bg-rose-700 transition-colors flex items-center justify-center gap-2 mt-4">
+                <LogIn size={20} /> ចូលគណនីគណៈកម្មការ
+              </button>
+            </>
+          )}
+        </form>
+      </div>
+    </PageView>
+  );
+}
+
+function MemberReport() {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [selectedMonth, setSelectedMonth] = useState('ឧសភា ២០២៦');
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  
+  const [loanFiles, setLoanFiles] = useState<{name: string; size: string; date: string; type: string}[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  
+  // Digital loan form states
+  const [showDigitalForm, setShowDigitalForm] = useState(false);
+  const [digitalAmount, setDigitalAmount] = useState('');
+  const [digitalTerm, setDigitalTerm] = useState('12');
+  const [digitalPurpose, setDigitalPurpose] = useState('');
+  const [digitalPhone, setDigitalPhone] = useState('012 345 678');
+
+  // Loan report states based on the contract sheet
+  const [repLoanAmt, setRepLoanAmt] = useState('1804.58'); // matching the total loan shown in member's dashboard screenshot $1,804.58!
+  const [repLoanTerm, setRepLoanTerm] = useState(12);
+  const [repLoanRate, setRepLoanRate] = useState(0.8);
+  const [repBorrower, setRepBorrower] = useState('ជន សុភាក់');
+  const [repBorrowerId, setRepBorrowerId] = useState('CM008');
+  const [repPhone, setRepPhone] = useState('012 345 678');
+  const [repGuarantor1, setRepGuarantor1] = useState('ណុល សុខា');
+  const [repGuarantor1Id, setRepGuarantor1Id] = useState('CM012');
+  const [repGuarantor2, setRepGuarantor2] = useState('សឿន សំបូរ');
+  const [repGuarantor2Id, setRepGuarantor2Id] = useState('CM024');
+  const [repFreq, setRepFreq] = useState<'monthly' | 'weekly'>('weekly'); // they say 'អាទិត្យ' in sheet, so let's support both but default 'weekly'!
+  const [contractNum, setContractNum] = useState('MFC-2026-008');
+  const [selectedReportYear, setSelectedReportYear] = useState('២០២៦');
+
+  // Payment states for 'ការដាក់សន្សំ និងបង់កម្ចី' tab
+  const [paymentType, setPaymentType] = useState<'savings' | 'loan'>('savings');
+  const [paymentAmount, setPaymentAmount] = useState('50.00');
+  const [loanPrincipal, setLoanPrincipal] = useState('40.00');
+  const [loanInterest, setLoanInterest] = useState('10.00');
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [transactionId, setTransactionId] = useState('');
+  const [proofImage, setProofImage] = useState<string | null>(null);
+  const [proofFilename, setProofFilename] = useState('');
+  const [submittedPayments, setSubmittedPayments] = useState<Array<{
+    id: string;
+    type: 'savings' | 'loan';
+    amount: number;
+    principal?: number;
+    interest?: number;
+    date: string;
+    transactionId: string;
+    status: 'pending' | 'approved';
+    proofName: string;
+    proofImg: string;
+  }>>([
+    {
+      id: 'TXN-101',
+      type: 'savings',
+      amount: 30.00,
+      date: '2026-05-10',
+      transactionId: 'ABA-0098234B3',
+      status: 'approved',
+      proofName: 'savings_proof_may.png',
+      proofImg: 'https://i.ibb.co/xtBGLWX7/708852725-868075986313154-5636381465848274787-n.jpg'
+    }
+  ]);
+
+  const calculateSchedule = () => {
+    const amt = parseFloat(repLoanAmt) || 0;
+    const term = repLoanTerm || 12;
+    const r = (repLoanRate || 0.8) / 100;
+    
+    const schedule = [];
+    let currentBal = amt;
+    const monthlyPrincipal = amt / term;
+    
+    // Start date on 15 Jan 2026
+    const startDate = new Date(2026, 0, 15);
+    const khmerMonths = ["មករា", "កុម្ភៈ", "មីនា", "មេសា", "ឧសភា", "មិថុនា", "កក្កដា", "សីហា", "កញ្ញា", "តុលា", "វិច្ឆិកា", "ធ្នូ"];
+    
+    for (let i = 1; i <= term; i++) {
+      const interest = currentBal * r;
+      const principal = i === term ? currentBal : monthlyPrincipal;
+      const totalPay = principal + interest;
+      const dueBal = currentBal - principal;
+      
+      const dueDate = new Date(startDate);
+      if (repFreq === 'monthly') {
+        dueDate.setMonth(startDate.getMonth() + i);
+      } else {
+        dueDate.setDate(startDate.getDate() + (i * 7));
+      }
+      
+      const dayStr = repFreq === 'monthly' ? `ខែទី ${i}` : `${i} អាទិត្យ`;
+      const monthName = khmerMonths[dueDate.getMonth()];
+      const dateString = `ថ្ងៃទី ${dueDate.getDate()} ខែ${dueDate.getMonth() + 1} ឆ្នាំ ${dueDate.getFullYear()}`;
+      
+      schedule.push({
+        num: i,
+        day: dayStr,
+        monthName: monthName,
+        dueDate: dateString,
+        total: totalPay,
+        interest: interest,
+        principal: principal,
+        balance: dueBal < 0.01 ? 0 : dueBal
+      });
+      
+      currentBal = dueBal;
+    }
+    return schedule;
+  };
+
+  const handleFileUpload = (files: FileList | null) => {
+    if (!files) return;
+    const newList = [...loanFiles];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const sizeStr = file.size > 1024 * 1024 
+        ? `${(file.size / (1024 * 1024)).toFixed(2)} MB` 
+        : `${(file.size / 1024).toFixed(1)} KB`;
+      
+      const fileType = file.name.split('.').pop()?.toLowerCase() || '';
+      const dateStr = "ថ្ងៃទី " + new Date().getDate() + " ខែ" + (new Date().getMonth() + 1) + " ឆ្នាំ " + new Date().getFullYear();
+      
+      newList.push({
+        name: file.name,
+        size: sizeStr,
+        type: fileType,
+        date: dateStr
+      });
+    }
+    setLoanFiles(newList);
+  };
+
+  const removeLoanFile = (index: number) => {
+    setLoanFiles(loanFiles.filter((_, i) => i !== index));
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setProofFilename(file.name);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProofImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePaymentSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!proofImage) {
+      alert("សូមភ្ជាប់មកជាមួយនូវរូបភាពភស្តុតាងនៃការបង់ប្រាក់!");
+      return;
+    }
+    const isLoanVal = paymentType === 'loan';
+    const finalAmount = isLoanVal
+      ? (parseFloat(loanPrincipal) || 0) + (parseFloat(loanInterest) || 0)
+      : parseFloat(paymentAmount) || 0;
+
+    const newTxn = {
+      id: `TXN-${Math.floor(100 + Math.random() * 900)}`,
+      type: paymentType,
+      amount: finalAmount,
+      principal: isLoanVal ? (parseFloat(loanPrincipal) || 0) : undefined,
+      interest: isLoanVal ? (parseFloat(loanInterest) || 0) : undefined,
+      date: paymentDate,
+      transactionId: transactionId || "N/A",
+      status: 'pending' as const,
+      proofName: proofFilename || 'screenshot.png',
+      proofImg: proofImage,
+    };
+    setSubmittedPayments([newTxn, ...submittedPayments]);
+    // Reset form
+    setTransactionId('');
+    setProofImage(null);
+    setProofFilename('');
+    alert("ការផ្ញើភស្តុតាងបានជោគជ័យ! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូនក្នុងពេលឆាប់ៗ។");
+  };
+  
+  const tabs = ['របាយការណ៍ផ្ទាល់ខ្លួន', 'ស្នើកម្ចី', 'របាយការណ៍កម្ចី', 'របាយការណ៍សន្សំ', 'ការដាក់សន្សំ និងបង់កម្ចី'];
+  const months = ['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'];
+
+  const handleChangePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword === confirmPassword) {
+      alert("បានផ្លាស់ប្តូរពាក្យសម្ងាត់ដោយជោគជ័យ!");
+      setShowChangePassword(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } else {
+      alert("ពាក្យសម្ងាត់ថ្មី និងផ្ទៀងផ្ទាត់មិនត្រូវគ្នាទេ!");
+    }
+  };
+
+  return (
+    <PageView 
+      title={activeTab === 'dashboard' ? "ព័ត៌មានផ្ទាល់ខ្លួន" : activeTab} 
+      hideUpload 
+      hideAdd 
+      hideDownload={activeTab !== 'របាយការណ៍ផ្ទាល់ខ្លួន'}
+      downloadLabel="ទាញយក PDF"
+      hideBack={true}
+    >
+      {activeTab === 'dashboard' ? (
+        <div className="space-y-6">
+          {/* Profile overview header card */}
+          <div className="bg-gradient-to-br from-[#0a6652] to-[#128a6f] rounded-[28px] p-5 text-white shadow-lg relative overflow-hidden text-left">
+            <div className="absolute -right-16 -bottom-16 w-48 h-48 bg-white/10 rounded-full" />
+            <div className="absolute -left-10 -top-10 w-32 h-32 bg-white/5 rounded-full" />
+            
+            <div className="relative z-10 flex items-center gap-3">
+              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center font-black text-base border border-white/30 shadow-sm shrink-0">
+                JS
+              </div>
+              <div>
+                <p className="text-[9px] text-emerald-200 font-extrabold tracking-wider uppercase leading-none mb-1">ស្វាគមន៍សមាជិក</p>
+                <h3 className="text-base font-bold tracking-tight leading-none mb-1.5">ជន សុភាក់</h3>
+                <div className="flex flex-wrap gap-1">
+                  <span className="bg-white/15 px-1.5 py-0.5 rounded-full text-[8px] font-bold">ID: CM008</span>
+                  <span className="bg-emerald-900/40 px-1.5 py-0.5 rounded-full text-[8px] font-bold">សកម្មភាពជានិច្ច</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="relative z-10 mt-5 pt-4 border-t border-white/10 grid grid-cols-3 gap-1 divide-x divide-white/10 text-center">
+              <div className="px-1 text-left">
+                <span className="text-[9px] text-emerald-200/90 font-bold block leading-tight">ប្រាក់សន្សំសរុប</span>
+                <p className="text-sm font-black mt-1 tracking-tight">$ 1,804.58</p>
+              </div>
+              <div className="px-1 text-left pl-2">
+                <span className="text-[9px] text-emerald-200/90 font-bold block leading-tight">កម្ចីសរុប</span>
+                <p className="text-sm font-black mt-1 tracking-tight">$ 0.00</p>
+              </div>
+              <div className="px-1 text-left pl-2">
+                <span className="text-[9px] text-emerald-200/90 font-bold block leading-tight">តុល្យការដើមទុន</span>
+                <p className="text-sm font-black mt-1 tracking-tight">$ 1,804.58</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Bento grid style buttons like Admin */}
+          <div>
+            <h4 className="text-[11px] font-black text-slate-400 mb-3 tracking-wider text-left uppercase">សេវាកម្មសមាជិក</h4>
+            <div className="grid grid-cols-2 gap-3.5">
+              {[
+                {
+                  id: 'របាយការណ៍ផ្ទាល់ខ្លួន',
+                  title: "របាយការណ៍សង្ខេប",
+                  desc: "ពិនិត្យរបាយការណ៍សង្ខេប",
+                  icon1: <FileText size={16} strokeWidth={2.5} />,
+                  icon1Class: "bg-teal-50 text-teal-600",
+                  icon2: <UserCheck size={28} strokeWidth={1.5} />,
+                  icon2Class: "text-[#0a6652] fill-teal-100/40"
+                },
+                {
+                  id: 'ស្នើកម្ចី',
+                  title: "ទម្រង់ស្នើសុំកម្ចី",
+                  desc: "ស្នើប្រាក់កម្ចីថ្មីលឿនៗ",
+                  icon1: <Receipt size={16} strokeWidth={2.5} />,
+                  icon1Class: "bg-purple-50 text-purple-600",
+                  icon2: <HandCoins size={28} strokeWidth={1.5} />,
+                  icon2Class: "text-purple-600 fill-purple-100/40"
+                },
+                {
+                  id: 'របាយការណ៍កម្ចី',
+                  title: "របាយការណ៍កម្ចី",
+                  desc: "កិច្ចសន្យា និងគម្រោងសង",
+                  icon1: <BarChart3 size={16} strokeWidth={2.5} />,
+                  icon1Class: "bg-orange-50 text-orange-600",
+                  icon2: <Calendar size={28} strokeWidth={1.5} />,
+                  icon2Class: "text-orange-500 fill-orange-100/40"
+                },
+                {
+                  id: 'របាយការណ៍សន្សំ',
+                  title: "របាយការណ៍សន្សំ",
+                  desc: "ប្រវត្តិដាក់ និងការចាក់ចំណេញ",
+                  icon1: <TrendingUp size={16} strokeWidth={2.5} />,
+                  icon1Class: "bg-blue-50 text-blue-600",
+                  icon2: <Wallet size={28} strokeWidth={1.5} />,
+                  icon2Class: "text-blue-500 fill-blue-100/40"
+                },
+                {
+                  id: 'ការដាក់សន្សំ និងបង់កម្ចី',
+                  title: "ការដាក់សន្សំ និងបង់កម្ចី",
+                  desc: "ផ្ញើប្រាក់សន្សំ និងបង់កម្ចី",
+                  icon1: <Plus size={16} strokeWidth={2.5} />,
+                  icon1Class: "bg-rose-50 text-rose-500",
+                  icon2: <Sparkles size={28} strokeWidth={1.5} />,
+                  icon2Class: "text-amber-500 fill-amber-100/40"
+                }
+              ].map((card, i) => (
+                <div 
+                  key={i} 
+                  onClick={() => setActiveTab(card.id)} 
+                  className="bg-white rounded-[24px] p-4 shadow-[0_4px_15px_rgba(0,100,50,0.02)] min-h-[120px] flex flex-col justify-between cursor-pointer hover:shadow-[0_8px_25px_rgba(0,100,50,0.06)] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 border border-slate-100 hover:border-emerald-100 text-left"
+                >
+                  <div className="flex justify-between items-start w-full">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${card.icon1Class}`}>
+                      {card.icon1}
+                    </div>
+                    <div className={`${card.icon2Class} opacity-80`}>
+                      {card.icon2}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-black text-[#0a6652] tracking-tight leading-tight">
+                      {card.title}
+                    </h3>
+                    <p className="text-[9px] text-slate-400 font-bold mt-0.5 leading-none">
+                      {card.desc}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Action Footer */}
+          <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
+             <button 
+               onClick={() => setShowChangePassword(true)} 
+               className="flex-1 bg-slate-50 hover:bg-slate-100 active:scale-95 transition-all py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 text-slate-700 border border-slate-200/60 shadow-sm"
+             >
+               <Key size={14} className="text-slate-500" /> <span>ផ្លាស់ប្តូរកូដសម្ងាត់</span>
+             </button>
+             <button 
+               onClick={() => {
+                 localStorage.removeItem('userRole');
+                 localStorage.removeItem('memberId');
+                 window.location.href = '/login';
+               }} 
+               className="flex-1 bg-rose-50 hover:bg-rose-100 active:scale-95 transition-all py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 text-rose-600 border border-rose-100 shadow-sm"
+             >
+               <LogIn size={14} className="rotate-180" /> <span>ចាកចេញពីគណនី</span>
+             </button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          {/* Active Detail Header Navigation */}
+          <div className="mb-4 flex items-center justify-between bg-slate-150/60 p-2 rounded-xl">
+            <button 
+              onClick={() => setActiveTab('dashboard')} 
+              className="flex items-center gap-1.5 text-[#0a6652] hover:text-[#084f40] font-black text-xs transition-colors"
+            >
+              <ChevronLeft size={16} strokeWidth={2.5} /> ត្រឡប់ក្រោយ
+            </button>
+            <div className="flex gap-2">
+              <select 
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white font-black text-[10px] text-slate-700 focus:outline-none cursor-pointer"
+              >
+                {months.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+      {showChangePassword && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+          <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl relative">
+            <button 
+              onClick={() => setShowChangePassword(false)}
+              className="absolute right-6 top-6 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <div className="mb-8 pr-10">
+              <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2 mb-2">
+                <Key className="text-indigo-600" size={24} /> ប្តូរពាក្យសម្ងាត់
+              </h3>
+              <p className="text-slate-500 text-sm">សូមបញ្ចូលពាក្យសម្ងាត់បច្ចុប្បន្ន និងពាក្យសម្ងាត់ថ្មីរបស់អ្នក។</p>
+            </div>
+
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">ពាក្យសម្ងាត់បច្ចុប្បន្ន</label>
+                <div className="relative">
+                  <input 
+                    type={showCurrentPassword ? "text" : "password"} 
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent text-slate-800"
+                    required
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">ពាក្យសម្ងាត់ថ្មី</label>
+                <div className="relative">
+                  <input 
+                    type={showNewPassword ? "text" : "password"} 
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent text-slate-800"
+                    required
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">បញ្ជាក់ពាក្យសម្ងាត់ថ្មី</label>
+                <input 
+                  type={showNewPassword ? "text" : "password"} 
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent text-slate-800"
+                  required
+                />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => setShowChangePassword(false)}
+                  className="flex-1 py-3 px-4 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                >
+                  បោះបង់
+                </button>
+                <button 
+                  type="submit" 
+                  className="flex-1 py-3 px-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
+                >
+                  <Save size={18} /> រក្សាទុក
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showDigitalForm && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+          <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => setShowDigitalForm(false)}
+              className="absolute right-6 top-6 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <div className="mb-6 pr-10">
+              <h3 className="text-xl font-bold text-[#0a6652] flex items-center gap-2 mb-2">
+                <Receipt className="text-[#0a6652]" size={24} /> បំពេញពាក្យស្នើសុំកម្ចី
+              </h3>
+              <p className="text-slate-500 text-xs font-medium leading-relaxed">សូមបំពេញព័ត៌មានលម្អិតខាងក្រោមដើម្បីបង្កើត និងផ្ញើសំណើសុំប្រាក់កម្ចីឌីជីថលរបស់អ្នក។</p>
+            </div>
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!digitalAmount || Number(digitalAmount) <= 0) {
+                alert("សូមបញ្ចូលចំនួនទឹកប្រាក់កម្ចីឲ្យត្រឹមត្រូវ!");
+                return;
+              }
+              const sizeStr = "12.5 KB";
+              const dateStr = "ថ្ងៃទី " + new Date().getDate() + " ខែ" + (new Date().getMonth() + 1) + " ឆ្នាំ " + new Date().getFullYear();
+              const fileName = `លិខិតស្នើសុំកម្ចី_ឌីជីថល_$${Number(digitalAmount).toLocaleString()}USD.xlsx`;
+              
+              setLoanFiles([...loanFiles, {
+                name: fileName,
+                size: sizeStr,
+                type: 'xlsx',
+                date: dateStr
+              }]);
+              
+              setShowDigitalForm(false);
+              setDigitalAmount('');
+              setDigitalPurpose('');
+              alert("ទិន្នន័យត្រូវបានរក្សាទុក និងបង្កើតជាឯកសារពាក្យស្នើសុំឌីជីថលជោគជ័យ! សូមពិនិត្យបញ្ជីឯកសារ និងចុចផ្ញើពាក្យស្នើសុំ។");
+            }} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">ចំនួនទឹកប្រាក់ស្នើសុំ (USD)</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">$</span>
+                  <input 
+                    type="number" 
+                    value={digitalAmount}
+                    onChange={(e) => setDigitalAmount(e.target.value)}
+                    placeholder="ឧទាហរណ៍: 500" 
+                    className="w-full pl-8 pr-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0a6652] focus:border-transparent text-slate-800 text-sm font-bold"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">រយៈពេលសងត្រឡប់ (ខែ)</label>
+                <select 
+                  value={digitalTerm}
+                  onChange={(e) => setDigitalTerm(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0a6652] focus:border-transparent text-slate-800 text-sm font-bold"
+                >
+                  <option value="6">៦ ខែ (6 Months)</option>
+                  <option value="12">១២ ខែ (12 Months)</option>
+                  <option value="18">១៨ ខែ (18 Months)</option>
+                  <option value="24">២៤ ខែ (24 Months)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">លេខទូរស័ព្ទសមាជិក</label>
+                <input 
+                  type="text" 
+                  value={digitalPhone}
+                  onChange={(e) => setDigitalPhone(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0a6652] focus:border-transparent text-slate-800 text-sm font-semibold"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">គោលបំណងនៃការខ្ចីប្រាក់</label>
+                <textarea 
+                  value={digitalPurpose}
+                  onChange={(e) => setDigitalPurpose(e.target.value)}
+                  placeholder="រៀបរាប់ពីគោលបំណង ឧទាហរណ៍៖ ទិញជីកសិកម្ម ឬពង្រីករបរលក់ដូរ..."
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0a6652] focus:border-transparent text-slate-800 text-xs font-medium min-h-[80px]"
+                  required
+                />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => setShowDigitalForm(false)}
+                  className="flex-1 py-3 px-4 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-200 transition-colors"
+                >
+                  បោះបង់
+                </button>
+                <button 
+                  type="submit" 
+                  className="flex-1 py-3 px-4 bg-[#0a6652] text-white font-bold rounded-xl text-xs hover:bg-[#085241] transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-900/10"
+                >
+                  <Save size={14} /> រក្សាទុកសំណើ
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'របាយការណ៍ផ្ទាល់ខ្លួន' && (
+        <div className="max-w-3xl mx-auto bg-white p-6 md:p-12 rounded-[32px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100 relative overflow-hidden">
+        
+        {/* Background Watermark */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 border-8 border-slate-50 text-slate-50 rounded-full flex items-center justify-center font-black text-6xl pointer-events-none -rotate-12">
+          SOF
+        </div>
+
+        <div className="flex flex-col md:flex-row justify-between items-center border-b-[3px] border-blue-50 pb-8 mb-10 relative z-10 gap-6">
+          <div className="w-24 h-24 flex items-center justify-center shrink-0">
+             <img src="https://i.ibb.co/Kp7CxnjC/Picture1.jpg" alt="SOF Logo" className="w-full h-full object-contain" />
+          </div>
+          <div className="text-center md:flex-1">
+            <h2 className="text-xl md:text-2xl font-black tracking-tight text-blue-600 mb-2">ក្រុមសន្សំប្រាក់អនាគតយើង</h2>
+            <h3 className="text-base md:text-lg font-bold text-blue-500 mb-2">SAVING FOR OUR FUTURE (SOF)</h3>
+          </div>
+          <div className="w-24 shrink-0 hidden md:block"></div> {/* Spacer for symmetry */}
+        </div>
+
+        <div className="relative z-10 text-center mb-12">
+            <h3 className="inline-block text-xl md:text-2xl font-black text-blue-600 border-b-4 border-blue-600 pb-2 px-2">
+            របាយការណ៍ប្រចាំខែ{selectedMonth}
+            </h3>
+        </div>
+
+        <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-6 text-sm md:text-base font-bold text-slate-800">
+          <div className="flex justify-between items-end border-b border-slate-100 pb-2">
+            <span className="text-slate-500 font-medium">ឈ្មោះ:</span>
+            <span className="text-lg">ជន សុភាក់</span>
+          </div>
+          <div className="flex justify-between items-end border-b border-slate-100 pb-2">
+            <span className="text-slate-500 font-medium">លេខ ID:</span>
+            <span className="text-lg">CM008</span>
+          </div>
+          
+          <div className="flex justify-between items-center py-1 mt-4">
+            <span className="text-slate-500 font-medium">ដើមទុនខែមុន:</span>
+            <span className="text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg"><span className="text-emerald-600/50 mr-1">$</span> 1,794.42</span>
+          </div>
+          <div className="flex justify-between items-center py-1 mt-4">
+            <span className="text-slate-500 font-medium">កម្ចីដើមគ្រា:</span>
+            <span className="px-3 py-1"><span className="text-slate-300 mr-1">$</span> -</span>
+          </div>
+          
+          <div className="flex justify-between items-center py-1">
+            <span className="text-slate-500 font-medium">សន្សំក្នុងខែ:</span>
+            <span className="text-blue-600 bg-blue-50 px-3 py-1 rounded-lg"><span className="text-blue-600/50 mr-1">$</span> 10.00</span>
+          </div>
+          <div className="flex justify-between items-center py-1">
+            <span className="text-slate-500 font-medium">សងត្រលប់:</span>
+            <span className="text-amber-600 px-3 py-1"><span className="text-amber-600/50 mr-1">$</span> -</span>
+          </div>
+          
+          <div className="flex justify-between items-center py-1">
+            <span className="text-slate-500 font-medium">ប្រាក់ចំណេញ:</span>
+            <span className="text-emerald-600 px-3 py-1"><span className="text-emerald-600/50 mr-1">$</span> 0.16</span>
+          </div>
+          <div className="flex justify-between items-center py-1">
+            <span className="text-slate-500 font-medium">ការប្រាក់កម្ចី:</span>
+            <span className="text-amber-600 px-3 py-1"><span className="text-amber-600/50 mr-1">$</span> -</span>
+          </div>
+          
+          <div className="flex justify-between items-center py-1">
+            <span className="text-slate-500 font-medium">ការដកដើមទុន:</span>
+            <span className="text-rose-600 px-3 py-1"><span className="text-rose-600/50 mr-1">$</span> -</span>
+          </div>
+          <div className="flex justify-between items-center py-1">
+            <span className="text-slate-500 font-medium">កម្ចីថ្មីក្នុងខែ:</span>
+            <span className="text-indigo-600 px-3 py-1"><span className="text-indigo-600/50 mr-1">$</span> -</span>
+          </div>
+          
+          <div className="flex justify-between items-center py-1 pt-6 border-t border-slate-100 mt-2 text-lg">
+            <span className="text-slate-600 font-medium">ដើមទុនចុងគ្រា:</span>
+            <span className="text-[#0a6652]"><span className="text-[#0a6652]/50 mr-1">$</span> 1,804.58</span>
+          </div>
+          <div className="flex justify-between items-center py-1 pt-6 border-t border-slate-100 mt-2">
+            <span className="text-slate-600 font-medium">កម្ចីនៅសល់:</span>
+            <span className="text-slate-800"><span className="text-slate-400 mr-1">$</span> -</span>
+          </div>
+          
+          <div className="flex justify-between items-center py-1 bg-amber-50 rounded-xl px-4 mt-2">
+            <span className="text-slate-600 font-bold">ប្រាក់បានបង់:</span>
+            <span className="text-amber-700 text-lg"><span className="text-amber-700/50 mr-1">$</span> 10.00</span>
+          </div>
+          <div className="flex justify-between items-center py-1 mt-2">
+            <span className="text-slate-500 font-medium">សមាជិកភាព:</span>
+            <span className="px-3 py-1"><span className="text-slate-300 mr-1">$</span> -</span>
+          </div>
+        </div>
+
+        <div className="mt-20 flex flex-col items-center md:items-end text-sm text-slate-800 relative z-10 md:pr-10">
+          <p className="mb-3 font-medium text-slate-500">ធ្វើនៅថ្ងៃទី ៣១ ខែឧសភា ឆ្នាំ ២០២៣</p>
+          <p className="mb-8 font-bold text-slate-700">ហត្ថលេខាអ្នកធ្វើរបាយការណ៍</p>
+          <div className="w-40 h-20 border-b-2 border-slate-200 border-dashed relative">
+            <div className="absolute inset-0 flex items-center justify-center pb-4 text-4xl text-blue-800 font-serif -rotate-12 italic opacity-60">Rv</div>
+          </div>
+        </div>
+      </div>
+      )}
+
+      {activeTab === 'ស្នើកម្ចី' && (
+        <div className="max-w-3xl mx-auto bg-white p-6 md:p-8 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left">
+           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-green-50/60">
+             <div className="flex items-center gap-3">
+               <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center shrink-0">
+                 <Receipt size={24} />
+               </div>
+               <div>
+                 <h3 className="text-lg font-bold text-slate-800">ទម្រង់ស្នើកម្ចី</h3>
+                 <p className="text-xs text-slate-500">បង្ហោះពាក្យស្នើសុំ ឬ បំពេញសំណើកម្ចីអនឡាញ</p>
+               </div>
+             </div>
+             <button 
+               onClick={() => setShowDigitalForm(true)}
+               className="bg-[#0a6652] hover:bg-[#085241] text-white font-bold text-xs py-2.5 px-4 rounded-xl active:scale-95 transition-all shadow-md shadow-emerald-900/10 flex items-center justify-center gap-1.5 self-start sm:self-auto shrink-0"
+             >
+               <FileText size={14} /> <span>បំពេញសំណើកម្ចីឥឡូវនេះ</span>
+             </button>
+           </div>
+
+           {/* Promotional Digital Form Option Card */}
+           <div className="bg-emerald-50/30 border border-emerald-100/70 rounded-2xl p-4 mb-6 flex items-start gap-4 animate-in fade-in duration-300">
+             <div className="w-9 h-9 bg-[#0a6652]/15 rounded-xl flex items-center justify-center text-[#0a6652] shrink-0 mt-0.5">
+               <FileText size={16} />
+             </div>
+             <div className="flex-1">
+               <h4 className="text-xs font-bold text-[#0a6652] mb-1">ស្វែងយល់ពីលក្ខណៈងាយស្រួលនៃការស្នើកម្ចីអនឡាញ</h4>
+               <p className="text-[11px] text-slate-500 leading-relaxed mb-2">អ្នកអាចបំពេញតម្រូវការប្រាក់កម្ចីសន្សំ សរសេរអំពីគោលបំណង និងរយៈពេលសងត្រឡប់ ដើម្បីបង្កើតជាឯកសារសំណើផ្លូវការភ្លាមៗ។</p>
+               <button
+                 type="button"
+                 onClick={() => setShowDigitalForm(true)}
+                 className="text-[#0a6652] hover:text-[#085241] font-extrabold text-[11px] flex items-center gap-1 transition-colors hover:underline"
+               >
+                 👉 បំពេញសំណើកម្ចីឥឡូវនេះ
+               </button>
+             </div>
+           </div>
+
+           {/* Drag and Drop Zone */}
+           <div 
+             onDragOver={(e) => {
+               e.preventDefault();
+               setIsDragging(true);
+             }}
+             onDragLeave={() => setIsDragging(false)}
+             onDrop={(e) => {
+               e.preventDefault();
+               setIsDragging(false);
+               handleFileUpload(e.dataTransfer.files);
+             }}
+             onClick={() => document.getElementById('loan-file-input')?.click()}
+             className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 ${
+               isDragging 
+                 ? 'border-[#0a6652] bg-emerald-50/50' 
+                 : 'border-slate-200 hover:border-[#0a6652] hover:bg-slate-50/30'
+             }`}
+           >
+             <input 
+               id="loan-file-input"
+               type="file" 
+               className="hidden" 
+               multiple
+               accept="image/*,.doc,.docx,.xls,.xlsx"
+               onChange={(e) => handleFileUpload(e.target.files)}
+             />
+             <div className="w-12 h-12 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100 shadow-sm">
+               <Upload size={20} className="text-[#0a6652]" />
+             </div>
+             <p className="text-sm font-bold text-slate-700 mb-1">
+               ជ្រើសរើសឯកសារ ឬ ទាញទម្លាក់ចូលទីនេះ
+             </p>
+             <p className="text-xs text-slate-400 mb-4 font-medium">
+               គាំទ្រឯកសារ៖ រូបភាព (PNG, JPG), Word (.doc, .docx) ឬ Excel (.xls, .xlsx)
+             </p>
+             <button 
+               type="button" 
+               className="bg-[#0a6652] text-white font-bold text-xs py-2.5 px-4 rounded-xl hover:bg-[#085241] active:scale-95 transition-all shadow-md shadow-emerald-900/10 inline-flex items-center gap-1.5"
+             >
+               <Upload size={14} /> <span>ជ្រើសរើសឯកសារបង្ហោះ</span>
+             </button>
+           </div>
+
+           {/* Listing uploaded files */}
+           {loanFiles.length > 0 ? (
+             <div className="mt-6 space-y-3">
+               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">ឯកសារបានបង្ហោះ ({loanFiles.length})</h4>
+               <div className="space-y-2">
+                 {loanFiles.map((file, idx) => {
+                   // Determine icon color based on type
+                   let iconBgColor = 'bg-blue-50 text-blue-600';
+                   if (['xls', 'xlsx'].includes(file.type)) {
+                     iconBgColor = 'bg-emerald-50 text-emerald-600';
+                   } else if (['doc', 'docx'].includes(file.type)) {
+                     iconBgColor = 'bg-[#4f46e5]/10 text-indigo-600';
+                   } else if (['jpg', 'jpeg', 'png', 'webp'].includes(file.type)) {
+                     iconBgColor = 'bg-amber-50 text-amber-600';
+                   }
+
+                   return (
+                     <div key={idx} className="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl border border-slate-100 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                       <div className="flex items-center gap-3 min-w-0">
+                         <div className={`w-10 h-10 ${iconBgColor} rounded-lg flex items-center justify-center shrink-0`}>
+                           <FileText size={18} />
+                         </div>
+                         <div className="min-w-0">
+                           <p className="text-xs font-bold text-slate-700 truncate">{file.name}</p>
+                           <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{file.size} • {file.date}</p>
+                         </div>
+                       </div>
+                       <button 
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           removeLoanFile(idx);
+                         }}
+                         className="w-7 h-7 bg-white text-slate-400 hover:text-red-500 rounded-lg flex items-center justify-center border border-slate-100 hover:border-red-100 transition-colors shrink-0"
+                         title="លុបឯកសារ"
+                       >
+                         <X size={14} />
+                       </button>
+                     </div>
+                   );
+                 })}
+               </div>
+
+               <div className="pt-4 border-t border-slate-100 flex justify-end animate-in fade-in duration-200">
+                 <button 
+                   onClick={() => {
+                     alert("ពាក្យស្នើសុំកម្ចីរបស់អ្នកត្រូវបានផ្ញើជូនគណៈកម្មការពិនិត្យរួចរាល់ហើយ!");
+                     setLoanFiles([]);
+                   }}
+                   className="bg-[#0a6652] text-white font-bold text-xs py-3 px-6 rounded-xl hover:bg-[#085241] active:scale-95 transition-all shadow-md shadow-emerald-900/10 inline-flex items-center gap-2"
+                 >
+                   <span>ផ្ញើពាក្យស្នើសុំកម្ចី</span>
+                 </button>
+               </div>
+             </div>
+           ) : (
+             <div className="mt-6 p-4 rounded-xl bg-orange-50/30 border border-orange-100 text-center animate-in fade-in duration-200">
+               <p className="text-xs text-orange-600 font-bold">⚠️ មិនទាន់មានឯកសារពាក្យស្នើសុំណាមួយត្រូវបានបង្ហោះឡើយ។</p>
+             </div>
+           )}
+        </div>
+      )}
+
+      {activeTab === 'របាយការណ៍កម្ចី' && (
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* High Fidelity Loan Contract Sheet Display */}
+          <div className="bg-white p-6 sm:p-10 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left relative overflow-hidden print:p-0 print:border-none print:shadow-none">
+            
+            {/* Download/Print Button */}
+            <div className="absolute right-6 top-6 no-print z-10">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="bg-[#0a6652] hover:bg-[#085241] text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-900/10 transition-all active:scale-95 duration-200"
+              >
+                <Download size={14} /> <span>បោះពុម្ភ ឬទាញយកជា PDF</span>
+              </button>
+            </div>
+
+            {/* Watermark Logo */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.015]">
+              <img src="https://i.ibb.co/Kp7CxnjC/Picture1.jpg" alt="" className="w-96 h-96 object-contain" referrerPolicy="no-referrer" />
+            </div>
+
+            {/* Contract Royal Header */}
+            <div className="text-center mb-6 relative">
+              <h1 className="text-sm font-bold tracking-widest text-slate-800 uppercase font-sans mb-1">ព្រះរាជាណាចក្រកម្ពុជា</h1>
+              <h2 className="text-xs font-bold text-slate-600 mb-4 tracking-wide">ជាតិ សាសនា ព្រះមហាក្សត្រ</h2>
+              
+              <div className="flex justify-between items-start gap-4 mt-2 border-b border-dashed border-slate-200 pb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 border border-slate-200 rounded-lg p-0.5 shrink-0 bg-slate-50 flex items-center justify-center">
+                    <img src="https://i.ibb.co/Kp7CxnjC/Picture1.jpg" alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="text-xs font-bold text-[#0a6652] leading-tight">ក្រុមសន្សំប្រាក់អនាគតយើង</h3>
+                    <p className="text-[9px] text-[#1fb487] font-bold tracking-tight">Saving For Our Future</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] text-slate-400 font-medium">យោងលើកិច្ចសន្យាលេខៈ <span className="font-bold text-slate-700 underline border-slate-300">{contractNum}</span></p>
+                </div>
+              </div>
+            </div>
+
+            {/* Document title */}
+            <div className="text-center mb-6">
+              <span className="px-5 py-1 bg-slate-50 border border-slate-200 rounded-full text-xs font-bold text-slate-800 tracking-wider">
+                ព័ត៌មានកម្ចី (Loan Information)
+              </span>
+            </div>
+
+            {/* Loan parameters grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mb-8">
+              {/* Left Column Parameters */}
+              <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-2.5">
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <span className="text-slate-500 font-bold">ទំហំកម្ចី (Loan Size)</span>
+                  <span className="font-black text-[#0a6652]">${(parseFloat(repLoanAmt) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <span className="text-slate-500 font-semibold">រយៈពេលនៃកម្ចី</span>
+                  <span className="font-bold text-slate-700">{repLoanTerm} {repFreq === 'weekly' ? 'សប្តាហ៍' : 'ខែ'}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <span className="text-slate-500 font-semibold">អត្រាការប្រាក់</span>
+                  <span className="font-bold text-slate-700">{repLoanRate}% / {repFreq === 'weekly' ? 'សប្តាហ៍' : 'ខែ'}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <span className="text-slate-500 font-semibold">ទឹកប្រាក់សរុបត្រូវសង</span>
+                  <span className="font-bold text-slate-700">
+                    ${(calculateSchedule().reduce((s, row) => s + row.total, 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <span className="text-slate-500 font-semibold">ការប្រាក់សរុប</span>
+                  <span className="font-bold text-[#0a6652]">
+                    ${(calculateSchedule().reduce((s, row) => s + row.interest, 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-semibold">កាលបរិច្ឆេទខ្ចីប្រាក់</span>
+                  <span className="font-bold text-slate-700">ថ្ងៃទី ១៥ ខែមករា ឆ្នាំ ២០២៦</span>
+                </div>
+              </div>
+
+              {/* Right Column Parameters - Client / Guarantor details */}
+              <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-2.5">
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <span className="text-slate-500 font-semibold">ឈ្មោះអ្នកទទួលកម្ចី</span>
+                  <input
+                    type="text"
+                    value={repBorrower}
+                    onChange={(e) => setRepBorrower(e.target.value)}
+                    className="font-bold text-slate-800 text-right bg-transparent focus:underline hover:bg-white/50 px-1 py-0.5 rounded focus:outline-none w-32 border-none"
+                  />
+                </div>
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <span className="text-slate-500 font-semibold border-b border-transparent">លេខ ID សមាជិក</span>
+                  <input
+                    type="text"
+                    value={repBorrowerId}
+                    onChange={(e) => setRepBorrowerId(e.target.value)}
+                    className="font-bold text-slate-700 text-right bg-transparent focus:underline hover:bg-white/50 px-1 py-0.5 rounded focus:outline-none w-20 border-none"
+                  />
+                </div>
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <span className="text-slate-500 font-semibold">លេខទូរស័ព្ទ</span>
+                  <input
+                    type="text"
+                    value={repPhone}
+                    onChange={(e) => setRepPhone(e.target.value)}
+                    className="font-bold text-slate-700 text-right bg-transparent focus:underline hover:bg-white/50 px-1 py-0.5 rounded focus:outline-none w-32 border-none"
+                  />
+                </div>
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <span className="text-slate-500 font-semibold">អ្នកធានាទី ១ (Guarantor 1)</span>
+                  <input
+                    type="text"
+                    value={repGuarantor1}
+                    onChange={(e) => setRepGuarantor1(e.target.value)}
+                    className="font-bold text-slate-700 text-right bg-transparent focus:underline hover:bg-white/50 px-1 py-0.5 rounded focus:outline-none w-32 border-none"
+                  />
+                </div>
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <span className="text-slate-500 font-semibold">លេខ ID ធានាទី ១</span>
+                  <input
+                    type="text"
+                    value={repGuarantor1Id}
+                    onChange={(e) => setRepGuarantor1Id(e.target.value)}
+                    className="font-bold text-slate-700 text-right bg-transparent focus:underline hover:bg-white/50 px-1 py-0.5 rounded focus:outline-none w-20 border-none"
+                  />
+                </div>
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <span className="text-slate-500 font-semibold">អ្នកធានាទី ២ (Guarantor 2)</span>
+                  <input
+                    type="text"
+                    value={repGuarantor2}
+                    onChange={(e) => setRepGuarantor2(e.target.value)}
+                    className="font-bold text-slate-700 text-right bg-transparent focus:underline hover:bg-white/50 px-1 py-0.5 rounded focus:outline-none w-32 border-none"
+                  />
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-semibold">លេខ ID ធានាទី ២</span>
+                  <input
+                    type="text"
+                    value={repGuarantor2Id}
+                    onChange={(e) => setRepGuarantor2Id(e.target.value)}
+                    className="font-bold text-slate-700 text-right bg-transparent focus:underline hover:bg-white/50 px-1 py-0.5 rounded focus:outline-none w-20 border-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Repayment Table Title */}
+            <div className="text-left mb-3">
+              <span className="text-sm font-extrabold text-[#0a6652] tracking-wide border-l-4 border-[#0a6652] pl-2.5">
+                តារាងបង់ប្រាក់កម្ចី
+              </span>
+            </div>
+
+            {/* Repayment Schedule Table */}
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+              <table className="w-full text-xs text-left text-slate-700 border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                    <th className="py-2.5 px-3 text-center border-r border-slate-200 w-12 text-center">ល.រ</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200 w-28">ខែ</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200">កាលបរិច្ឆេទ</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200 text-right">ទឹកប្រាក់បានបង់សរុប</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200 text-right">ការប្រាក់បានបង់</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200 text-right">កម្ចីបានរំលស់</th>
+                    <th className="py-2.5 px-3 text-right">តុល្យការកម្ចី</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 divide-dashed">
+                  {/* Totals helper display Row at zero status before calculations */}
+                  <tr className="bg-slate-50/50 text-[11px] font-bold text-slate-500">
+                    <td colSpan={6} className="py-2 px-3 text-right border-r border-slate-200">
+                      សរុបដើមទុន
+                    </td>
+                    <td className="py-2 px-3 text-right font-black text-rose-600">
+                      ${(parseFloat(repLoanAmt) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </td>
+                  </tr>
+
+                  {calculateSchedule().map((row, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="py-2.5 px-3 text-center border-r border-slate-100 font-bold text-slate-400">{row.num}</td>
+                      <td className="py-2.5 px-3 border-r border-slate-100 font-bold text-[#0a6652]/90">
+                        {row.monthName}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-100 font-semibold">{row.dueDate}</td>
+                      <td className="py-2.5 px-3 border-r border-slate-100 text-right font-black text-[#0a6652]">
+                        ${row.total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-100 text-right font-bold text-amber-600">
+                        ${row.interest.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-100 text-right font-bold text-slate-600">
+                        ${row.principal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-bold text-slate-500">
+                        ${row.balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                      </td>
+                    </tr>
+                  ))}
+
+                  {/* Summary Totals Row */}
+                  <tr className="bg-slate-50 font-bold border-t border-slate-200 text-slate-800">
+                    <td className="py-3 px-3 text-center border-r border-slate-200">-</td>
+                    <td className="py-3 px-3 border-r border-slate-200">សរុបសង</td>
+                    <td className="py-3 px-3 border-r border-slate-200">-</td>
+                    <td className="py-3 px-3 border-r border-slate-200 text-right font-black text-[#0a6652]">
+                      ${calculateSchedule().reduce((s, row) => s + row.total, 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 text-right font-extrabold text-amber-600">
+                      ${calculateSchedule().reduce((s, row) => s + row.interest, 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 text-right font-extrabold text-slate-700">
+                      ${calculateSchedule().reduce((s, row) => s + row.principal, 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </td>
+                    <td className="py-3 px-3 text-right font-black text-slate-400">$0.00</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'របាយការណ៍សន្សំ' && (
+        <div className="max-w-5xl mx-auto space-y-6">
+          {/* Savings Report Sheet Display */}
+          <div className="bg-white p-6 sm:p-10 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left relative overflow-hidden print:p-0 print:border-none print:shadow-none">
+            
+            {/* Download/Print Button */}
+            <div className="absolute right-6 top-6 no-print z-10">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="bg-[#0a6652] hover:bg-[#085241] text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-950/10 transition-all active:scale-95 duration-200"
+              >
+                <Download size={14} /> <span>បោះពុម្ភ ឬទាញយកជា PDF</span>
+              </button>
+            </div>
+
+            {/* Watermark Logo */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.012]">
+              <img src="https://i.ibb.co/Kp7CxnjC/Picture1.jpg" alt="" className="w-96 h-96 object-contain" referrerPolicy="no-referrer" />
+            </div>
+
+            {/* Header section with brand details */}
+            <div className="text-center mb-8 relative">
+              <div className="flex flex-col items-center justify-center gap-2 mb-4">
+                <div className="w-14 h-14 border border-slate-200 rounded-2xl p-0.5 bg-slate-50 flex items-center justify-center shadow-sm">
+                  <img src="https://i.ibb.co/Kp7CxnjC/Picture1.jpg" alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-[#ecb22e] uppercase tracking-wide leading-tight">ក្រុមសន្សំប្រាក់អនាគតយើង</h3>
+                  <p className="text-[9px] text-[#0a6652] font-black tracking-widest uppercase">Saving For Our Future</p>
+                </div>
+              </div>
+
+              <h1 className="text-lg font-extrabold text-slate-800 tracking-wide mb-1 flex items-center justify-center gap-2">
+                <span className="text-[#0a6652]">របាយការណ៍សន្សំប្រាក់សមាជិកសន្សំ</span>
+              </h1>
+              
+              <div className="flex items-center justify-center gap-3 mt-2 flex-wrap">
+                <span className="text-xs font-bold text-[#0a6652] bg-[#eef8f2] px-4 py-1.5 rounded-full shadow-sm">
+                  សម្រាប់ឆ្នាំ{selectedReportYear}
+                </span>
+                
+                {/* Years Selector Button */}
+                <div className="no-print flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-full px-2.5 py-1 shadow-sm">
+                  <span className="text-[10px] font-bold text-slate-400">ជ្រើសរើសឆ្នាំ៖</span>
+                  <select
+                    value={selectedReportYear}
+                    onChange={(e) => setSelectedReportYear(e.target.value)}
+                    className="text-[11px] font-extrabold bg-transparent text-slate-700 outline-none cursor-pointer py-0.5"
+                  >
+                    <option value="២០២៥">២០២៥</option>
+                    <option value="២០២៦">២០២៦</option>
+                    <option value="២០២៧">២០២៧</option>
+                    <option value="២០២៨">២០២៨</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Savings Schedule Table */}
+            <div className="overflow-x-auto rounded-2xl border border-slate-300 bg-white shadow-sm">
+              <table className="w-full text-xs text-left text-slate-700 border-collapse">
+                <thead>
+                  <tr className="bg-[#eef8f2] text-[#0a6652] border-b-2 border-slate-300 text-center font-bold text-[11px]">
+                    <th rowSpan={2} className="py-3 px-2 border-r border-slate-300 text-center w-12 shrink-0">ល.រ</th>
+                    <th rowSpan={2} className="py-3 px-3 border-r border-slate-300 text-center w-20">ខែ</th>
+                    <th rowSpan={2} className="py-3 px-3 border-r border-slate-300 text-right">ទុនចាប់ផ្តើម</th>
+                    <th rowSpan={2} className="py-3 px-2 border-r border-slate-300 text-center w-24">ភាគហ៊ុនជា%</th>
+                    <th rowSpan={2} className="py-3 px-3 border-r border-slate-300 text-right">ទុនសន្សំបន្ថែម</th>
+                    <th rowSpan={2} className="py-3 px-3 border-r border-slate-300 text-right">ប្រាក់ចំណេញ</th>
+                    <th rowSpan={2} className="py-3 px-2 border-r border-slate-300 text-center">ដកទុន</th>
+                    <th colSpan={2} className="py-2 px-2 border-r border-slate-300 text-center border-b border-slate-300">ប្រាក់ពិន័យ/សមាជិកភាព</th>
+                    <th rowSpan={2} className="py-3 px-3 border-r border-slate-300 text-right bg-[#f2fbf6] text-[#0a6652]">ប្រាក់សន្សំសរុប</th>
+                    <th rowSpan={2} className="py-3 px-2 text-center w-20">កំណត់សំគាល់</th>
+                  </tr>
+                  <tr className="bg-[#eef8f2] text-[#0a6652]/90 border-b-2 border-slate-300 text-center font-bold text-[10px]">
+                    <th className="py-2 px-2 border-r border-slate-300 text-center">កាត់ទុន</th>
+                    <th className="py-2 px-2 border-r border-slate-300 text-center">ជាក់ស្តែង</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-300 text-[11px]">
+                  {[
+                    { id: '០១', monthName: 'មករា', startCapital: 945.69, share: '1.31%', addSaving: 30.00, profit: 5.938979617, withdraw: '-', deductFee: '-', actualFee: '-', total: 981.63, note: '✓' },
+                    { id: '០២', monthName: 'កុម្ភៈ', startCapital: 145.85, share: '0.20%', addSaving: 0, profit: 0.915948925, withdraw: '-', deductFee: '-', actualFee: '-', total: 146.77, note: '✓' },
+                    { id: '០៣', monthName: 'មីនា', startCapital: 849.78, share: '1.18%', addSaving: 5.00, profit: 5.336650621, withdraw: '-', deductFee: '-', actualFee: '-', total: 860.12, note: '✓' },
+                    { id: '០៤', monthName: 'មេសា', startCapital: 550.63, share: '0.77%', addSaving: 0, profit: 3.457965883, withdraw: '-', deductFee: '-', actualFee: '-', total: 554.09, note: '✓' },
+                    { id: '០៥', monthName: 'ឧសភា', startCapital: 433.28, share: '0.60%', addSaving: 0, profit: 2.720984666, withdraw: '-', deductFee: '-', actualFee: '-', total: 436.00, note: '✓' },
+                    { id: '០៦', monthName: 'មិថុនា', startCapital: 1260.05, share: '1.75%', addSaving: 0, profit: 7.913150809, withdraw: '-', deductFee: '-', actualFee: '-', total: 1267.96, note: '✓' },
+                    { id: '០៧', monthName: 'កក្កដា', startCapital: 465.49, share: '0.65%', addSaving: 0, profit: 2.923260657, withdraw: '-', deductFee: '-', actualFee: '-', total: 468.41, note: '✓' },
+                    { id: '០៨', monthName: 'សីហា', startCapital: 492.60, share: '0.68%', addSaving: 5.00, profit: 3.093531719, withdraw: '-', deductFee: '-', actualFee: '-', total: 500.69, note: '✓' },
+                  ].map((row, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors h-10">
+                      <td className="py-2 px-2 text-center border-r border-slate-300 font-bold text-slate-400">{row.id}</td>
+                      <td className="py-2 px-3 border-r border-slate-300 font-bold text-slate-800 text-center bg-slate-50/10">{row.monthName}</td>
+                      <td className="py-2 px-3 border-r border-slate-300 text-right font-medium">{row.startCapital.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                      <td className="py-2 px-2 border-r border-slate-300 text-center font-medium text-slate-500">{row.share}</td>
+                      <td className="py-2 px-3 border-r border-slate-300 text-right font-semibold text-slate-700">
+                        {row.addSaving > 0 ? row.addSaving.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : <span className="text-slate-300">-</span>}
+                      </td>
+                      <td className="py-2 px-3 border-r border-slate-300 text-right font-mono text-slate-600">
+                        {row.profit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 9})}
+                      </td>
+                      <td className="py-2 px-2 border-r border-slate-300 text-center text-slate-300">{row.withdraw}</td>
+                      <td className="py-2 px-2 border-r border-slate-300 text-center text-slate-300">{row.deductFee}</td>
+                      <td className="py-2 px-2 border-r border-slate-300 text-center text-slate-300">{row.actualFee}</td>
+                      <td className="py-2 px-3 border-r border-slate-300 text-right font-black text-[#0a6652] bg-[#f8fdfb]">
+                        {row.total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                      </td>
+                      <td className="py-2 px-2 text-center font-black text-emerald-600 text-xs">{row.note}</td>
+                    </tr>
+                  ))}
+
+                  {/* Summary Totals Row */}
+                  <tr className="bg-emerald-50/60 font-bold border-t-2 border-slate-300 text-slate-900 text-[11px] h-11">
+                    <td className="py-2.5 px-3 text-center border-r border-slate-300 font-bold">-</td>
+                    <td className="py-2.5 px-3 border-r border-slate-300 text-center font-extrabold text-[#0a6652]">សរុប</td>
+                    <td className="py-2.5 px-3 border-r border-slate-300 text-right font-black text-slate-800">5,143.37</td>
+                    <td className="py-2.5 px-2 border-r border-slate-300 text-center font-bold text-slate-600">7.14%</td>
+                    <td className="py-2.5 px-3 border-r border-slate-300 text-right font-bold text-slate-800">40.00</td>
+                    <td className="py-2.5 px-3 border-r border-slate-300 text-right font-mono font-bold text-slate-600">32.300472897</td>
+                    <td className="py-2.5 px-2 border-r border-slate-300 text-center text-slate-300">-</td>
+                    <td className="py-2.5 px-2 border-r border-slate-300 text-center text-slate-300">-</td>
+                    <td className="py-2.5 px-2 border-r border-slate-300 text-center text-slate-300">-</td>
+                    <td className="py-2.5 px-3 border-r border-slate-300 text-right font-black text-[#0a6652] bg-emerald-50">5,215.67</td>
+                    <td className="py-2.5 px-2 text-center text-slate-300">-</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'ការដាក់សន្សំ និងបង់កម្ចី' && (
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+            
+            {/* Left side: KHQR Payment card */}
+            <div className="md:col-span-5 bg-white p-6 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-center">
+              <h4 className="text-sm font-bold text-[#0a6652] mb-4 flex items-center justify-center gap-1.5 border-b border-slate-100 pb-3">
+                <ShieldCheck size={18} />
+                <span>គណនីបង់ប្រាក់ផ្លូវការ</span>
+              </h4>
+              
+              {/* Scan Wrapper */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 relative inline-block mb-4 overflow-hidden shadow-inner max-w-[240px] mx-auto">
+                <img 
+                  src="https://i.ibb.co/xtBGLWX7/708852725-868075986313154-5636381465848274787-n.jpg" 
+                  alt="Official ABA KHQR" 
+                  className="w-full h-auto object-contain rounded-xl select-none shadow-sm"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+
+              {/* Account details list */}
+              <div className="space-y-2.5 text-left text-[11px] bg-[#f8fdfb] p-3.5 rounded-2xl border border-[#0a6652]/10">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 font-bold">ធនាគារ (Bank)៖</span>
+                  <span className="font-extrabold text-[#0a6652]">ABA Bank</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 font-bold">ឈ្មោះគណនី៖</span>
+                  <span className="font-black text-slate-700">LAUV V. & PHORN S.</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 font-bold">ចំណាំការផ្ញើ៖</span>
+                  <span className="font-extrabold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">ឈ្មោះសមាជិក</span>
+                </div>
+              </div>
+              
+              <p className="mt-4 text-[10px] text-slate-400 font-bold leading-relaxed">
+                💡 ណែនាំ៖ បន្ទាប់ពីស្កេន និងបង់ប្រាក់តាមរយៈ ABA App រួចរាល់ សូមធ្វើការថតរូបស្គ្រីនសត (Screenshot) នៃប្រតិបត្តិការរបស់អ្នក ដើម្បីផ្ញើជាភស្តុតាងនៅខាងស្តាំដៃនេះ។
+              </p>
+            </div>
+
+            {/* Right side: Interactive payment submission form */}
+            <div className="md:col-span-7 bg-white p-6 sm:p-8 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left">
+              <h3 className="text-base font-extrabold text-slate-800 mb-5 flex items-center gap-2">
+                <HandCoins className="text-[#0a6652]" size={20} />
+                <span>ផ្ញើភស្តុតាងនៃការដាក់សន្សំ ឬបង់កម្ចី</span>
+              </h3>
+
+              <form onSubmit={handlePaymentSubmit} className="space-y-4">
+                {/* 1. Toggle Payment Type */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">ប្រភេទការបង់ប្រាក់</label>
+                  <div className="flex p-1 bg-slate-100 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentType('savings')}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all text-center ${
+                        paymentType === 'savings' 
+                          ? 'bg-[#0a6652] text-white shadow-sm' 
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      ដាក់សន្សំប្រចាំខែ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentType('loan')}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all text-center ${
+                        paymentType === 'loan' 
+                          ? 'bg-[#0a6652] text-white shadow-sm' 
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      បង់សងប្រាក់កម្ចី
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Form Inputs dynamic based on Savings vs Loan */}
+                {paymentType === 'savings' ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">ចំនួនទឹកប្រាក់សន្សំ (USD)</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          required
+                          value={paymentAmount}
+                          onChange={(e) => setPaymentAmount(e.target.value)}
+                          className="w-full pl-7 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0a6652] text-xs font-bold text-slate-700"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">កាលបរិច្ឆេទបង់ប្រាក់</label>
+                      <input
+                        type="date"
+                        required
+                        value={paymentDate}
+                        onChange={(e) => setPaymentDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0a6652] text-xs font-bold text-slate-700"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">បង់រំលស់ដើមប្រាក់កម្ចី (USD)</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            required
+                            value={loanPrincipal}
+                            onChange={(e) => setLoanPrincipal(e.target.value)}
+                            className="w-full pl-7 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0a6652] text-xs font-bold text-slate-700"
+                            placeholder="0.00"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">បង់ការប្រាក់ (USD)</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            required
+                            value={loanInterest}
+                            onChange={(e) => setLoanInterest(e.target.value)}
+                            className="w-full pl-7 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0a6652] text-xs font-bold text-slate-700"
+                            placeholder="0.00"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Read-only Total / Sum Box */}
+                      <div className="bg-emerald-50/40 border border-emerald-100/60 rounded-2xl p-3 flex flex-col justify-center">
+                        <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">សរុបប្រាក់ត្រូវទូទាត់ជាក់ស្តែង (Total)</span>
+                        <span className="text-sm font-black text-[#0a6652] mt-1">
+                          ${((parseFloat(loanPrincipal) || 0) + (parseFloat(loanInterest) || 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">កាលបរិច្ឆេទបង់ប្រាក់</label>
+                        <input
+                          type="date"
+                          required
+                          value={paymentDate}
+                          onChange={(e) => setPaymentDate(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0a6652] text-xs font-bold text-slate-700"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. Document screenshot upload (Proof of payment) */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">រូបភាពភស្តុតាងនៃការបង់ប្រាក់ (screenshot)</label>
+                  
+                  {!proofImage ? (
+                    <div className="border-2 border-dashed border-slate-200 hover:border-[#0a6652]/40 rounded-2xl p-6 text-center cursor-pointer bg-slate-50/50 hover:bg-[#f8fdfb]/50 transition-all relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        required
+                      />
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="w-10 h-10 rounded-full bg-[#eef8f2] text-[#0a6652] flex items-center justify-center border border-[#0a6652]/10">
+                          <Upload size={18} />
+                        </div>
+                        <p className="text-xs font-extrabold text-slate-600">ចុច ឬ អូសទម្លាក់ រូបភាព Screenshot ដើម្បីបញ្ចូល</p>
+                        <p className="text-[10px] font-medium text-slate-400">គាំទ្រតែប្រភេទឯកសារ JPEG, PNG (ទំហំអតិបរមា 5MB)</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-[#f8fdfb] border border-emerald-100 rounded-2xl p-3 flex items-center gap-3 relative shadow-inner">
+                      <div className="w-14 h-14 bg-white border border-slate-100 rounded-xl overflow-hidden shrink-0 shadow-sm flex items-center justify-center p-0.5 animate-in fade-in zoom-in duration-200">
+                        <img 
+                          src={proofImage} 
+                          alt="Screenshot Proof" 
+                          className="w-full h-full object-cover rounded-lg"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0 pr-6">
+                        <p className="text-xs font-bold text-slate-700 truncate">{proofFilename}</p>
+                        <p className="text-[10px] font-bold text-[#0a6652] flex items-center gap-1 mt-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <span>បានជ្រើសរើសរួចរាល់</span>
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProofImage(null);
+                          setProofFilename('');
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-100 active:scale-90 transition-all animate-in fade-in duration-150"
+                      >
+                        <X size={12} strokeWidth={2.5} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Submit button */}
+                <button
+                  type="submit"
+                  className="w-full py-3 px-4 rounded-xl bg-[#0a6652] hover:bg-[#085241] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-900/10 transition-all active:scale-95 duration-200 mt-2"
+                >
+                  <ShieldCheck size={16} />
+                  <span>ផ្ញើភស្តុតាងបង់ប្រាក់ផ្លូវការ</span>
+                </button>
+              </form>
+            </div>
+            
+          </div>
+
+          {/* Submitted Transaction History Section */}
+          <div className="bg-white p-6 sm:p-8 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left">
+            <h4 className="text-xs font-black text-[#0a6652] uppercase tracking-wider mb-4 flex items-center gap-1.5">
+              <TrendingUp size={16} />
+              <span>ប្រវត្តិការផ្ញើភស្តុតាង និងស្ថានភាពគណនី</span>
+            </h4>
+            
+            {submittedPayments.length === 0 ? (
+              <p className="text-xs text-slate-400 font-bold text-center py-6">មិនទាន់មានការផ្ញើប្រវត្តិប្រតិបត្តិការនៅឡើយទេ។</p>
+            ) : (
+              <div className="space-y-3">
+                {submittedPayments.map((txn, index) => (
+                  <div key={txn.id || index} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200/60 hover:border-slate-300 transition-colors animate-in slide-in-from-top-4 duration-300">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-white rounded-xl border border-slate-200 flex items-center justify-center p-0.5 shadow-sm overflow-hidden text-center cursor-pointer hover:border-[#0a6652]/30" onClick={() => {
+                        // Open high fidelity popup modal or alert standard
+                        if (txn.proofImg) {
+                          const w = window.open();
+                          if (w) {
+                            w.document.write(`<img src="${txn.proofImg}" style="max-width:100%; max-height:100vh; display:block; margin:auto;" />`);
+                          } else {
+                            alert("សូមអនុញ្ញាត popups ដើម្បីមើលភស្តុតាង!");
+                          }
+                        }
+                      }}>
+                        <img 
+                          src={txn.proofImg} 
+                          alt="Proof thumb" 
+                          className="w-full h-full object-cover rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                            txn.type === 'savings' 
+                              ? 'bg-emerald-50 text-[#0a6652]' 
+                              : 'bg-orange-50 text-orange-600'
+                          }`}>
+                            {txn.type === 'savings' ? 'ដាក់សន្សំប្រចាំខែ' : 'បង់សងប្រាក់កម្ចី'}
+                          </span>
+                          <span className="font-mono text-[10px] text-slate-400 font-extrabold">{txn.id}</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                          <span className="text-xs font-black text-slate-800">${txn.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                          {txn.principal !== undefined && txn.interest !== undefined && (
+                            <span className="text-[9px] font-bold text-slate-500 bg-slate-200/60 px-2 py-0.5 rounded-md">
+                              (រំលស់ដើម៖ ${txn.principal.toLocaleString(undefined, {minimumFractionDigits: 2})} + ការប្រាក់៖ ${txn.interest.toLocaleString(undefined, {minimumFractionDigits: 2})})
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[9px] font-bold text-slate-400 mt-0.5 font-sans">
+                          កាលបរិច្ឆេទ៖ {txn.date}
+                          {txn.transactionId && txn.transactionId !== "N/A" && (
+                            <> | លេខយោង៖ <span className="font-mono text-slate-500 font-extrabold">{txn.transactionId}</span></>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between sm:justify-end gap-3 self-stretch sm:self-auto border-t sm:border-t-0 pt-2.5 sm:pt-0 border-slate-100">
+                      <div className="flex flex-col text-right">
+                        <span className={`text-[10px] font-black inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${
+                          txn.status === 'approved' 
+                            ? 'bg-emerald-50 text-emerald-600' 
+                            : 'bg-amber-50 text-amber-600'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            txn.status === 'approved' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
+                          }`}></span>
+                          <span>{txn.status === 'approved' ? 'បានអនុម័តរួចរាល់' : 'រង់ចាំការពិនិត្យ'}</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+        </div>
+      )}
+    </PageView>
+  );
+}
+
