@@ -1481,7 +1481,7 @@ function SettingsPage() {
           </div>
           <div className="flex gap-2 items-start mt-2">
             <span className="bg-yellow-400 text-slate-950 font-black w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 mt-0.5">3</span>
-            <p className="text-white">ឬជ្រើសរើស <span className="font-bold text-yellow-300">"Export to GitHub"</span> ដើម្បីបញ្ជូនកូដទាំងអស់ទៅកាន់ GitHub Repository របស់អ្នកភ្លាមៗ។</p>
+            <p className="text-white">ឬជ្រើសរើស <span className="font-bold text-yellow-300">"Export to GitHub"</span> ដើម្បីបញ្ជូនកូដទាំងអស់ទៅកាន់ GitHub Repository ផ្លូវការ៖ <span className="font-bold text-yellow-300 underline font-mono break-all">sophakcamkids-gif/sofmanagementapp</span> របស់អ្នក។</p>
           </div>
         </div>
 
