@@ -20,34 +20,26 @@ export default function App() {
   return (
     <Router>
       <div className="min-h-screen lg:bg-slate-950 bg-[#eef8f2] text-slate-800 font-sans lg:flex lg:items-center lg:justify-center lg:py-6">
-        <div className="w-full min-h-screen lg:min-h-[780px] lg:max-h-[780px] bg-[#eef8f2] pb-28 overflow-y-auto overflow-x-hidden relative flex flex-col lg:w-[390px] lg:h-[780px] lg:rounded-[48px] lg:border-[8px] lg:border-slate-800 lg:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] lg:my-4">
+        <div className="w-full min-h-screen lg:min-h-[780px] lg:max-h-[min(780px,94vh)] bg-[#eef8f2] pb-24 overflow-y-auto overflow-x-hidden relative flex flex-col lg:w-[390px] lg:rounded-[48px] lg:border-[8px] lg:border-slate-800 lg:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] lg:my-4">
           {/* Header */}
-          <header className="px-6 pt-12 pb-6 md:pt-12 max-w-5xl mx-auto flex justify-between items-start shrink-0">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-xl flex items-center justify-center shadow-sm overflow-hidden p-1 border border-slate-100 shrink-0 mt-0.5">
+          <header className="px-4 pt-6 pb-4 max-w-full flex justify-between items-center shrink-0 w-full">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm overflow-hidden p-1 border border-slate-100 shrink-0">
               <img src="https://i.ibb.co/Kp7CxnjC/Picture1.jpg" alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
             </div>
-            <div>
-              <h1 className="text-xl md:text-2xl font-black text-[#0a6652] tracking-tight mb-0.5 leading-tight">
+            <div className="min-w-0">
+              <h1 className="text-sm font-black text-[#0a6652] tracking-tight leading-tight truncate">
                 ក្រុមសន្សំប្រាក់អនាគតយើង
               </h1>
-              <p className="text-[#1fb487] font-bold text-xs md:text-sm">Saving For Our Future</p>
+              <p className="text-[#1fb487] font-black text-[9px] leading-none truncate">Saving For Our Future</p>
             </div>
           </div>
-          <div className="flex gap-3 items-center">
-            {userRole && (
-              <div className="hidden sm:flex flex-col items-end mr-1">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">គណនីបច្ចុប្បន្ន</span>
-                <span className={`text-xs font-black ${userRole === 'admin' ? 'text-[#0a6652]' : 'text-blue-600'}`}>
-                  {userRole === 'admin' ? 'អ្នកគ្រប់គ្រង (Admin)' : `សមាជិក (${memberId || 'Member'})`}
-                </span>
-              </div>
-            )}
+          <div className="flex gap-2 items-center shrink-0">
             <div className="relative">
-              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-yellow-500 border-2 border-white border-opacity-50">
-                <Bell className="w-6 h-6 fill-yellow-500 text-yellow-500" />
+              <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm text-yellow-500 border border-slate-100">
+                <Bell className="w-4.5 h-4.5 fill-yellow-500 text-yellow-500" />
               </div>
-              <span className="absolute -top-1 -right-1 w-[22px] h-[22px] bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-[#eef8f2]">3</span>
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] font-bold flex items-center justify-center rounded-full">3</span>
             </div>
             {userRole && (
               <button 
@@ -58,17 +50,17 @@ export default function App() {
                   setMemberId(null);
                   window.location.href = '/login';
                 }}
-                className="w-12 h-12 bg-red-50 text-red-600 border border-red-100 rounded-full flex items-center justify-center shadow-sm hover:bg-red-100 transition-colors"
+                className="w-9 h-9 bg-red-50 text-red-600 border border-red-100 rounded-full flex items-center justify-center shadow-sm hover:bg-red-100 transition-colors"
                 title="ចាកចេញ (Logout)"
               >
-                <LogIn size={20} className="rotate-180" />
+                <LogIn size={15} className="rotate-180" />
               </button>
             )}
           </div>
         </header>
 
         {/* Main Content Grid */}
-        <main className="px-6 max-w-5xl mx-auto">
+        <main className="px-4 max-w-full">
           <Routes>
             <Route path="/" element={<MemberLogin onLogin={(role, id) => { setUserRole(role); setMemberId(id); }} />} />
             <Route path="/login" element={<MemberLogin onLogin={(role, id) => { setUserRole(role); setMemberId(id); }} />} />
@@ -128,31 +120,31 @@ export default function App() {
         </main>
 
         {/* Bottom Navigation */}
-        <nav className="fixed lg:absolute bottom-0 left-0 right-0 bg-white rounded-t-[32px] px-6 pt-4 pb-6 flex justify-start gap-[14px] items-center z-50 shadow-[0_-4px_25px_rgba(0,100,50,0.05)]">
-           <div className="flex flex-col items-center gap-1.5 text-[#ff6b35] cursor-pointer" onClick={() => {
+        <nav className="fixed lg:absolute bottom-0 left-0 right-0 bg-white rounded-t-[32px] px-4 pt-3 pb-5 flex justify-around items-center z-50 shadow-[0_-4px_25px_rgba(0,100,50,0.05)] max-w-full">
+           <div className="flex flex-col items-center gap-1 text-[#ff6b35] cursor-pointer shrink-0" onClick={() => {
              if (userRole === 'admin') window.location.href = '/admin';
              else if (userRole === 'member') window.location.href = '/member-report';
              else window.location.href = '/login';
            }}>
-              <Home className="w-6 h-6" strokeWidth={2.5} />
-              <span className="text-[10px] font-extrabold">ទំព័រដើម</span>
+              <Home className="w-5 h-5" strokeWidth={2.5} />
+              <span className="text-[9px] font-black">ទំព័រដើម</span>
            </div>
-           <div className="flex flex-col items-center gap-1.5 text-slate-400 hover:text-[#ff6b35] transition-colors cursor-pointer">
-              <Heart className="w-6 h-6" strokeWidth={2.5} />
-              <span className="text-[10px] font-bold">ចំណូលចិត្ត</span>
+           <div className="flex flex-col items-center gap-1 text-slate-400 hover:text-[#ff6b35] transition-colors cursor-pointer shrink-0">
+              <Heart className="w-5 h-5" strokeWidth={2.5} />
+              <span className="text-[9px] font-bold">ចំណូលចិត្ត</span>
            </div>
-           <div className="flex flex-col items-center gap-1.5 text-slate-400 hover:text-[#ff6b35] transition-colors cursor-pointer">
-              <MessageSquare className="w-6 h-6" strokeWidth={2.5} />
-              <span className="text-[10px] font-bold">សារ</span>
+           <div className="flex flex-col items-center gap-1 text-slate-400 hover:text-[#ff6b35] transition-colors cursor-pointer shrink-0">
+              <MessageSquare className="w-5 h-5" strokeWidth={2.5} />
+              <span className="text-[9px] font-bold">សារ</span>
            </div>
-           <div className="flex flex-col items-center gap-1.5 text-slate-400 hover:text-[#ff6b35] transition-colors cursor-pointer mr-2">
-              <Menu className="w-6 h-6" strokeWidth={2.5} />
-              <span className="text-[10px] font-bold">ម៉ឺនុយ</span>
+           <div className="flex flex-col items-center gap-1 text-slate-400 hover:text-[#ff6b35] transition-colors cursor-pointer shrink-0">
+              <Menu className="w-5 h-5" strokeWidth={2.5} />
+              <span className="text-[9px] font-bold">ម៉ឺនុយ</span>
            </div>
 
-           {/* Floating Action Bot Button */}
-           <div className="absolute right-5 -top-8 w-[64px] h-[64px] bg-gradient-to-b from-green-50 to-green-200 rounded-full flex items-center justify-center shadow-lg border-[6px] border-[#eef8f2] z-50 cursor-pointer hover:scale-105 transition-transform">
-              <Bot className="w-7 h-7 text-[#0a6652]" />
+           {/* Floating Action Bot Button (Positioned gracefully as relative to not block navigation) */}
+           <div className="w-[45px] h-[45px] bg-gradient-to-b from-green-50 to-green-200 rounded-full flex items-center justify-center shadow-md border-[3px] border-[#eef8f2] shrink-0 cursor-pointer hover:scale-105 transition-transform">
+              <Bot className="w-5 h-5 text-[#0a6652]" />
            </div>
         </nav>
         </div>
@@ -252,23 +244,23 @@ function PageView({
   };
 
   return (
-    <div className="bg-white rounded-[28px] p-6 md:p-8 shadow-[0_4px_15px_rgba(0,100,50,0.03)] min-h-[500px]">
-       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 border-b border-green-50 pb-6">
-         <h2 className="text-xl md:text-2xl font-bold text-[#0a6652]">{title}</h2>
+    <div className="bg-white rounded-[24px] p-4 sm:p-6 md:p-8 shadow-[0_4px_15px_rgba(0,100,50,0.03)] min-h-[450px]">
+       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 border-b border-green-50 pb-4">
+         <h2 className="text-base sm:text-lg md:text-xl font-bold text-[#0a6652]">{title}</h2>
          <div className="flex flex-wrap gap-2">
             {!hideUpload && (
-              <button className="flex text-sm items-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-full font-bold hover:bg-slate-200 transition-colors">
-                <Upload size={16} strokeWidth={2.5} /> នាំយកពីកុំព្យូទ័រ
+              <button className="flex text-xs items-center gap-1.5 bg-slate-100 text-slate-700 px-3 py-1.5 rounded-full font-bold hover:bg-slate-200 transition-colors">
+                <Upload size={14} strokeWidth={2.5} /> នាំយកពីកុំព្យូទ័រ
               </button>
             )}
             {!hideDownload && (
-              <button className="flex text-sm items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-full font-bold hover:bg-indigo-100 transition-colors">
-                <Download size={16} strokeWidth={2.5} /> {downloadLabel}
+              <button className="flex text-xs items-center gap-1.5 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full font-bold hover:bg-indigo-100 transition-colors">
+                <Download size={14} strokeWidth={2.5} /> {downloadLabel}
               </button>
             )}
             {!hideAdd && (
-              <button className="flex text-sm items-center gap-2 bg-[#0a6652] text-white px-4 py-2 rounded-full font-bold shadow-md hover:bg-[#084f40] transition-colors">
-                <Plus size={16} strokeWidth={2.5} /> បន្ថែមថ្មី
+              <button className="flex text-xs items-center gap-1.5 bg-[#0a6652] text-white px-3 py-1.5 rounded-full font-bold shadow-md hover:bg-[#084f40] transition-colors">
+                <Plus size={14} strokeWidth={2.5} /> បន្ថែមថ្មី
               </button>
             )}
          </div>
@@ -279,7 +271,7 @@ function PageView({
        {!hideBack && (
          <div className="mt-8 pt-6 border-t border-slate-100 flex justify-start">
            <button onClick={handleBack} className="flex items-center gap-2 text-slate-400 hover:text-[#0a6652] font-semibold transition-colors">
-              <ChevronLeft size={20} strokeWidth={2.5} /> <span className="text-sm">ត្រឡប់ក្រោយ</span>
+              <ChevronLeft size={16} strokeWidth={2.5} /> <span className="text-xs">ត្រឡប់ក្រោយ</span>
            </button>
          </div>
        )}
@@ -1546,23 +1538,23 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
 
   return (
     <PageView title="ច្រកចូលប្រព័ន្ធ (System Login)" hideUpload hideAdd hideBack hideDownload>
-      <div className="max-w-md mx-auto bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm mt-4">
+      <div className="max-w-md mx-auto bg-white p-5 sm:p-8 rounded-[24px] border border-slate-200 shadow-sm mt-4">
         
         {/* Toggle Admin vs Member Tab */}
-        <div className="flex p-1 bg-slate-100 rounded-2xl mb-8">
+        <div className="flex p-1 bg-slate-100 rounded-2xl mb-6">
           <button 
             type="button"
             onClick={() => {
               setLoginType('member');
               navigate('/login?tab=member');
             }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl font-black text-xs transition-all ${
               loginType === 'member'
                 ? 'bg-white text-[#0a6652] shadow-sm'
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <UserCheck size={18} /> សមាជិក (Member)
+            <UserCheck size={14} /> សមាជិក (Member)
           </button>
           <button 
             type="button"
@@ -1570,13 +1562,13 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
               setLoginType('admin');
               navigate('/login?tab=admin');
             }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl font-black text-xs transition-all ${
               loginType === 'admin'
                 ? 'bg-white text-rose-600 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <ShieldCheck size={18} /> គណៈកម្មការ (Admin)
+            <ShieldCheck size={14} /> គណៈកម្មការ (Admin)
           </button>
         </div>
 
@@ -1597,29 +1589,29 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
           </p>
         </div>
         
-        <form onSubmit={handleLogin} className="space-y-5">
+        <form onSubmit={handleLogin} className="space-y-4">
           {loginType === 'member' ? (
             <>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">លេខ ID សមាជិក ឬ លេខទូរស័ព្ទ</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">លេខ ID សមាជិក ឬ លេខទូរស័ព្ទ</label>
                 <input 
                   type="text" 
                   value={loginId}
                   onChange={(e) => setLoginId(e.target.value)}
                   placeholder="ឧទាហរណ៍: CM008 ឬ 012345678" 
-                  className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0a6652] focus:border-transparent font-bold text-slate-800 placeholder:font-normal placeholder:text-slate-400"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0a6652] focus:border-transparent font-black text-xs sm:text-sm text-slate-800 placeholder:font-normal placeholder:text-slate-400"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">ពាក្យសម្ងាត់</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">ពាក្យសម្ងាត់</label>
                 <div className="relative">
                   <input 
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="ពាក្យសម្ងាត់..." 
-                    className="w-full pl-5 pr-12 py-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0a6652] focus:border-transparent font-bold text-slate-800 placeholder:font-normal placeholder:text-slate-400"
+                    className="w-full pl-4 pr-12 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0a6652] focus:border-transparent font-black text-xs sm:text-sm text-slate-800 placeholder:font-normal placeholder:text-slate-400"
                     required
                   />
                   <button 
@@ -1627,36 +1619,36 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
                   >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
               </div>
-              <button type="submit" className="w-full h-14 bg-[#0a6652] text-white font-bold py-3 px-4 rounded-2xl shadow-lg shadow-teal-900/20 hover:bg-[#084f40] transition-colors flex items-center justify-center gap-2 mt-4">
-                <LogIn size={20} /> ចូលគណនីសមាជិក
+              <button type="submit" className="w-full h-11 bg-[#0a6652] text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-teal-900/20 hover:bg-[#084f40] transition-colors flex items-center justify-center gap-2 mt-2 text-xs sm:text-sm cursor-pointer">
+                <LogIn size={16} /> ចូលគណនីសមាជិក
               </button>
             </>
           ) : (
             <>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">ឈ្មោះគណនីអ្នកគ្រប់គ្រង</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">ឈ្មោះគណនីអ្នកគ្រប់គ្រង</label>
                 <input 
                   type="text" 
                   value={adminUsername}
                   onChange={(e) => setAdminUsername(e.target.value)}
                   placeholder="admin" 
-                  className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent font-bold text-slate-800 placeholder:font-normal placeholder:text-slate-400"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent font-black text-xs sm:text-sm text-slate-800 placeholder:font-normal placeholder:text-slate-400"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">ពាក្យសម្ងាត់អ្នកគ្រប់គ្រង</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">ពាក្យសម្ងាត់អ្នកគ្រប់គ្រង</label>
                 <div className="relative">
                   <input 
                     type={showPassword ? "text" : "password"}
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
                     placeholder="admin123" 
-                    className="w-full pl-5 pr-12 py-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent font-bold text-slate-800 placeholder:font-normal placeholder:text-slate-400"
+                    className="w-full pl-4 pr-12 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent font-black text-xs sm:text-sm text-slate-800 placeholder:font-normal placeholder:text-slate-400"
                     required
                   />
                   <button 
@@ -1664,17 +1656,17 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
                   >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
               </div>
               
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-xs font-bold text-slate-500 leading-normal">
-                💡 គណនីសាកល្បង៖ <span className="text-rose-600">admin</span> / លេខកូដ៖ <span className="text-rose-600">admin123</span>
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-[10px] font-bold text-slate-500 leading-normal">
+                💡 គណនីសាកល្បង៖ <span className="text-rose-600 font-extrabold">admin</span> / លេខកូដ៖ <span className="text-rose-600 font-extrabold">admin123</span>
               </div>
 
-              <button type="submit" className="w-full h-14 bg-rose-600 text-white font-bold py-3 px-4 rounded-2xl shadow-lg shadow-rose-950/20 hover:bg-rose-700 transition-colors flex items-center justify-center gap-2 mt-4">
-                <LogIn size={20} /> ចូលគណនីគណៈកម្មការ
+              <button type="submit" className="w-full h-11 bg-rose-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-rose-950/20 hover:bg-rose-700 transition-colors flex items-center justify-center gap-2 mt-2 text-xs sm:text-sm cursor-pointer">
+                <LogIn size={16} /> ចូលគណនីគណៈកម្មការ
               </button>
             </>
           )}
