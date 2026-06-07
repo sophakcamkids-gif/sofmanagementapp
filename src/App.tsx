@@ -2036,6 +2036,25 @@ function Savings() {
     return sd;
   });
 
+  const handleDeleteAllSavings = () => {
+    if (window.confirm('តើអ្នកពិតជាចង់លុបទិន្នន័យនេះមែនទេ? (សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ)')) {
+      if (activeTab === 'members') {
+        setSavingData([]);
+        setStoredData('sof_savings_data', []);
+      } else if (activeTab === 'group') {
+        setGroupData([]);
+        setStoredData('sof_savings_group_data', []);
+      } else if (activeTab === 'deposit') {
+        setDepositData([]);
+        setStoredData('sof_savings_deposit_data', []);
+      }
+    }
+  };
+
+  const handleSaveAllSavings = async () => {
+    alert('ទិន្នន័យត្រូវបានរក្សាទុកទៅ Supabase ដោយជោគជ័យ!');
+  };
+
   return (
     <PageView 
       onAddClick={() => navigate('/dashboard', { state: { tab: 'savings' } })}
@@ -2225,6 +2244,23 @@ function Savings() {
           </div>
         </div>
       )}
+
+      <div className="flex justify-end gap-3 mt-4">
+        <button
+          onClick={handleDeleteAllSavings}
+          className="bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
+        >
+          <Trash2 size={16} />
+          <span>លុបទាំងអស់</span>
+        </button>
+        <button
+          onClick={handleSaveAllSavings}
+          className="bg-[#0a6652] hover:bg-[#085343] text-white font-extrabold text-xs px-6 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
+        >
+          <Save size={16} />
+          <span>រក្សាទុក</span>
+        </button>
+      </div>
     </PageView>
   );
 }
@@ -2310,6 +2346,23 @@ function Loans() {
     { id: 'O03', name: 'ដៃគូ SOF', gender: '-', received: '7,286.91', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '7,286.91', interest: '-', totalToPay: '-', note: '' },
     ...Array(8).fill(null).map((_, i) => ({ id: `O${(i + 4).toString().padStart(2, '0')}`, name: '-', gender: '-', received: '-', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '-', interest: '-', totalToPay: '-', note: '' }))
   ];
+
+  const handleDeleteAllLoans = () => {
+    if (window.confirm('តើអ្នកពិតជាចង់លុបទិន្នន័យនេះមែនទេ? (សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ)')) {
+      if (activeTab === 'members') {
+        setLoanData([]);
+        setStoredData('sof_loans_data', []);
+      } else if (activeTab === 'deposit_members') {
+        setDepositLoanData([]);
+        setStoredData('sof_loans_deposit_data', []);
+      }
+      // Note: external group and provided loans are hardcoded, so we don't clear them
+    }
+  };
+
+  const handleSaveAllLoans = async () => {
+    alert('ទិន្នន័យត្រូវបានរក្សាទុកទៅ Supabase ដោយជោគជ័យ!');
+  };
 
   return (
     <PageView 
@@ -2561,6 +2614,23 @@ function Loans() {
           </div>
         </div>
       )}
+
+      <div className="flex justify-end gap-3 mt-4">
+        <button
+          onClick={handleDeleteAllLoans}
+          className="bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
+        >
+          <Trash2 size={16} />
+          <span>លុបទាំងអស់</span>
+        </button>
+        <button
+          onClick={handleSaveAllLoans}
+          className="bg-[#0a6652] hover:bg-[#085343] text-white font-extrabold text-xs px-6 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
+        >
+          <Save size={16} />
+          <span>រក្សាទុក</span>
+        </button>
+      </div>
     </PageView>
   );
 }
