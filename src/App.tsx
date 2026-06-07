@@ -49,9 +49,28 @@ const DEFAULT_GROUP_DATA = [
   { id: 'R003', name: 'ទុនក្រុមយេស (YES)', gender: 'ក្រុម', startCapital: '0.00', share: '0.00%', addSaving: '-', profit: '0', withdraw: '-', deductFee: '-', actualFee: '-', total: '0.00', checked: true }
 ];
 
-const DEFAULT_DEPOSIT_DATA = [];
+const DEFAULT_DEPOSIT_DATA: any[] = [];
+const DEFAULT_LOAN_DATA: any[] = [];
 
-const DEFAULT_LOAN_DATA = [];
+function SidebarLink({ to, label }: { to: string, label: string }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isActive = location.pathname === to || (to === '/admin' && location.pathname === '/dashboard');
+  
+  return (
+    <button
+      onClick={() => navigate(to)}
+      className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left font-extrabold text-xs transition-colors cursor-pointer ${
+        isActive 
+          ? 'bg-[#eef8f2] text-[#0a6652]' 
+          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+      }`}
+    >
+      <span>{label}</span>
+      {isActive && <span className="w-1.5 h-1.5 rounded-full bg-[#0a6652]"></span>}
+    </button>
+  );
+}
 
 export default function App() {
   const [userRole, setUserRole] = useState<string | null>(localStorage.getItem('userRole'));
@@ -59,29 +78,84 @@ export default function App() {
 
   return (
     <Router>
-      <div className="min-h-screen lg:bg-slate-950 bg-[#eef8f2] text-slate-800 font-sans lg:flex lg:items-center lg:justify-center lg:py-6">
-        <div className="w-full min-h-screen lg:min-h-[780px] lg:max-h-[min(780px,94vh)] bg-[#eef8f2] pb-24 overflow-y-auto overflow-x-hidden relative flex flex-col lg:w-[390px] lg:rounded-[48px] lg:border-[8px] lg:border-slate-800 lg:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] lg:my-4">
-          {/* Header */}
-          <header className="px-4 pt-6 pb-4 max-w-full flex justify-between items-center shrink-0 w-full">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm overflow-hidden p-1 border border-slate-100 shrink-0">
-              <img src="https://i.ibb.co/Kp7CxnjC/Picture1.jpg" alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-sm font-black text-[#0a6652] tracking-tight leading-tight truncate">
-                ក្រុមសន្សំប្រាក់អនាគតយើង
-              </h1>
-              <p className="text-[#1fb487] font-black text-[9px] leading-none truncate">Saving For Our Future</p>
-            </div>
-          </div>
-          <div className="flex gap-2 items-center shrink-0">
-            <div className="relative">
-              <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm text-yellow-500 border border-slate-100">
-                <Bell className="w-4.5 h-4.5 fill-yellow-500 text-yellow-500" />
+      <div className="min-h-screen bg-[#eef8f2] text-slate-800 font-sans flex flex-col">
+        {/* Top Header Wrapper */}
+        <div className="w-full bg-[#eef8f2] border-b border-slate-200/40">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+            {/* Header */}
+            <header className="py-4 flex justify-between items-center shrink-0 w-full">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm overflow-hidden p-1 border border-slate-100 shrink-0">
+                  <img src="https://i.ibb.co/Kp7CxnjC/Picture1.jpg" alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="text-sm font-black text-[#0a6652] tracking-tight leading-tight truncate">
+                    ក្រុមសន្សំប្រាក់អនាគតយើង
+                  </h1>
+                  <p className="text-[#1fb487] font-black text-[9px] leading-none truncate">Saving For Our Future</p>
+                </div>
               </div>
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] font-bold flex items-center justify-center rounded-full">3</span>
-            </div>
-            {userRole && (
+              <div className="flex gap-2 items-center shrink-0">
+                <div className="relative">
+                  <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm text-yellow-500 border border-slate-100">
+                    <Bell className="w-4.5 h-4.5 fill-yellow-500 text-yellow-500" />
+                  </div>
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] font-bold flex items-center justify-center rounded-full">3</span>
+                </div>
+                {userRole && (
+                  <button 
+                    onClick={() => {
+                      localStorage.removeItem('userRole');
+                      localStorage.removeItem('memberId');
+                      setUserRole(null);
+                      setMemberId(null);
+                      window.location.href = '/login';
+                    }}
+                    className="w-9 h-9 bg-red-50 text-red-600 border border-red-100 rounded-full flex items-center justify-center shadow-sm hover:bg-red-100 transition-colors"
+                    title="ចាកចេញ (Logout)"
+                  >
+                    <LogIn size={15} className="rotate-180" />
+                  </button>
+                )}
+              </div>
+            </header>
+          </div>
+        </div>
+
+        {/* Outer Split Layout Area */}
+        <div className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 flex flex-col lg:flex-row gap-6 py-4 pb-24 lg:pb-8">
+          {/* Left Sidebar for Desktop/Computer - sticky position */}
+          {userRole && (
+            <aside className="hidden lg:flex flex-col w-64 shrink-0 bg-white border border-slate-100 rounded-3xl p-5 shadow-sm space-y-2 sticky top-6 self-start">
+              <div className="pb-4 mb-2 border-b border-slate-100">
+                <span className="text-[10px] font-black tracking-wider text-slate-400 uppercase">គណនីបច្ចុប្បន្ន</span>
+                <div className="flex items-center gap-2 mt-1.5 bg-slate-50 p-2 border border-slate-100 rounded-2xl">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="text-xs font-black text-[#0a6652] truncate">
+                    {userRole === 'admin' ? '🛡️ ផ្នែកគ្រប់គ្រង (Admin)' : `👤 សមាជិក [${memberId}]`}
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-[10px] font-black tracking-wider text-slate-400 uppercase pb-1">ម៉ឺនុយប្រព័ន្ធ (Menu)</div>
+              {userRole === 'admin' ? (
+                <>
+                  <SidebarLink to="/admin" label="📊 ផ្ទាំងគ្រប់គ្រង (Dashboard)" />
+                  <SidebarLink to="/members" label="👥 ពត៌មានសមាជិក (Members)" />
+                  <SidebarLink to="/savings" label="💰 ប្រាក់សន្សំ (Savings)" />
+                  <SidebarLink to="/loans" label="🤝 ប្រាក់កម្ចី (Loans)" />
+                  <SidebarLink to="/payroll" label="💸 បើកប្រាក់បៀវត្សរ៍ (Payroll)" />
+                  <SidebarLink to="/reports" label="📈 របាយការណ៍បិទបញ្ជី (Reports)" />
+                  <SidebarLink to="/history" label="📜 ប្រវត្តិប្រតិបត្តិការ (Logs)" />
+                  <SidebarLink to="/settings" label="⚙️ ការកំណត់ប្រព័ន្ធ (Settings)" />
+                </>
+              ) : (
+                <>
+                  <SidebarLink to={`/member-report?id=${memberId}`} label="📋 របាយការណ៍ផ្ទាល់ខ្លួន" />
+                  <SidebarLink to="/settings" label="⚙️ ការកំណត់ប្រព័ន្ធ (Settings)" />
+                </>
+              )}
+
               <button 
                 onClick={() => {
                   localStorage.removeItem('userRole');
@@ -90,77 +164,77 @@ export default function App() {
                   setMemberId(null);
                   window.location.href = '/login';
                 }}
-                className="w-9 h-9 bg-red-50 text-red-600 border border-red-100 rounded-full flex items-center justify-center shadow-sm hover:bg-red-100 transition-colors"
-                title="ចាកចេញ (Logout)"
+                className="w-full mt-4 flex items-center gap-2 px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-xl text-left font-black text-xs transition-colors cursor-pointer"
               >
-                <LogIn size={15} className="rotate-180" />
+                <LogIn size={14} className="rotate-180" />
+                <span>ចាកចេញ (Logout)</span>
               </button>
-            )}
-          </div>
-        </header>
+            </aside>
+          )}
 
-        {/* Main Content Grid */}
-        <main className="px-4 max-w-full">
-          <Routes>
-            <Route path="/" element={<MemberLogin onLogin={(role, id) => { setUserRole(role); setMemberId(id); }} />} />
-            <Route path="/login" element={<MemberLogin onLogin={(role, id) => { setUserRole(role); setMemberId(id); }} />} />
-            
-            <Route path="/admin" element={
-              <AdminGuard userRole={userRole}>
-                <DashboardGeneral />
-              </AdminGuard>
-            } />
-            <Route path="/dashboard" element={
-              <AdminGuard userRole={userRole}>
-                <DashboardGeneral />
-              </AdminGuard>
-            } />
-            <Route path="/members" element={
-              <AdminGuard userRole={userRole}>
-                <Members />
-              </AdminGuard>
-            } />
-            <Route path="/savings" element={
-              <AdminGuard userRole={userRole}>
-                <Savings />
-              </AdminGuard>
-            } />
-            <Route path="/loans" element={
-              <AdminGuard userRole={userRole}>
-                <Loans />
-              </AdminGuard>
-            } />
-            <Route path="/payroll" element={
-              <AdminGuard userRole={userRole}>
-                <Payroll />
-              </AdminGuard>
-            } />
-            <Route path="/reports" element={
-              <AdminGuard userRole={userRole}>
-                <Reports />
-              </AdminGuard>
-            } />
-            <Route path="/history" element={
-              <AdminGuard userRole={userRole}>
-                <History />
-              </AdminGuard>
-            } />
-            <Route path="/settings" element={
-              <AdminGuard userRole={userRole}>
-                <SettingsPage />
-              </AdminGuard>
-            } />
-            
-            <Route path="/member-report" element={
-              <MemberGuard userRole={userRole}>
-                <MemberReport />
-              </MemberGuard>
-            } />
-          </Routes>
-        </main>
+          {/* Right Main Content area */}
+          <main className="flex-1 min-w-0">
+            <Routes>
+              <Route path="/" element={<MemberLogin onLogin={(role, id) => { setUserRole(role); setMemberId(id); }} />} />
+              <Route path="/login" element={<MemberLogin onLogin={(role, id) => { setUserRole(role); setMemberId(id); }} />} />
+              
+              <Route path="/admin" element={
+                <AdminGuard userRole={userRole}>
+                  <DashboardGeneral />
+                </AdminGuard>
+              } />
+              <Route path="/dashboard" element={
+                <AdminGuard userRole={userRole}>
+                  <DashboardGeneral />
+                </AdminGuard>
+              } />
+              <Route path="/members" element={
+                <AdminGuard userRole={userRole}>
+                  <Members />
+                </AdminGuard>
+              } />
+              <Route path="/savings" element={
+                <AdminGuard userRole={userRole}>
+                  <Savings />
+                </AdminGuard>
+              } />
+              <Route path="/loans" element={
+                <AdminGuard userRole={userRole}>
+                  <Loans />
+                </AdminGuard>
+              } />
+              <Route path="/payroll" element={
+                <AdminGuard userRole={userRole}>
+                  <Payroll />
+                </AdminGuard>
+              } />
+              <Route path="/reports" element={
+                <AdminGuard userRole={userRole}>
+                  <Reports />
+                </AdminGuard>
+              } />
+              <Route path="/history" element={
+                <AdminGuard userRole={userRole}>
+                  <History />
+                </AdminGuard>
+              } />
+              <Route path="/settings" element={
+                <AdminGuard userRole={userRole}>
+                  <SettingsPage />
+                </AdminGuard>
+              } />
+              
+              <Route path="/member-report" element={
+                <MemberGuard userRole={userRole}>
+                  <MemberReport />
+                </MemberGuard>
+              } />
+            </Routes>
+          </main>
+        </div>
 
-        {/* Bottom Navigation */}
-        <nav className="fixed lg:absolute bottom-0 left-0 right-0 bg-white rounded-t-[32px] px-4 pt-3 pb-5 flex justify-around items-center z-50 shadow-[0_-4px_25px_rgba(0,100,50,0.05)] max-w-full">
+        {/* Bottom Navigation for mobile screens only (hidden on desktop screens) */}
+        <nav className="fixed bottom-0 left-0 right-0 lg:hidden bg-white rounded-t-[32px] px-4 pt-3 pb-5 flex justify-around items-center z-50 shadow-[0_-4px_25px_rgba(0,100,50,0.05)] max-w-full">
            <div className="flex flex-col items-center gap-1 text-[#ff6b35] cursor-pointer shrink-0" onClick={() => {
              if (userRole === 'admin') window.location.href = '/admin';
              else if (userRole === 'member') window.location.href = '/member-report';
@@ -187,7 +261,6 @@ export default function App() {
               <Bot className="w-5 h-5 text-[#0a6652]" />
            </div>
         </nav>
-        </div>
       </div>
     </Router>
   );
