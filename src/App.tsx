@@ -11,7 +11,7 @@ import {
   FileText, PieChart, Home, Heart, MessageSquare, 
   Menu, Bot, BarChart3, Receipt, HandCoins, 
   ShieldCheck, Calendar, BookOpen, Sparkles, TrendingUp,
-  ChevronLeft, Plus, Download, Search, Upload, LogIn, UserCheck, Key, Lock, Eye, EyeOff, Save, X, Trash2
+  ChevronLeft, Plus, Download, Search, Upload, LogIn, UserCheck, Key, Lock, Eye, EyeOff, Save, X, Trash2, Edit
 } from 'lucide-react';
 
 const getStoredData = (key: string, defaultValue: any) => {
@@ -417,10 +417,11 @@ function PageView({
                     img: `https://i.pravatar.cc/150?u=${newIdNum}`
                   });
                   currentMembers.push({
-                    id: newCode,
+                    id: khmerIdPrefix,
+                    code: newCode,
                     name: String(name),
-                    role: row['តួនាទី'] || 'សមាជិក',
-                    phone: row['លេខទូរស័ព្ទ'] || '-'
+                    gender: row['ភេទ'] || 'ប្រុស',
+                    type: row['ប្រភេទសមាជិក'] || row['ប្រភេទ'] || row['តួនាទី'] || 'សកម្ម'
                   });
                   count++;
                });
@@ -1330,6 +1331,46 @@ function Members() {
   const [depositProfileData, setDepositProfileData] = useState(() => getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA));
   const [memberListData, setMemberListData] = useState(() => getStoredData('sof_member_list_data', DEFAULT_MEMBER_LIST_DATA));
 
+  const [editingListIndex, setEditingListIndex] = useState<number | null>(null);
+  const [editingListData, setEditingListData] = useState<any>(null);
+
+  const handleEditMember = (index: number, row: any) => {
+    setEditingListIndex(index);
+    setEditingListData({ ...row });
+  };
+
+  const handleSaveEditMember = (index: number) => {
+    const newData = [...memberListData];
+    newData[index] = editingListData;
+    setMemberListData(newData);
+    setStoredData('sof_member_list_data', newData);
+    
+    // Also sync the code/name/gender back to profiles if we want to be thorough
+    const code = editingListData.code;
+    if (code) {
+      const activeData = [...profileData];
+      const activeIdx = activeData.findIndex((p: any) => String(p.id).includes(code));
+      if (activeIdx > -1) {
+        activeData[activeIdx].name = editingListData.name;
+        activeData[activeIdx].gender = editingListData.gender;
+        activeData[activeIdx].role = editingListData.type;
+        setProfileData(activeData);
+        setStoredData('sof_profile_data', activeData);
+      }
+    }
+    
+    setEditingListIndex(null);
+    setEditingListData(null);
+  };
+
+  const handleDeleteMember = (index: number, showConfirm = true) => {
+    if (showConfirm && !window.confirm('តើអ្នកពិតជាចង់លុបសមាជិកនេះមែនទេ?')) return;
+    const newData = [...memberListData];
+    newData.splice(index, 1);
+    setMemberListData(newData);
+    setStoredData('sof_member_list_data', newData);
+  };
+
   return (
     <PageView title="ពត៌មានសមាជិក (Members)">
       {/* Tabs */}
@@ -1368,17 +1409,38 @@ function Members() {
                   <th className="px-3 py-3 border-r border-slate-300 align-middle">លេខ ID</th>
                   <th className="px-3 py-3 border-r border-slate-300 align-middle">ឈ្មោះ</th>
                   <th className="px-3 py-3 border-r border-slate-300 align-middle">ភេទ</th>
-                  <th className="px-3 py-3 align-middle">ប្រភេទសមាជិក</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle">ប្រភេទសមាជិក</th>
+                  <th className="px-3 py-3 align-middle w-24">ជម្រើស</th>
                 </tr>
               </thead>
               <tbody>
                 {memberListData.map((row, i) => (
                   <tr key={i} className="border-b border-slate-300 hover:bg-slate-50 transition-colors">
-                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-slate-500">{row.id}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.code}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
-                    <td className="px-3 py-2 text-center text-slate-600">{row.type}</td>
+                    {editingListIndex === i ? (
+                      <>
+                        <td className="px-1 py-1 border-r border-slate-300 text-center"><input type="text" className="w-full px-2 py-1 border border-slate-300 rounded" value={editingListData.id} onChange={(e) => setEditingListData({...editingListData, id: e.target.value})} /></td>
+                        <td className="px-1 py-1 border-r border-slate-300 text-center"><input type="text" className="w-full px-2 py-1 border border-slate-300 rounded" value={editingListData.code} onChange={(e) => setEditingListData({...editingListData, code: e.target.value})} /></td>
+                        <td className="px-1 py-1 border-r border-slate-300"><input type="text" className="w-full px-2 py-1 border border-slate-300 rounded" value={editingListData.name} onChange={(e) => setEditingListData({...editingListData, name: e.target.value})} /></td>
+                        <td className="px-1 py-1 border-r border-slate-300 text-center"><input type="text" className="w-full px-2 py-1 border border-slate-300 rounded" value={editingListData.gender} onChange={(e) => setEditingListData({...editingListData, gender: e.target.value})} /></td>
+                        <td className="px-1 py-1 border-r border-slate-300 text-center"><input type="text" className="w-full px-2 py-1 border border-slate-300 rounded" value={editingListData.type} onChange={(e) => setEditingListData({...editingListData, type: e.target.value})} /></td>
+                        <td className="px-2 py-2 text-center flex justify-center gap-2">
+                          <button onClick={() => handleSaveEditMember(i)} className="p-1.5 bg-green-100 text-green-700 hover:bg-green-200 rounded" title="រក្សាទុក (Save)"><Save size={16} /></button>
+                          <button onClick={() => setEditingListIndex(null)} className="p-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded" title="បោះបង់ (Cancel)"><X size={16} /></button>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-slate-500">{row.id}</td>
+                        <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.code}</td>
+                        <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
+                        <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
+                        <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600">{row.type}</td>
+                        <td className="px-2 py-2 text-center flex justify-center gap-2">
+                          <button onClick={() => handleEditMember(i, row)} className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded" title="កែប្រែ (Edit)"><Edit size={16} /></button>
+                          <button onClick={() => handleDeleteMember(i)} className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded" title="លុប (Delete)"><Trash2 size={16} /></button>
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>
