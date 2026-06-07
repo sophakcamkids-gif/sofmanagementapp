@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import { 
   Bell, Settings, Users, Wallet, 
   FileText, PieChart, Home, Heart, MessageSquare, 
@@ -361,10 +362,92 @@ function PageView({
       return;
     }
     
-    // Default global JSON import
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const fileExt = file.name.split('.').pop()?.toLowerCase();
+
+    if (fileExt === 'xlsx' || fileExt === 'xls' || fileExt === 'csv') {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const ab = event.target?.result as ArrayBuffer;
+          const wb = XLSX.read(ab, { type: 'array' });
+          let importedAnyData = false;
+
+          wb.SheetNames.forEach(sheetName => {
+            if (sheetName.startsWith('sof_')) {
+              const ws = wb.Sheets[sheetName];
+              const sheetData = XLSX.utils.sheet_to_json(ws);
+              localStorage.setItem(sheetName, JSON.stringify(sheetData));
+              importedAnyData = true;
+            }
+          });
+
+          // If no sheets matching 'sof_', assume it's a generic members list import
+          if (!importedAnyData && wb.SheetNames.length > 0) {
+             const firstSheetName = wb.SheetNames[0];
+             const ws = wb.Sheets[firstSheetName];
+             const data = XLSX.utils.sheet_to_json(ws) as any[];
+             if (data && data.length > 0) {
+               const activeProfiles = getStoredData('sof_profile_data', DEFAULT_PROFILE_DATA);
+               const currentMembers = getStoredData('sof_member_list_data', DEFAULT_MEMBER_LIST_DATA);
+               let count = 0;
+               data.forEach(row => {
+                  const name = row['ឈ្មោះ'] || row['Name'] || row['Full Name'] || Object.values(row)[0] || '';
+                  if (!name) return;
+                  const newIdNum = activeProfiles.length + 1;
+                  const newCode = `C${String(newIdNum).padStart(3, '0')}`;
+                  const khmerNum = ["០", "១", "២", "៣", "៤", "៥", "៦", "៧", "៨", "៩"];
+                  const khmerIdPrefix = String(newIdNum).split('').map(char => khmerNum[parseInt(char)] || char).join('');
+                  const newId = `${khmerIdPrefix} ${newCode}`;
+                  
+                  activeProfiles.push({
+                    id: newId,
+                    name: String(name),
+                    gender: row['ភេទ'] || 'ប្រុស',
+                    role: row['តួនាទី'] || 'សមាជិក',
+                    job: row['មុខរបរ'] || '-',
+                    phone: row['លេខទូរស័ព្ទ'] || '-',
+                    dob: row['ថ្ងៃខែឆ្នាំកំណើត'] || '-',
+                    address: row['ទីលំនៅ'] || '-',
+                    joinDate: new Date().toISOString().split('T')[0],
+                    spouse: '-',
+                    relation: '-',
+                    img: `https://i.pravatar.cc/150?u=${newIdNum}`
+                  });
+                  currentMembers.push({
+                    id: newCode,
+                    name: String(name),
+                    role: row['តួនាទី'] || 'សមាជិក',
+                    phone: row['លេខទូរស័ព្ទ'] || '-'
+                  });
+                  count++;
+               });
+               setStoredData('sof_profile_data', activeProfiles);
+               setStoredData('sof_member_list_data', currentMembers);
+               alert(`បាននាំចូលសមាជិកចំនួន ${count} នាក់ពីឯកសារ Excel ដោយជោគជ័យ!`);
+               window.location.reload();
+               return;
+             }
+          }
+
+          if (importedAnyData) {
+            alert('ទិន្នន័យពី Excel ត្រូវបាននាំចូលដោយជោគជ័យ! ប្រព័ន្ធនឹងដំណើរការឡើងវិញ...');
+            window.location.reload();
+          } else {
+            alert('ឯកសារ Excel មិនមានទិន្នន័យត្រូវគ្នាទេ។');
+          }
+        } catch (err) {
+          alert('មានបញ្ហាក្នុងការអានឯកសារ Excel។ សូមបញ្ជាក់ថាវាពិតជាឯកសារ Excel ត្រឹមត្រូវ។');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    // Default global JSON import
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -382,7 +465,7 @@ function PageView({
           throw new Error("Invalid format");
         }
       } catch (err) {
-        alert('ឯកសារមិនត្រឹមត្រូវ! សូមជ្រើសរើសឯកសារទម្រង់ JSON ដែលបានទាញយក។');
+        alert('ឯកសារមិនត្រឹមត្រូវ! សូមជ្រើសរើសឯកសារទម្រង់ JSON ដែលបានទាញយក ឬ Excel ត្រឹមត្រូវ។');
       }
     };
     reader.readAsText(file);
