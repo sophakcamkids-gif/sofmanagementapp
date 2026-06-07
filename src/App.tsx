@@ -1444,8 +1444,141 @@ function Members() {
     // Any remaining bulk sync logic can be implemented here...
   };
 
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileExt = file.name.split('.').pop()?.toLowerCase();
+
+    if (fileExt === 'xlsx' || fileExt === 'xls' || fileExt === 'csv') {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const ab = event.target?.result as ArrayBuffer;
+          const wb = XLSX.read(ab, { type: 'array' });
+          let importedAnyData = false;
+
+          wb.SheetNames.forEach(sheetName => {
+            if (sheetName.startsWith('sof_')) {
+              const ws = wb.Sheets[sheetName];
+              const sheetData = XLSX.utils.sheet_to_json(ws);
+              localStorage.setItem(sheetName, JSON.stringify(sheetData));
+              importedAnyData = true;
+            }
+          });
+
+          // If no sheets matching 'sof_', assume it's a generic members list import
+          if (!importedAnyData && wb.SheetNames.length > 0) {
+             const firstSheetName = wb.SheetNames[0];
+             const ws = wb.Sheets[firstSheetName];
+             const data = XLSX.utils.sheet_to_json(ws) as any[];
+             if (data && data.length > 0) {
+               const isDeposit = (activeTab === 'list_deposit' || activeTab === 'deposit_profile');
+               
+               const activeProfiles = getStoredData('sof_profile_data', DEFAULT_PROFILE_DATA);
+               const depositProfiles = getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA);
+               const currentMembers = getStoredData('sof_member_list_data', DEFAULT_MEMBER_LIST_DATA);
+               let count = 0;
+               data.forEach(row => {
+                  const name = row['ឈ្មោះ'] || row['Name'] || row['Full Name'] || Object.values(row)[0] || '';
+                  if (!name) return;
+                  
+                  const totalExisting = currentMembers.length + count;
+                  const newIdNum = totalExisting + 1;
+                  const newCode = `C${String(newIdNum).padStart(3, '0')}`;
+                  const khmerNum = ["០", "១", "២", "៣", "៤", "៥", "៦", "៧", "៨", "៩"];
+                  const khmerIdPrefix = String(newIdNum).split('').map(char => khmerNum[parseInt(char)] || char).join('');
+                  const newId = `${khmerIdPrefix} ${newCode}`;
+                  
+                  const targetType = isDeposit ? 'បញ្ញើ' : (row['ប្រភេទសមាជិក'] || row['ប្រភេទ'] || row['តួនាទី'] || 'សកម្ម');
+                  
+                  const newProfileItem = {
+                    id: newId,
+                    name: String(name),
+                    gender: row['ភេទ'] || 'ប្រុស',
+                    role: row['តួនាទី'] || (isDeposit ? 'សមាជិកបញ្ញើ' : 'សមាជិក'),
+                    job: row['មុខរបរ'] || '-',
+                    phone: row['លេខទូរស័ព្ទ'] || '-',
+                    dob: row['ថ្ងៃខែឆ្នាំកំណើត'] || '-',
+                    address: row['ទីលំនៅ'] || '-',
+                    joinDate: new Date().toISOString().split('T')[0],
+                    spouse: '-',
+                    relation: '-',
+                    img: `https://i.pravatar.cc/150?u=${newIdNum}`
+                  };
+                  
+                  if (isDeposit) {
+                    depositProfiles.push(newProfileItem);
+                  } else {
+                    activeProfiles.push(newProfileItem);
+                  }
+                  
+                  currentMembers.push({
+                    id: khmerIdPrefix,
+                    code: newCode,
+                    name: String(name),
+                    gender: row['ភេទ'] || 'ប្រុស',
+                    type: targetType
+                  });
+                  count++;
+               });
+               
+               if (isDeposit) {
+                 setStoredData('sof_deposit_profile_data', depositProfiles);
+               } else {
+                 setStoredData('sof_profile_data', activeProfiles);
+               }
+               setStoredData('sof_member_list_data', currentMembers);
+               alert(`បាននាំចូលសមាជិកចំនួន ${count} នាក់ពីឯកសារ Excel ដោយជូច្ច័យ!`);
+               window.location.reload();
+               return;
+             }
+          }
+
+          if (importedAnyData) {
+            alert('ទិន្នន័យពី Excel ត្រូវបាននាំចូលដោយជោគជ័យ! ប្រព័ន្ធនឹងដំណើរការឡើងវិញ...');
+            window.location.reload();
+          } else {
+            alert('ឯកសារ Excel មិនមានទិន្នន័យត្រូវគ្នាទេ។');
+          }
+        } catch (err) {
+          alert('មានបញ្ហាក្នុងការអានឯកសារ Excel។ សូមបញ្ជាក់ថាវាពិតជាឯកសារ Excel ត្រឹមត្រូវ។');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      return;
+    }
+
+    // Default global JSON import
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const data = JSON.parse(text);
+        if (typeof data === 'object' && data !== null) {
+          Object.keys(data).forEach(key => {
+            if (key.startsWith('sof_')) {
+              localStorage.setItem(key, JSON.stringify(data[key]));
+            }
+          });
+          alert('ទិន្នន័យត្រូវបាននាំចូលដោយជោគជ័យ! ប្រព័ន្ធនឹងដំណើរការឡើងវិញ...');
+          window.location.reload();
+        } else {
+          throw new Error("Invalid format");
+        }
+      } catch (err) {
+        alert('ឯកសារមិនត្រឹមត្រូវ! សូមជ្រើសរើសឯកសារទម្រង់ JSON ដែលបានទាញយក ឬ Excel ត្រឹមត្រូវ។');
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
-    <PageView title="ពត៌មានសមាជិក (Members)" onAddClick={() => navigate('/dashboard', { state: { tab: 'member' } })}>
+    <PageView 
+      title="ពត៌មានសមាជិក (Members)" 
+      onAddClick={() => navigate('/dashboard', { state: { tab: 'member' } })}
+      onUpload={handleUpload}
+    >
       {/* Tabs */}
       <div className="flex flex-wrap gap-3 mb-6">
         <button 
