@@ -53,6 +53,7 @@ const DEFAULT_GROUP_DATA = [
 
 const DEFAULT_DEPOSIT_DATA: any[] = [];
 const DEFAULT_LOAN_DATA: any[] = [];
+const DEFAULT_DEPOSIT_LOAN_DATA: any[] = [];
 
 const DEFAULT_EXPENSE_DATA = [
   { id: '1', date: '2026-04-15', supplier: 'SOF', description: 'ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់ លី រ៉ា', category: 'ចំណាយប្រតិបត្តិការ', qty: 1, price: 170.00, total: 170.00 },
@@ -738,6 +739,21 @@ function DashboardGeneral() {
         deductFee: '-',
         actualFee: '-',
         total: '0.00',
+        checked: true
+      }]);
+
+      // Insert blank loans row
+      const depositLoans = getStoredData('sof_loans_deposit_data', DEFAULT_DEPOSIT_LOAN_DATA);
+      setStoredData('sof_loans_deposit_data', [...depositLoans, {
+        id: newCode,
+        name: mName.trim(),
+        gender: mGender,
+        loanValue: '-',
+        repayment: '-',
+        interest: '-',
+        newLoan: '-',
+        remaining: '-',
+        interestPaid: '-',
         checked: true
       }]);
     }
@@ -1482,6 +1498,7 @@ function Members() {
                const savings = getStoredData('sof_savings_data', DEFAULT_SAVING_DATA);
                const depositSavings = getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA);
                const loans = getStoredData('sof_loans_data', DEFAULT_LOAN_DATA);
+               const depositLoans = getStoredData('sof_loans_deposit_data', DEFAULT_DEPOSIT_LOAN_DATA);
                
                let count = 0;
                data.forEach(row => {
@@ -1529,6 +1546,18 @@ function Members() {
                       total: '0.00',
                       checked: true
                     });
+                    depositLoans.push({
+                      id: newCode,
+                      name: String(name),
+                      gender: gender,
+                      loanValue: '-',
+                      repayment: '-',
+                      interest: '-',
+                      newLoan: '-',
+                      remaining: '-',
+                      interestPaid: '-',
+                      checked: true
+                    });
                   } else {
                     activeProfiles.push(newProfileItem);
                     savings.push({
@@ -1572,6 +1601,7 @@ function Members() {
                if (isDeposit) {
                  setStoredData('sof_deposit_profile_data', depositProfiles);
                  setStoredData('sof_savings_deposit_data', depositSavings);
+                 setStoredData('sof_loans_deposit_data', depositLoans);
                } else {
                  setStoredData('sof_profile_data', activeProfiles);
                  setStoredData('sof_savings_data', savings);
@@ -2112,11 +2142,8 @@ function Loans() {
   const [loanData, setLoanData] = useState(() => {
     const ld = getStoredData('sof_loans_data', DEFAULT_LOAN_DATA) || [];
     const pfd = getStoredData('sof_profile_data', DEFAULT_PROFILE_DATA) || [];
-    const dpf = getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA) || [];
-    const allMembers = [...pfd, ...dpf];
-    
     let modified = false;
-    allMembers.forEach((p: any) => {
+    pfd.forEach((p: any) => {
       let code = typeof p.id === 'string' ? p.id.split(' ').pop() : p.code;
       if (!code) code = p.code;
       let l = ld.find((x: any) => x.id === code);
@@ -2132,9 +2159,32 @@ function Loans() {
         modified = true;
       }
     });
-    
     if (modified) setStoredData('sof_loans_data', ld);
     return ld;
+  });
+
+  const [depositLoanData, setDepositLoanData] = useState(() => {
+    const dld = getStoredData('sof_loans_deposit_data', DEFAULT_DEPOSIT_LOAN_DATA) || [];
+    const dpf = getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA) || [];
+    let modified = false;
+    dpf.forEach((p: any) => {
+      let code = typeof p.id === 'string' ? p.id.split(' ').pop() : p.code;
+      if (!code) code = p.code;
+      let l = dld.find((x: any) => x.id === code);
+      if (!l) {
+        dld.push({
+           id: code, name: p.name, gender: p.gender,
+           loanValue: '-', repayment: '-', interest: '-', newLoan: '-', remaining: '-', interestPaid: '-', checked: true
+        });
+        modified = true;
+      } else if (l.name !== p.name || l.gender !== p.gender) {
+        l.name = p.name;
+        l.gender = p.gender;
+        modified = true;
+      }
+    });
+    if (modified) setStoredData('sof_loans_deposit_data', dld);
+    return dld;
   });
 
   const externalLoanData = [
@@ -2172,7 +2222,13 @@ function Loans() {
           onClick={() => setActiveTab('members')}
           className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'members' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
         >
-          ប្រាក់កម្ចីសមាជិក
+          កម្ចីសមជិកសកម្ម
+        </button>
+        <button 
+          onClick={() => setActiveTab('deposit_members')}
+          className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'deposit_members' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          កម្ចីសមាជិកបញ្ញើរ
         </button>
         <button 
           onClick={() => setActiveTab('group')}
@@ -2208,6 +2264,63 @@ function Loans() {
               </thead>
               <tbody>
                 {loanData.map((row) => (
+                  <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">
+                      {row.loanValue !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
+                      {row.loanValue}
+                    </td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-amber-600">
+                      {row.repayment !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
+                      {row.repayment}
+                    </td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-indigo-600">
+                      {row.interest !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
+                      {row.interest}
+                    </td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-emerald-600">
+                      {row.newLoan !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
+                      {row.newLoan}
+                    </td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium bg-slate-50">
+                      {row.remaining !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
+                      {row.remaining}
+                    </td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">
+                      {row.interestPaid !== '-' ? <span className="text-[#0a6652]/60 mr-1">$</span> : null}
+                      {row.interestPaid}
+                    </td>
+                    <td className="px-3 py-2 text-center text-green-600 font-bold">{row.checked ? '✓' : ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'deposit_members' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
+          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+            <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
+              <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
+                <tr>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle">ល.រ</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle min-w-[140px]">ឈ្មោះ</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle">ភេទ</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចី</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីសងត្រឡប់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">ការប្រាក់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីថ្មី</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីនៅសល់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right text-[#084f40] bg-[#f3faf6] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">ការប្រាក់បានបង់</th>
+                  <th className="px-3 py-3 align-middle">កំណត់សំគាល់</th>
+                </tr>
+              </thead>
+              <tbody>
+                {depositLoanData.map((row) => (
                   <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{row.id}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
