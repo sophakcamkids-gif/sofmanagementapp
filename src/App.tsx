@@ -614,8 +614,19 @@ function DashboardGeneral() {
     e.preventDefault();
     if (!mName.trim()) return;
 
+    const activeProfiles = getStoredData('sof_profile_data', DEFAULT_PROFILE_DATA);
+    const depositProfiles = getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA);
+
+    // Global duplicate name check
+    const isDuplicate = activeProfiles.some((p: any) => p.name.toLowerCase() === mName.trim().toLowerCase()) ||
+                        depositProfiles.some((p: any) => p.name.toLowerCase() === mName.trim().toLowerCase());
+    
+    if (isDuplicate) {
+      alert('សមាជិកដែលមានឈ្មោះនេះមានរួចហើយ! ឈ្មោះមិនត្រូវស្ទួនឡើយ។');
+      return;
+    }
+
     if (mType === 'សកម្ម') {
-      const activeProfiles = getStoredData('sof_profile_data', DEFAULT_PROFILE_DATA);
       const newIdNum = activeProfiles.length + 1;
       const newCode = `C${String(newIdNum).padStart(3, '0')}`;
       const khmerNum = ["០", "១", "២", "៣", "៤", "៥", "៦", "៧", "៨", "៩"];
@@ -689,7 +700,6 @@ function DashboardGeneral() {
 
     } else {
       // Deposit member
-      const depositProfiles = getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA);
       const newIdNum = depositProfiles.length + 1;
       const newCode = `D${String(newIdNum).padStart(3, '0')}`;
       const khmerNum = ["០", "១", "២", "៣", "៤", "៥", "៦", "៧", "៨", "៩"];
@@ -1405,16 +1415,30 @@ function Members() {
   };
 
   const handleSaveEditMember = (index: number) => {
+    // Check global duplicate for edits (excluding self)
+    const newName = editingListData.name.trim();
+    const selfCode = editingListData.code;
+    
+    const activeProfiles = getStoredData('sof_profile_data', DEFAULT_PROFILE_DATA);
+    const depositProfiles = getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA);
+    
+    const isDuplicate = activeProfiles.some((p: any) => p.name.toLowerCase() === newName.toLowerCase() && p.code !== selfCode && !(typeof p.id === 'string' && p.id.includes(selfCode))) ||
+                        depositProfiles.some((p: any) => p.name.toLowerCase() === newName.toLowerCase() && p.code !== selfCode && !(typeof p.id === 'string' && p.id.includes(selfCode)));
+
+    if (isDuplicate) {
+      alert('សមាជិកដែលមានឈ្មោះនេះមានរួចហើយ! ឈ្មោះមិនត្រូវស្ទួនឡើយ។');
+      return;
+    }
+
     const newData = [...memberListData];
     newData[index] = editingListData;
     setMemberListData(newData);
     setStoredData('sof_member_list_data', newData);
     
-    // Also sync the code/name/gender back to profiles if we want to be thorough
     const code = editingListData.code;
     if (code) {
       const activeData = [...profileData];
-      const activeIdx = activeData.findIndex((p: any) => String(p.id).includes(code));
+      const activeIdx = activeData.findIndex((p: any) => String(p.id).includes(code) || p.code === code);
       if (activeIdx > -1) {
         activeData[activeIdx].name = editingListData.name;
         activeData[activeIdx].gender = editingListData.gender;
@@ -1422,6 +1446,16 @@ function Members() {
         setProfileData(activeData);
         setStoredData('sof_profile_data', activeData);
       }
+      
+      const depData = [...depositProfileData];
+      const depIdx = depData.findIndex((p: any) => String(p.id).includes(code) || p.code === code);
+      if (depIdx > -1) {
+        depData[depIdx].name = editingListData.name;
+        depData[depIdx].gender = editingListData.gender;
+        setDepositProfileData(depData);
+        setStoredData('sof_deposit_profile_data', depData);
+      }
+
       db.updateMember(code, editingListData).catch(err => console.error("Supabase error:", err));
     }
     
@@ -1437,6 +1471,33 @@ function Members() {
     setStoredData('sof_member_list_data', newData);
     if (deleted && deleted.code) {
       db.deleteMember(deleted.code).catch(err => console.error("Supabase error:", err));
+      
+      const code = deleted.code;
+
+      const filterProfiles = (data: any[]) => data.filter((x: any) => {
+        const id = typeof x.id === 'string' ? x.id.split(' ').pop() : x.code;
+        return (id || x.code) !== code;
+      });
+
+      const pfd = filterProfiles(getStoredData('sof_profile_data', DEFAULT_PROFILE_DATA));
+      setProfileData(pfd);
+      setStoredData('sof_profile_data', pfd);
+
+      const dpfd = filterProfiles(getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA));
+      setDepositProfileData(dpfd);
+      setStoredData('sof_deposit_profile_data', dpfd);
+
+      const sd = getStoredData('sof_savings_data', DEFAULT_SAVING_DATA).filter((x: any) => x.id !== code);
+      setStoredData('sof_savings_data', sd);
+
+      const dsd = getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA).filter((x: any) => x.id !== code);
+      setStoredData('sof_savings_deposit_data', dsd);
+
+      const ld = getStoredData('sof_loans_data', DEFAULT_LOAN_DATA).filter((x: any) => x.id !== code);
+      setStoredData('sof_loans_data', ld);
+
+      const dld = getStoredData('sof_loans_deposit_data', DEFAULT_DEPOSIT_LOAN_DATA).filter((x: any) => x.id !== code);
+      setStoredData('sof_loans_deposit_data', dld);
     }
   };
 
@@ -1452,6 +1513,10 @@ function Members() {
       setStoredData('sof_member_list_data', []);
       setStoredData('sof_profile_data', []);
       setStoredData('sof_deposit_profile_data', []);
+      setStoredData('sof_savings_data', []);
+      setStoredData('sof_savings_deposit_data', []);
+      setStoredData('sof_loans_data', []);
+      setStoredData('sof_loans_deposit_data', []);
     }
   };
 
@@ -1501,10 +1566,19 @@ function Members() {
                const depositLoans = getStoredData('sof_loans_deposit_data', DEFAULT_DEPOSIT_LOAN_DATA);
                
                let count = 0;
+               let skipCount = 0;
                data.forEach(row => {
-                  const name = row['ឈ្មោះ'] || row['Name'] || row['Full Name'] || Object.values(row)[0] || '';
+                  const name = String(row['ឈ្មោះ'] || row['Name'] || row['Full Name'] || Object.values(row)[0] || '').trim();
                   if (!name) return;
                   
+                  // Skip duplicate names
+                  const isDuplicate = activeProfiles.some((p: any) => p.name.toLowerCase() === name.toLowerCase()) ||
+                                      depositProfiles.some((p: any) => p.name.toLowerCase() === name.toLowerCase());
+                  if (isDuplicate) {
+                    skipCount++;
+                    return;
+                  }
+
                   const totalExisting = isDeposit ? depositProfiles.length : activeProfiles.length;
                   const newIdNum = totalExisting + 1;
                   const newCode = (isDeposit ? 'D' : 'C') + String(newIdNum).padStart(3, '0');
@@ -1608,7 +1682,12 @@ function Members() {
                  setStoredData('sof_loans_data', loans);
                }
                setStoredData('sof_member_list_data', currentMembers);
-               alert(`បាននាំចូលសមាជិកចំនួន ${count} នាក់ពីឯកសារ Excel ដោយជូច្ច័យ!`);
+               
+               let msg = `បាននាំចូលសមាជិកជោគជ័យ ចំនួន ${count} នាក់កូដថ្មីៗ។`;
+               if (skipCount > 0) {
+                 msg += `\nមានឈ្មោះជាន់គ្នា ចំនួន ${skipCount} នាក់ត្រូវបានរំលង។`;
+               }
+               alert(msg);
                window.location.reload();
                return;
              }
@@ -1889,9 +1968,18 @@ function Savings() {
   const months = ['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'];
 
   const [savingData, setSavingData] = useState(() => {
-    const sd = getStoredData('sof_savings_data', DEFAULT_SAVING_DATA) || [];
+    let sd = getStoredData('sof_savings_data', DEFAULT_SAVING_DATA) || [];
     const pfd = getStoredData('sof_profile_data', DEFAULT_PROFILE_DATA) || [];
     let modified = false;
+    
+    // Remove deleted members
+    const validCodes = new Set(pfd.map((p: any) => typeof p.id === 'string' ? p.id.split(' ').pop() : p.code));
+    const filteredSd = sd.filter((x: any) => validCodes.has(x.id));
+    if (filteredSd.length !== sd.length) {
+      sd = filteredSd;
+      modified = true;
+    }
+
     pfd.forEach((p: any) => {
       let code = typeof p.id === 'string' ? p.id.split(' ').pop() : p.code;
       if (!code) code = p.code;
@@ -1916,9 +2004,17 @@ function Savings() {
   const [groupData, setGroupData] = useState(() => getStoredData('sof_savings_group_data', DEFAULT_GROUP_DATA));
 
   const [depositData, setDepositData] = useState(() => {
-    const sd = getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA) || [];
+    let sd = getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA) || [];
     const dp = getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA) || [];
     let modified = false;
+    
+    const validCodes = new Set(dp.map((p: any) => typeof p.id === 'string' ? p.id.split(' ').pop() : p.code));
+    const filteredSd = sd.filter((x: any) => validCodes.has(x.id));
+    if (filteredSd.length !== sd.length) {
+      sd = filteredSd;
+      modified = true;
+    }
+
     dp.forEach((p: any) => {
       let code = typeof p.id === 'string' ? p.id.split(' ').pop() : p.code;
       if (!code) code = p.code;
@@ -2140,9 +2236,17 @@ function Loans() {
   const months = ['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'];
 
   const [loanData, setLoanData] = useState(() => {
-    const ld = getStoredData('sof_loans_data', DEFAULT_LOAN_DATA) || [];
+    let ld = getStoredData('sof_loans_data', DEFAULT_LOAN_DATA) || [];
     const pfd = getStoredData('sof_profile_data', DEFAULT_PROFILE_DATA) || [];
     let modified = false;
+
+    const validCodes = new Set(pfd.map((p: any) => typeof p.id === 'string' ? p.id.split(' ').pop() : p.code));
+    const filteredLd = ld.filter((x: any) => validCodes.has(x.id));
+    if (filteredLd.length !== ld.length) {
+      ld = filteredLd;
+      modified = true;
+    }
+
     pfd.forEach((p: any) => {
       let code = typeof p.id === 'string' ? p.id.split(' ').pop() : p.code;
       if (!code) code = p.code;
@@ -2164,9 +2268,17 @@ function Loans() {
   });
 
   const [depositLoanData, setDepositLoanData] = useState(() => {
-    const dld = getStoredData('sof_loans_deposit_data', DEFAULT_DEPOSIT_LOAN_DATA) || [];
+    let dld = getStoredData('sof_loans_deposit_data', DEFAULT_DEPOSIT_LOAN_DATA) || [];
     const dpf = getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA) || [];
     let modified = false;
+
+    const validCodes = new Set(dpf.map((p: any) => typeof p.id === 'string' ? p.id.split(' ').pop() : p.code));
+    const filteredDld = dld.filter((x: any) => validCodes.has(x.id));
+    if (filteredDld.length !== dld.length) {
+      dld = filteredDld;
+      modified = true;
+    }
+
     dpf.forEach((p: any) => {
       let code = typeof p.id === 'string' ? p.id.split(' ').pop() : p.code;
       if (!code) code = p.code;
