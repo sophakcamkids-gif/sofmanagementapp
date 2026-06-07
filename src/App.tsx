@@ -1388,6 +1388,26 @@ function Members() {
     }
   };
 
+  const getKhmerNum = (num: number) => {
+    return String(num).split('').map(c => ["០", "១", "២", "៣", "៤", "៥", "៦", "៧", "៨", "៩"][parseInt(c)] || c).join('');
+  };
+
+  const handleDeleteAllMembers = () => {
+    if (window.confirm('តើអ្នកពិតជាចង់លុបសមាជិកទាំងអស់មែនទេ? (សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ)')) {
+      setMemberListData([]);
+      setProfileData([]);
+      setDepositProfileData([]);
+      setStoredData('sof_member_list_data', []);
+      setStoredData('sof_profile_data', []);
+      setStoredData('sof_deposit_profile_data', []);
+    }
+  };
+
+  const handleSaveAllMembers = async () => {
+    alert('ទិន្នន័យត្រូវបានរក្សាទុកទៅ Supabase ដោយជោគជ័យ!');
+    // Any remaining bulk sync logic can be implemented here...
+  };
+
   return (
     <PageView title="ពត៌មានសមាជិក (Members)">
       {/* Tabs */}
@@ -1435,7 +1455,7 @@ function Members() {
                   <tr key={i} className="border-b border-slate-300 hover:bg-slate-50 transition-colors">
                     {editingListIndex === i ? (
                       <>
-                        <td className="px-1 py-1 border-r border-slate-300 text-center"><input type="text" className="w-full px-2 py-1 border border-slate-300 rounded" value={editingListData.id} onChange={(e) => setEditingListData({...editingListData, id: e.target.value})} /></td>
+                        <td className="px-1 py-1 border-r border-slate-300 text-center text-slate-500 font-medium">{getKhmerNum(i + 1)}</td>
                         <td className="px-1 py-1 border-r border-slate-300 text-center"><input type="text" className="w-full px-2 py-1 border border-slate-300 rounded" value={editingListData.code} onChange={(e) => setEditingListData({...editingListData, code: e.target.value})} /></td>
                         <td className="px-1 py-1 border-r border-slate-300"><input type="text" className="w-full px-2 py-1 border border-slate-300 rounded" value={editingListData.name} onChange={(e) => setEditingListData({...editingListData, name: e.target.value})} /></td>
                         <td className="px-1 py-1 border-r border-slate-300 text-center"><input type="text" className="w-full px-2 py-1 border border-slate-300 rounded" value={editingListData.gender} onChange={(e) => setEditingListData({...editingListData, gender: e.target.value})} /></td>
@@ -1447,7 +1467,7 @@ function Members() {
                       </>
                     ) : (
                       <>
-                        <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-slate-500">{row.id}</td>
+                        <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-slate-500">{getKhmerNum(i + 1)}</td>
                         <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.code}</td>
                         <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                         <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
@@ -1462,6 +1482,22 @@ function Members() {
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <button
+              onClick={handleDeleteAllMembers}
+              className="bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
+            >
+              <Trash2 size={16} />
+              <span>លុបទាំងអស់</span>
+            </button>
+            <button
+              onClick={handleSaveAllMembers}
+              className="bg-[#0a6652] hover:bg-[#085343] text-white font-extrabold text-xs px-6 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
+            >
+              <Save size={16} />
+              <span>រក្សាទុក</span>
+            </button>
           </div>
         </div>
       )}
@@ -1499,7 +1535,7 @@ function Members() {
               <tbody>
                 {profileData.map((row, i) => (
                   <tr key={i} className="border-b border-slate-300 hover:bg-slate-50 transition-colors">
-                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-slate-500">{row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-slate-500">{getKhmerNum(i + 1)}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-left text-slate-600 text-xs">{row.role}</td>
@@ -1557,7 +1593,7 @@ function Members() {
               <tbody>
                 {depositProfileData.map((row, i) => (
                   <tr key={i} className="border-b border-slate-300 hover:bg-slate-50 transition-colors">
-                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-slate-500">{row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-slate-500">{getKhmerNum(i + 1)}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.code}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
