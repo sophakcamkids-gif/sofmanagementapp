@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Bell, Settings, Users, Wallet, 
@@ -12,6 +12,46 @@ import {
   ShieldCheck, Calendar, BookOpen, Sparkles, TrendingUp,
   ChevronLeft, Plus, Download, Search, Upload, LogIn, UserCheck, Key, Lock, Eye, EyeOff, Save, X
 } from 'lucide-react';
+
+const getStoredData = (key: string, defaultValue: any) => {
+  if (typeof window === 'undefined') return defaultValue;
+  const mappedKey = key.startsWith('sof_') ? key.replace('sof_', 'sof_live_') : key;
+  const stored = localStorage.getItem(mappedKey);
+  if (!stored) {
+    localStorage.setItem(mappedKey, JSON.stringify(defaultValue));
+    return defaultValue;
+  }
+  try {
+    return JSON.parse(stored);
+  } catch (e) {
+    return defaultValue;
+  }
+};
+
+const setStoredData = (key: string, value: any) => {
+  if (typeof window !== 'undefined') {
+    const mappedKey = key.startsWith('sof_') ? key.replace('sof_', 'sof_live_') : key;
+    localStorage.setItem(mappedKey, JSON.stringify(value));
+  }
+};
+
+const DEFAULT_PROFILE_DATA = [];
+
+const DEFAULT_DEPOSIT_PROFILE_DATA = [];
+
+const DEFAULT_MEMBER_LIST_DATA = [];
+
+const DEFAULT_SAVING_DATA = [];
+
+const DEFAULT_GROUP_DATA = [
+  { id: 'R001', name: 'ទុនបម្រុង', gender: 'ក្រុម', startCapital: '0.00', share: '0.00%', addSaving: '-', profit: '0', withdraw: '-', deductFee: '-', actualFee: '-', total: '0.00', checked: true },
+  { id: 'R002', name: 'ទុនសង្គម', gender: 'ក្រុម', startCapital: '0.00', share: '0.00%', addSaving: '-', profit: '0', withdraw: '-', deductFee: '-', actualFee: '-', total: '0.00', checked: true },
+  { id: 'R003', name: 'ទុនក្រុមយេស (YES)', gender: 'ក្រុម', startCapital: '0.00', share: '0.00%', addSaving: '-', profit: '0', withdraw: '-', deductFee: '-', actualFee: '-', total: '0.00', checked: true }
+];
+
+const DEFAULT_DEPOSIT_DATA = [];
+
+const DEFAULT_LOAN_DATA = [];
 
 export default function App() {
   const [userRole, setUserRole] = useState<string | null>(localStorage.getItem('userRole'));
@@ -286,6 +326,328 @@ function PageView({
 function DashboardGeneral() {
   const navigate = useNavigate();
 
+  // Active form tab
+  const [entryTab, setEntryTab] = useState<'savings' | 'loan' | 'repayment' | 'member'>('savings');
+  
+  // Feedback
+  const [successMsg, setSuccessMsg] = useState('');
+
+  // 1. New Member form states
+  const [mName, setMName] = useState('');
+  const [mGender, setMGender] = useState('ប្រុស');
+  const [mType, setMType] = useState('សកម្ម'); // សកម្ម or បញ្ញើ
+  const [mRole, setMRole] = useState('ម្ចាស់ភាគហ៊ុន');
+  const [mJob, setMJob] = useState('');
+  const [mPhone, setMPhone] = useState('');
+  const [mAddress, setMAddress] = useState('');
+
+  // 2. New Savings form
+  const [sMemberId, setSMemberId] = useState('');
+  const [sMonth, setSMonth] = useState('មេសា ២០២៦');
+  const [sAmount, setSAmount] = useState('');
+
+  // 3. New Loan form
+  const [lMemberId, setLMemberId] = useState('');
+  const [lAmount, setLAmount] = useState('');
+  const [lRate, setLRate] = useState('0.8%');
+  const [lTerm, setLTerm] = useState('12');
+  const [lMonth, setLMonth] = useState('មេសា ២០២៦');
+
+  // 4. Loan Repayment form
+  const [rMemberId, setRMemberId] = useState('');
+  const [rPrincipal, setRPrincipal] = useState('');
+  const [rInterest, setRInterest] = useState('');
+  const [rMonth, setRMonth] = useState('មេសា ២០២៦');
+
+  // Load existing records for dropdowns
+  const membersList = getStoredData('sof_member_list_data', DEFAULT_MEMBER_LIST_DATA);
+  const depositProfiles = getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA);
+
+  // Combine lists of active and deposit members for dropdown selections
+  const allMembersForSelect = [
+    ...membersList.map((m: any) => ({ code: m.code, name: m.name, type: 'សកម្ម' })),
+    ...depositProfiles.map((m: any) => ({ code: m.code, name: m.name, type: 'បញ្ញើ' }))
+  ];
+
+  // Initialize selected values if blank
+  useEffect(() => {
+    if (allMembersForSelect.length > 0) {
+      if (!sMemberId) setSMemberId(allMembersForSelect[0].code);
+      const activeOnly = allMembersForSelect.filter((m: any) => m.type === 'សកម្ម');
+      if (activeOnly.length > 0) {
+        if (!lMemberId) setLMemberId(activeOnly[0].code);
+        if (!rMemberId) setRMemberId(activeOnly[0].code);
+      } else {
+        if (!lMemberId) setLMemberId(allMembersForSelect[0].code);
+        if (!rMemberId) setRMemberId(allMembersForSelect[0].code);
+      }
+    }
+  }, [allMembersForSelect]);
+
+  // Handlers
+  const handleAddMember = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mName.trim()) return;
+
+    if (mType === 'សកម្ម') {
+      const activeProfiles = getStoredData('sof_profile_data', DEFAULT_PROFILE_DATA);
+      const newIdNum = activeProfiles.length + 1;
+      const newCode = `C${String(newIdNum).padStart(3, '0')}`;
+      const khmerNum = ["០", "១", "២", "៣", "៤", "៥", "៦", "៧", "៨", "៩"];
+      const khmerIdPrefix = String(newIdNum).split('').map(char => khmerNum[parseInt(char)] || char).join('');
+      const newId = `${khmerIdPrefix} ${newCode}`;
+
+      // Insert active profiles
+      const newProfile = {
+        id: newId,
+        name: mName.trim(),
+        gender: mGender,
+        role: mRole,
+        job: mJob.trim() || '-',
+        spouse: '-',
+        address: mAddress.trim() || '-',
+        phone: mPhone.trim() || '-',
+        email: '-',
+        facebook: '-',
+        bankName: mPhone.trim() || '-',
+        bankAcc: '-',
+        dob: '-',
+        idCard: '-',
+        heir: '-',
+        relation: '-',
+        img: `https://i.pravatar.cc/150?u=${newIdNum}`
+      };
+      setStoredData('sof_profile_data', [...activeProfiles, newProfile]);
+
+      // Insert member list
+      const memberList = getStoredData('sof_member_list_data', DEFAULT_MEMBER_LIST_DATA);
+      setStoredData('sof_member_list_data', [...memberList, {
+        id: khmerIdPrefix,
+        code: newCode,
+        name: mName.trim(),
+        gender: mGender,
+        type: '-'
+      }]);
+
+      // Insert blank savings row
+      const savings = getStoredData('sof_savings_data', DEFAULT_SAVING_DATA);
+      setStoredData('sof_savings_data', [...savings, {
+        id: newCode,
+        name: mName.trim(),
+        gender: mGender,
+        startCapital: '0.00',
+        share: '0.00%',
+        addSaving: '-',
+        profit: '0',
+        withdraw: '-',
+        deductFee: '-',
+        actualFee: '-',
+        total: '0.00',
+        checked: true
+      }]);
+
+      // Insert blank loans row
+      const loans = getStoredData('sof_loans_data', DEFAULT_LOAN_DATA);
+      setStoredData('sof_loans_data', [...loans, {
+        id: newCode,
+        name: mName.trim(),
+        gender: mGender,
+        loanValue: '-',
+        repayment: '-',
+        interest: '-',
+        newLoan: '-',
+        remaining: '-',
+        interestPaid: '-',
+        checked: true
+      }]);
+
+    } else {
+      // Deposit member
+      const depositProfiles = getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA);
+      const newIdNum = depositProfiles.length + 1;
+      const newCode = `D${String(newIdNum).padStart(3, '0')}`;
+      const khmerNum = ["០", "១", "២", "៣", "៤", "៥", "៦", "៧", "៨", "៩"];
+      const khmerIdPrefix = String(newIdNum).split('').map(char => khmerNum[parseInt(char)] || char).join('');
+
+      const newDepositProfile = {
+        id: khmerIdPrefix,
+        code: newCode,
+        name: mName.trim(),
+        gender: mGender,
+        job: mJob.trim() || '-',
+        spouse: '-',
+        address: mAddress.trim() || '-',
+        phone: mPhone.trim() || '-',
+        facebook: '-',
+        telegram: '-',
+        joinDate: '-',
+        dob: '-',
+        idCard: '-',
+        heir: '-',
+        relation: '-',
+        img: `https://i.pravatar.cc/150?img=${newIdNum}`
+      };
+      setStoredData('sof_deposit_profile_data', [...depositProfiles, newDepositProfile]);
+
+      // Insert blank savings row
+      const depositSavings = getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA);
+      setStoredData('sof_savings_deposit_data', [...depositSavings, {
+        id: newCode,
+        name: mName.trim(),
+        gender: mGender,
+        village: '0',
+        startCapital: '0.00',
+        addSaving: '-',
+        profit: '0',
+        withdraw: '-',
+        deductFee: '-',
+        actualFee: '-',
+        total: '0.00',
+        checked: true
+      }]);
+    }
+
+    // Success log
+    const logs = getStoredData('sof_query_logs', []);
+    const newLog = `បានបន្ថែមសមាជិកថ្មីឈ្មោះ ${mName} (${mType})`;
+    setStoredData('sof_query_logs', [newLog, ...logs].slice(0, 5));
+
+    setSuccessMsg(`បានចុះឈ្មោះសមាជិក ${mName} ជាស្ថាពរ!`);
+    setMName('');
+    setMJob('');
+    setMPhone('');
+    setMAddress('');
+    setTimeout(() => setSuccessMsg(''), 4500);
+  };
+
+  const handleAddSavings = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sAmount || isNaN(parseFloat(sAmount))) return;
+
+    const selectedM = allMembersForSelect.find(member => member.code === sMemberId);
+    if (!selectedM) return;
+
+    if (selectedM.type === 'សកម្ម') {
+      const savings = getStoredData('sof_savings_data', DEFAULT_SAVING_DATA);
+      const updated = savings.map((s: any) => {
+        if (s.id === sMemberId) {
+          const cap = parseFloat(s.startCapital?.replace(/,/g, '')) || 0;
+          const add = parseFloat(sAmount);
+          const prof = parseFloat(s.profit) || 0;
+          const totalVal = cap + add + prof;
+          return {
+            ...s,
+            addSaving: add.toFixed(2),
+            total: totalVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          };
+        }
+        return s;
+      });
+      setStoredData('sof_savings_data', updated);
+    } else {
+      const savings = getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA);
+      const updated = savings.map((s: any) => {
+        if (s.id === sMemberId) {
+          const cap = parseFloat(s.startCapital?.replace(/,/g, '')) || 0;
+          const add = parseFloat(sAmount);
+          const prof = parseFloat(s.profit) || 0;
+          const totalVal = cap + add + prof;
+          return {
+            ...s,
+            addSaving: add.toFixed(2),
+            total: totalVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          };
+        }
+        return s;
+      });
+      setStoredData('sof_savings_deposit_data', updated);
+    }
+
+    // Success log
+    const logs = getStoredData('sof_query_logs', []);
+    const newLog = `បានបញ្ចូលប្រាក់សន្សំ $${sAmount} ជូន ${selectedM.name} សម្រាប់ខែ ${sMonth}`;
+    setStoredData('sof_query_logs', [newLog, ...logs].slice(0, 5));
+
+    setSuccessMsg(`បានរក្សាទុកការដាក់សន្សំ $${sAmount} ជូន ${selectedM.name}!`);
+    setSAmount('');
+    setTimeout(() => setSuccessMsg(''), 4500);
+  };
+
+  const handleAddLoan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lAmount || isNaN(parseFloat(lAmount))) return;
+
+    const selectedM = allMembersForSelect.find(member => member.code === lMemberId);
+    if (!selectedM) return;
+
+    const loans = getStoredData('sof_loans_data', DEFAULT_LOAN_DATA);
+    const updated = loans.map((l: any) => {
+      if (l.id === lMemberId) {
+        const val = parseFloat(lAmount);
+        const interestRateRaw = parseFloat(lRate) || 1.5;
+        const interestPaidVal = val * (interestRateRaw / 100);
+        return {
+          ...l,
+          loanValue: val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+          remaining: val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+          interest: interestPaidVal.toFixed(2),
+          repayment: '-',
+          interestPaid: '-'
+        };
+      }
+      return l;
+    });
+    setStoredData('sof_loans_data', updated);
+
+    // Success log
+    const logs = getStoredData('sof_query_logs', []);
+    const newLog = `បានផ្តល់ប្រាក់កម្ចី $${lAmount} ជូន ${selectedM.name} សម្រាប់រយៈពេល ${lTerm} ខែ`;
+    setStoredData('sof_query_logs', [newLog, ...logs].slice(0, 5));
+
+    setSuccessMsg(`បានកត់ត្រាការផ្តល់កម្ចី $${lAmount} ជូន ${selectedM.name}!`);
+    setLAmount('');
+    setTimeout(() => setSuccessMsg(''), 4500);
+  };
+
+  const handleRepayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    const pAmt = parseFloat(rPrincipal) || 0;
+    const iAmt = parseFloat(rInterest) || 0;
+
+    if (pAmt <= 0 && iAmt <= 0) return;
+
+    const selectedM = allMembersForSelect.find(member => member.code === rMemberId);
+    if (!selectedM) return;
+
+    const loans = getStoredData('sof_loans_data', DEFAULT_LOAN_DATA);
+    const updated = loans.map((l: any) => {
+      if (l.id === rMemberId) {
+        const origVal = parseFloat(l.loanValue?.replace(/,/g, '')) || 0;
+        const remainingVal = Math.max(0, origVal - pAmt);
+        return {
+          ...l,
+          repayment: pAmt > 0 ? pAmt.toFixed(2) : '-',
+          interestPaid: iAmt > 0 ? iAmt.toFixed(2) : '-',
+          remaining: remainingVal > 0 ? remainingVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'
+        };
+      }
+      return l;
+    });
+    setStoredData('sof_loans_data', updated);
+
+    // Success log
+    const logs = getStoredData('sof_query_logs', []);
+    const newLog = `បានកត់ត្រាការបង់សងកម្ចីពី ${selectedM.name}: ដើម $${pAmt} & ការ $${iAmt}`;
+    setStoredData('sof_query_logs', [newLog, ...logs].slice(0, 5));
+
+    setSuccessMsg(`បានកត់ត្រាការបង់សងមកវិញរួចរាល់សម្រាប់ ${selectedM.name}!`);
+    setRPrincipal('');
+    setRInterest('');
+    setTimeout(() => setSuccessMsg(''), 4500);
+  };
+
+  const recentLogs = getStoredData('sof_query_logs', []);
+
   return (
     <PageView title="ផ្ទាំងគ្រប់គ្រងទូទៅ (Dashboard)" hideBack={true} hideUpload={true} hideDownload={true} hideAdd={true}>
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
@@ -304,8 +666,376 @@ function DashboardGeneral() {
         ))}
       </div>
       
-      <div className="flex items-center justify-center p-12 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50 mb-8">
-        <p className="text-slate-400 font-medium text-xs">មិនទាន់មានទិន្នន័យក្រាហ្វិកនៅឡើយទេ</p>
+      {/* ផ្នែកបញ្ចូលទិន្នន័យ (Data Input Dashboard Module) */}
+      <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-100 shadow-sm mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div>
+            <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
+              <span className="p-1.5 bg-[#eef8f2] text-[#0a6652] rounded-lg">➕</span>
+              <span>ការបញ្ចូលទិន្នន័យថ្មី (New Data Entry)</span>
+            </h3>
+            <p className="text-[10px] text-slate-400 font-bold mt-1">ជ្រើសរើសប្រភេទប្រតិបត្តិការខាងក្រោមដើម្បីបញ្ចូលទៅក្នុងមូលដ្ឋានទិន្នន័យ</p>
+          </div>
+          
+          {successMsg ? (
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold px-4 py-2 rounded-xl animate-pulse flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              {successMsg}
+            </div>
+          ) : (
+            <div className="bg-slate-50 border border-slate-200 text-slate-500 text-[10px] font-bold px-3 py-1.5 rounded-xl">
+              ស្ថានភាពបំពេញ៖ ធម្មតា
+            </div>
+          )}
+        </div>
+
+        {/* Tab Selection */}
+        <div className="flex gap-2 p-1.5 bg-slate-50 rounded-xl my-4 overflow-x-auto">
+          {[
+            { id: 'savings', label: '💰 បញ្ចូលប្រាក់សន្សំ' },
+            { id: 'loan', label: '🤝 ផ្តល់ប្រាក់កម្ចី' },
+            { id: 'repayment', label: '📈 បង់សងកម្ចី' },
+            { id: 'member', label: '👤 ចុះឈ្មោះសមាជិក' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => {
+                setEntryTab(tab.id as any);
+              }}
+              className={`flex-1 whitespace-nowrap text-xs font-extrabold px-4 py-2 rounded-lg transition-all ${
+                entryTab === tab.id 
+                  ? 'bg-white text-[#0a6652] shadow-sm border border-slate-200/50' 
+                  : 'text-slate-600 hover:text-[#0a6652]'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* 1. SAVINGS ENTRY FORM */}
+        {entryTab === 'savings' && (
+          <form onSubmit={handleAddSavings} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">ជ្រើសរើសសមាជិក (Select Member)</label>
+                <select
+                  value={sMemberId}
+                  onChange={(e) => setSMemberId(e.target.value)}
+                  className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
+                >
+                  {allMembersForSelect.map((m: any) => (
+                    <option key={m.code} value={m.code}>
+                      [{m.code}] {m.name} ({m.type})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">សម្រាប់ខែ (For Month)</label>
+                <select
+                  value={sMonth}
+                  onChange={(e) => setSMonth(e.target.value)}
+                  className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
+                >
+                  {['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'].map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">ចំនួនទឹកប្រាក់សន្សំ (Deposit Amount $)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={sAmount}
+                    onChange={(e) => setSAmount(e.target.value)}
+                    className="w-full text-xs font-bold border border-slate-200 rounded-xl pl-8 pr-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                className="bg-[#0a6652] hover:bg-[#085343] text-white font-extrabold text-xs px-6 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
+              >
+                <Save size={14} />
+                <span>រក្សាទុកទិន្នន័យសន្សំ</span>
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* 2. LOAN ENTRY FORM */}
+        {entryTab === 'loan' && (
+          <form onSubmit={handleAddLoan} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">សមាជិកស្នើសុំកម្ចី (Borrower)</label>
+                <select
+                  value={lMemberId}
+                  onChange={(e) => setLMemberId(e.target.value)}
+                  className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
+                >
+                  {allMembersForSelect.filter((m: any) => m.type === 'សកម្ម').map((m: any) => (
+                    <option key={m.code} value={m.code}>
+                      [{m.code}] {m.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">ទំហំប្រាក់កម្ចី (Loan Value $)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">$</span>
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    value={lAmount}
+                    onChange={(e) => setLAmount(e.target.value)}
+                    className="w-full text-xs font-bold border border-slate-200 rounded-xl pl-8 pr-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">អត្រាការប្រាក់គិតជា % (Interest %)</label>
+                <input
+                  type="text"
+                  placeholder="1.5%"
+                  value={lRate}
+                  onChange={(e) => setLRate(e.target.value)}
+                  className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">រយៈពេលកម្ចី - ខែ (Duration)</label>
+                <select
+                  value={lTerm}
+                  onChange={(e) => setLTerm(e.target.value)}
+                  className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
+                >
+                  {['6', '12', '18', '24'].map(t => (
+                    <option key={t} value={t}>{t} ខែ (Months)</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                className="bg-[#0a6652] hover:bg-[#085343] text-white font-extrabold text-xs px-6 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
+              >
+                <Save size={14} />
+                <span>អនុម័ត និងរក្សាទុកការផ្តល់កម្ចី</span>
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* 3. REPAYMENT ENTRY FORM */}
+        {entryTab === 'repayment' && (
+          <form onSubmit={handleRepayment} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">សមាជិកបង់សង (Returning Member)</label>
+                <select
+                  value={rMemberId}
+                  onChange={(e) => setRMemberId(e.target.value)}
+                  className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
+                >
+                  {allMembersForSelect.filter((m: any) => m.type === 'សកម្ម').map((m: any) => (
+                    <option key={m.code} value={m.code}>
+                      [{m.code}] {m.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">ប្រាក់ដើមបង់សង (Paid Principal $)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">$</span>
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    value={rPrincipal}
+                    onChange={(e) => setRPrincipal(e.target.value)}
+                    className="w-full text-xs font-bold border border-slate-200 rounded-xl pl-8 pr-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">ប្រាក់ការបង់សង (Paid Interest $)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">$</span>
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    value={rInterest}
+                    onChange={(e) => setRInterest(e.target.value)}
+                    className="w-full text-xs font-bold border border-slate-200 rounded-xl pl-8 pr-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">សម្រាប់ខែ (For Month)</label>
+                <select
+                  value={rMonth}
+                  onChange={(e) => setRMonth(e.target.value)}
+                  className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
+                >
+                  {['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'].map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                className="bg-[#0a6652] hover:bg-[#085343] text-white font-extrabold text-xs px-6 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
+              >
+                <Save size={14} />
+                <span>កត់ត្រាការបង់សងរំលស់</span>
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* 4. NEW MEMBER REGISTRATION FORM */}
+        {entryTab === 'member' && (
+          <form onSubmit={handleAddMember} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">ឈ្មោះសមាជិក (Full Name)</label>
+                <input
+                  type="text"
+                  placeholder="ឧ. សុខ ពិសិដ្ឋ"
+                  value={mName}
+                  onChange={(e) => setMName(e.target.value)}
+                  className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">ភេទ (Gender)</label>
+                <select
+                  value={mGender}
+                  onChange={(e) => setMGender(e.target.value)}
+                  className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
+                >
+                  <option value="ប្រុស">ប្រុស (Male)</option>
+                  <option value="ស្រី">ស្រី (Female)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">ប្រភេទសមាជិក (Member Type)</label>
+                <select
+                  value={mType}
+                  onChange={(e) => setMType(e.target.value)}
+                  className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
+                >
+                  <option value="សកម្ម">សមាជិកសកម្ម (Active)</option>
+                  <option value="បញ្ញើ">សមាជិកបញ្ញើ (Deposit)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">តួនាទីសមាជិក (Status / Role)</label>
+                <select
+                  value={mRole}
+                  onChange={(e) => setMRole(e.target.value)}
+                  disabled={mType === 'បញ្ញើ'}
+                  className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:border-[#0a6652] outline-none disabled:bg-slate-100 disabled:text-slate-400"
+                >
+                  <option value="ម្ចាស់ភាគហ៊ុន">ម្ចាស់ភាគហ៊ុន (Shareholder)</option>
+                  <option value="អភិបាល & ម្ចាស់ភាគហ៊ុន">អភិបាល (Director & Shareholder)</option>
+                  <option value="ប្រធាន & ម្ចាស់ភាគហ៊ុន">ប្រធាន (President)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">មុខរបរ (Occupation)</label>
+                <input
+                  type="text"
+                  placeholder="ឧ. គ្រូ ឬសេរី"
+                  value={mJob}
+                  onChange={(e) => setMJob(e.target.value)}
+                  className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">លេខទូរស័ព្ទ (Phone Number)</label>
+                <input
+                  type="text"
+                  placeholder="ឧ. 012345678"
+                  value={mPhone}
+                  onChange={(e) => setMPhone(e.target.value)}
+                  className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">អាសយដ្ឋាន (Address Details)</label>
+                <input
+                  type="text"
+                  placeholder="ឧ. ភូមិកំពង់ស្ពឺ ឃុំកណ្តាល..."
+                  value={mAddress}
+                  onChange={(e) => setMAddress(e.target.value)}
+                  className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                className="bg-[#0a6652] hover:bg-[#085343] text-white font-extrabold text-xs px-6 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
+              >
+                <Save size={14} />
+                <span>ចុះឈ្មោះសមាជិកថ្មី</span>
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Recent Transactions List (Mini-terminal) */}
+        {recentLogs.length > 0 && (
+          <div className="mt-5 pt-4 border-t border-slate-100">
+            <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+              <span>កំណត់ត្រាបញ្ចូលចុងក្រោយ (Recent Inputs Log)</span>
+            </h4>
+            <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/40 text-[10px] space-y-1.5 font-mono text-slate-600">
+              {recentLogs.map((log: string, idx: number) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <span className="text-[#0a6652] font-semibold">✓</span>
+                  <span>{log}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ផ្នែកគ្រប់គ្រងប្រព័ន្ធជម្រើស (Admin Management Quick Options List) */}
@@ -390,31 +1120,9 @@ function DashboardGeneral() {
 function Members() {
   const [activeTab, setActiveTab] = useState('list');
 
-  const profileData = [
-    { id: '១ C001', name: 'ឆន សុភ័ក្រ', gender: 'ប្រុស', role: 'ប្រធាន & ម្ចាស់ភាគហ៊ុន', job: 'បុគ្គលិកអង្គការ', spouse: '-', address: 'ក្រាំងពន្លៃ ឃុំ ឬស្សីសាញ់', phone: '092123051', email: 'phornsophak@gmail.com', facebook: 'Prom Sophak', bankName: '093539878', bankAcc: '-', dob: '3/6/1988', idCard: '030531819', heir: 'ឆន រិទ្ធិស័ក្ត', relation: 'កូន', img: 'https://i.pravatar.cc/150?u=1' },
-    { id: '២ C003', name: 'លី រ៉ា', gender: 'ប្រុស', role: 'អភិបាល & ម្ចាស់ភាគហ៊ុន', job: '-', spouse: '-', address: '-', phone: '086312254', email: '-', facebook: 'Vy Laur', bankName: '086312254', bankAcc: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?u=2' },
-    { id: '៣ C006', name: 'គង់ សុគមន៍', gender: 'ប្រុស', role: 'ម្ចាស់ភាគហ៊ុន', job: 'សាស្ត្រាចារ្យ', spouse: '-', address: '-', phone: '0964308796', email: '-', facebook: 'គង់ សុគមន៍', bankName: '0964308796', bankAcc: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?u=3' },
-    { id: '៤ C008', name: 'រ៉ន ចាន់សោភា', gender: 'ប្រុស', role: 'ម្ចាស់ភាគហ៊ុន', job: '-', spouse: '-', address: '-', phone: '015517763', email: '-', facebook: 'Vorn Chansorphea', bankName: '015517763', bankAcc: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?u=4' },
-    { id: '៥ C011', name: 'អៀង វាសនា', gender: 'ស្រី', role: 'ម្ចាស់ភាគហ៊ុន', job: 'គ្រូបង្រៀន', spouse: '-', address: '-', phone: '069396949', email: '-', facebook: 'Veasna Theang', bankName: '069396949', bankAcc: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?u=5' }
-  ];
-
-  const depositProfileData = [
-    { id: '១', code: 'D001', name: 'ឈៀវ គឹមឡាយ', gender: 'ស្រី', job: '-', spouse: '-', address: '-', phone: '-', facebook: 'Kimlay Chiev', telegram: '-', joinDate: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?img=1' },
-    { id: '២', code: 'D002', name: 'ឈៀវ គឹមលន់', gender: 'ស្រី', job: '-', spouse: '-', address: '-', phone: '-', facebook: 'Kim Lon', telegram: '-', joinDate: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?img=5' },
-    { id: '៣', code: 'D004', name: 'សែន សុម៉ាន់', gender: 'ប្រុស', job: '-', spouse: '-', address: '-', phone: '-', facebook: '-', telegram: '-', joinDate: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?img=11' },
-    { id: '៤', code: 'D006', name: 'តួង បូរិន', gender: 'ប្រុស', job: '-', spouse: '-', address: '-', phone: '-', facebook: 'HengBuritn', telegram: '-', joinDate: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?img=12' },
-    { id: '៥', code: 'D007', name: 'រ៉ស់ ដុល្លា', gender: 'ប្រុស', job: '-', spouse: '-', address: '-', phone: '-', facebook: '-', telegram: '-', joinDate: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?img=15' },
-    { id: '៦', code: 'D008', name: 'រ៉ស់ ភារុណ', gender: 'ស្រី', job: '-', spouse: '-', address: '-', phone: '-', facebook: 'Chhayhnon Rv', telegram: '-', joinDate: '-', dob: '-', idCard: '-', heir: '-', relation: '-', img: 'https://i.pravatar.cc/150?img=20' },
-  ];
-
-  const memberListData = [
-    { id: '១', code: 'C001', name: 'ឆន សុភ័ក្រ', gender: 'ប្រុស', type: '-' },
-    { id: '២', code: 'C002', name: 'សាន កិត្យាផល', gender: 'ប្រុស', type: '-' },
-    { id: '៣', code: 'C003', name: 'លី រ៉ា', gender: 'ប្រុស', type: '-' },
-    { id: '៤', code: 'C004', name: 'គឹម សុភ័ក្រ្តា', gender: 'ប្រុស', type: '-' },
-    { id: '៥', code: 'C005', name: 'ញាណ ផល្លី', gender: 'ប្រុស', type: '-' },
-    { id: '៦', code: 'C006', name: 'គង់ សុគមន៍', gender: 'ប្រុស', type: '-' },
-  ];
+  const [profileData, setProfileData] = useState(() => getStoredData('sof_profile_data', DEFAULT_PROFILE_DATA));
+  const [depositProfileData, setDepositProfileData] = useState(() => getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA));
+  const [memberListData, setMemberListData] = useState(() => getStoredData('sof_member_list_data', DEFAULT_MEMBER_LIST_DATA));
 
   return (
     <PageView title="ពត៌មានសមាជិក (Members)">
@@ -598,36 +1306,9 @@ function Savings() {
   const [activeTab, setActiveTab] = useState('members');
   const months = ['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'];
 
-  const savingData = [
-    { id: 'C001', name: 'ឆន សុភ័ក្រ', gender: 'ប្រុស', startCapital: '945.69', share: '1.31%', addSaving: '30.00', profit: '5.938979617', withdraw: '-', deductFee: '-', actualFee: '-', total: '981.63', checked: true },
-    { id: 'C002', name: 'សាន កិត្យាផល', gender: 'ប្រុស', startCapital: '145.85', share: '0.20%', addSaving: '-', profit: '0.915948925', withdraw: '-', deductFee: '-', actualFee: '-', total: '146.77', checked: true },
-    { id: 'C003', name: 'លី រ៉ា', gender: 'ប្រុស', startCapital: '849.78', share: '1.18%', addSaving: '5.00', profit: '5.336650621', withdraw: '-', deductFee: '-', actualFee: '-', total: '860.12', checked: true },
-    { id: 'C004', name: 'គីម សុភ័ក្រ្តា', gender: 'ប្រុស', startCapital: '550.63', share: '0.77%', addSaving: '-', profit: '3.457965883', withdraw: '-', deductFee: '-', actualFee: '-', total: '554.09', checked: true },
-    { id: 'C005', name: 'ញាណ ផល្លី', gender: 'ប្រុស', startCapital: '433.28', share: '0.60%', addSaving: '-', profit: '2.720984666', withdraw: '-', deductFee: '-', actualFee: '-', total: '436.00', checked: true },
-    { id: 'C006', name: 'គង់ សុគមន៍', gender: 'ប្រុស', startCapital: '1,260.05', share: '1.75%', addSaving: '-', profit: '7.913150809', withdraw: '-', deductFee: '-', actualFee: '-', total: '1,267.96', checked: true },
-    { id: 'C007', name: 'វង្ស វិសាល', gender: 'ប្រុស', startCapital: '465.49', share: '0.65%', addSaving: '-', profit: '2.923260657', withdraw: '-', deductFee: '-', actualFee: '-', total: '468.41', checked: true },
-    { id: 'C008', name: 'រ៉ន ចាន់សោភា', gender: 'ប្រុស', startCapital: '492.60', share: '0.68%', addSaving: '5.00', profit: '3.093531719', withdraw: '-', deductFee: '-', actualFee: '-', total: '500.69', checked: true },
-    { id: 'C009', name: 'កង ធី', gender: 'ប្រុស', startCapital: '116.47', share: '0.16%', addSaving: '-', profit: '0.731440425', withdraw: '-', deductFee: '-', actualFee: '-', total: '117.20', checked: true },
-    { id: 'C010', name: 'ថា សុគន្ធា', gender: 'ស្រី', startCapital: '466.52', share: '0.65%', addSaving: '-', profit: '2.929764473', withdraw: '-', deductFee: '-', actualFee: '-', total: '469.45', checked: true },
-  ];
-
-  const groupData = [
-    { id: 'R001', name: 'ទុនបម្រុង', gender: 'ក្រុម', startCapital: '10,466.40', share: '14.54%', addSaving: '83.96', profit: '65.72918927', withdraw: '-', deductFee: '-', actualFee: '-', total: '10,616.08', checked: true },
-    { id: 'R002', name: 'ទុនសង្គម', gender: 'ក្រុម', startCapital: '505.23', share: '0.70%', addSaving: '4.20', profit: '3.172876304', withdraw: '-', deductFee: '-', actualFee: '-', total: '512.60', checked: true },
-    { id: 'R003', name: 'ទុនក្រុមយេស (YES)', gender: 'ក្រុម', startCapital: '631.11', share: '0.88%', addSaving: '1.00', profit: '3.963403787', withdraw: '-', deductFee: '-', actualFee: '-', total: '636.08', checked: true },
-    ...Array(6).fill(null).map((_, i) => ({ id: `R00${i + 4}`, name: '0 0 0', gender: '###', startCapital: '-', share: '0.00%', addSaving: '-', profit: '0', withdraw: '-', deductFee: '-', actualFee: '-', total: '-', checked: true }))
-  ];
-
-  const depositData = [
-    { id: 'D001', name: 'ឈៀវ គឹមឡាយ', gender: 'ស្រី', village: '0', startCapital: '226.27', addSaving: '10.00', profit: '1.13', withdraw: '-', deductFee: '-', actualFee: '-', total: '237.40', checked: true },
-    { id: 'D002', name: 'ឈៀវ គឹមលន់', gender: 'ស្រី', village: '0', startCapital: '19.01', addSaving: '-', profit: '0.10', withdraw: '-', deductFee: '-', actualFee: '-', total: '19.11', checked: true },
-    { id: 'D004', name: 'សែន សុម៉ាន់', gender: 'ប្រុស', village: '0', startCapital: '692.18', addSaving: '-', profit: '3.46', withdraw: '-', deductFee: '-', actualFee: '-', total: '695.64', checked: true },
-    { id: 'D006', name: 'តួង បូរិន', gender: 'ប្រុស', village: '0', startCapital: '30.89', addSaving: '-', profit: '0.15', withdraw: '-', deductFee: '-', actualFee: '-', total: '31.04', checked: true },
-    { id: 'D007', name: 'រ៉ស់ ដុល្លា', gender: 'ប្រុស', village: '0', startCapital: '9.71', addSaving: '-', profit: '0.05', withdraw: '-', deductFee: '-', actualFee: '-', total: '9.76', checked: true },
-    { id: 'D008', name: 'តៀវ ឆៃដន់', gender: 'ស្រី', village: '0', startCapital: '43.88', addSaving: '-', profit: '0.22', withdraw: '-', deductFee: '-', actualFee: '-', total: '44.10', checked: true },
-    { id: 'D009', name: 'ពៅ សុគន្ធា', gender: 'ស្រី', village: '0', startCapital: '454.01', addSaving: '-', profit: '2.27', withdraw: '-', deductFee: '-', actualFee: '-', total: '456.28', checked: true },
-    { id: 'D010', name: 'សុខ នីដា', gender: 'ស្រី', village: '0', startCapital: '5.25', addSaving: '-', profit: '0.03', withdraw: '-', deductFee: '-', actualFee: '-', total: '5.28', checked: true },
-  ];
+  const [savingData, setSavingData] = useState(() => getStoredData('sof_savings_data', DEFAULT_SAVING_DATA));
+  const [groupData, setGroupData] = useState(() => getStoredData('sof_savings_group_data', DEFAULT_GROUP_DATA));
+  const [depositData, setDepositData] = useState(() => getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA));
 
   return (
     <PageView title={
@@ -825,18 +1506,7 @@ function Loans() {
   const [activeTab, setActiveTab] = useState('members');
   const months = ['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'];
 
-  const loanData = [
-    { id: 'C001', name: 'ឆន សុភ័ក្រ', gender: 'ប្រុស', loanValue: '500.00', repayment: '500.00', interest: '7.50', newLoan: '-', remaining: '-', interestPaid: '7.50', checked: true },
-    { id: 'C002', name: 'សាន កិត្យាផល', gender: 'ប្រុស', loanValue: '-', repayment: '-', interest: '-', newLoan: '-', remaining: '-', interestPaid: '-', checked: true },
-    { id: 'C003', name: 'លី រ៉ា', gender: 'ប្រុស', loanValue: '-', repayment: '-', interest: '-', newLoan: '-', remaining: '-', interestPaid: '-', checked: true },
-    { id: 'C004', name: 'គឹម សុភ័ក្រ្តា', gender: 'ប្រុស', loanValue: '-', repayment: '-', interest: '-', newLoan: '-', remaining: '-', interestPaid: '-', checked: true },
-    { id: 'C005', name: 'ញាណ ផល្លី', gender: 'ប្រុស', loanValue: '-', repayment: '-', interest: '-', newLoan: '-', remaining: '-', interestPaid: '-', checked: true },
-    { id: 'C006', name: 'គង់ សុគមន៍', gender: 'ប្រុស', loanValue: '-', repayment: '-', interest: '-', newLoan: '-', remaining: '-', interestPaid: '-', checked: true },
-    { id: 'C007', name: 'វង្ស វិសាល', gender: 'ប្រុស', loanValue: '-', repayment: '-', interest: '-', newLoan: '-', remaining: '-', interestPaid: '-', checked: true },
-    { id: 'C008', name: 'រ៉ន ចាន់សោភា', gender: 'ប្រុស', loanValue: '2,730.25', repayment: '49.05', interest: '40.95', newLoan: '-', remaining: '2,681.20', interestPaid: '40.95', checked: true },
-    { id: 'C009', name: 'កង ធី', gender: 'ប្រុស', loanValue: '467.55', repayment: '-', interest: '7.01', newLoan: '7.01', remaining: '474.56', interestPaid: '7.01', checked: true },
-    { id: 'C010', name: 'ថា សុគន្ធា', gender: 'ស្រី', loanValue: '1,932.30', repayment: '-', interest: '28.98', newLoan: '28.98', remaining: '1,961.28', interestPaid: '28.98', checked: true },
-  ];
+  const [loanData, setLoanData] = useState(() => getStoredData('sof_loans_data', DEFAULT_LOAN_DATA));
 
   const externalLoanData = [
     { id: 'I01', name: 'កម្ចីទទួលបានពី LSG', gender: 'ក្រុម', received: '-', repayment: '-', interestRate: '1.20%', duration: '', newLoan: '-', remaining: '-', interest: '-', totalToPay: '-', note: '' },
