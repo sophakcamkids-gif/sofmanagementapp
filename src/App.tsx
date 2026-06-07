@@ -331,7 +331,8 @@ function PageView({
   backPath,
   hideBack = false,
   hideDownload = false,
-  onBack
+  onBack,
+  onUpload
 }: { 
   title: React.ReactNode | string; 
   children: React.ReactNode;
@@ -342,9 +343,51 @@ function PageView({
   hideBack?: boolean;
   hideDownload?: boolean;
   onBack?: () => void;
+  onUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleUploadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (onUpload) {
+      onUpload(e);
+      return;
+    }
+    
+    // Default global JSON import
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const data = JSON.parse(text);
+        if (typeof data === 'object' && data !== null) {
+          Object.keys(data).forEach(key => {
+            if (key.startsWith('sof_')) {
+              localStorage.setItem(key, JSON.stringify(data[key]));
+            }
+          });
+          alert('ទិន្នន័យត្រូវបាននាំចូលដោយជោគជ័យ! ប្រព័ន្ធនឹងដំណើរការឡើងវិញ...');
+          window.location.reload();
+        } else {
+          throw new Error("Invalid format");
+        }
+      } catch (err) {
+        alert('ឯកសារមិនត្រឹមត្រូវ! សូមជ្រើសរើសឯកសារទម្រង់ JSON ដែលបានទាញយក។');
+      }
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const handleBack = () => {
     if (onBack) {
@@ -368,8 +411,9 @@ function PageView({
          <h2 className="text-base sm:text-lg md:text-xl font-bold text-[#0a6652]">{title}</h2>
          <div className="flex flex-wrap gap-2">
             {!hideUpload && (
-              <button className="flex text-xs items-center gap-1.5 bg-slate-100 text-slate-700 px-3 py-1.5 rounded-full font-bold hover:bg-slate-200 transition-colors">
+              <button onClick={handleUploadClick} className="flex text-xs items-center gap-1.5 bg-slate-100 text-slate-700 px-3 py-1.5 rounded-full font-bold hover:bg-slate-200 transition-colors cursor-pointer">
                 <Upload size={14} strokeWidth={2.5} /> នាំយកពីកុំព្យូទ័រ
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json,.csv,.xlsx" />
               </button>
             )}
             {!hideDownload && (
@@ -2519,6 +2563,34 @@ function SettingsPage() {
     }
   };
 
+  const handleExportJSON = () => {
+    const data: Record<string, any> = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('sof_')) {
+        const val = localStorage.getItem(key);
+        if (val) {
+          try {
+            data[key] = JSON.parse(val);
+          } catch (e) {
+            data[key] = val;
+          }
+        }
+      }
+    }
+    
+    // Create blob and trigger download
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `sof_backup_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <PageView title="បញ្ជូល និងកំណត់ទិន្នន័យ (Settings)" hideUpload={true} hideDownload={true} hideAdd={true}>
       <p className="text-slate-500 font-medium text-xs mb-6">ការកំណត់ប្រព័ន្ធ អត្រាការប្រាក់ និងការនាំចេញទិន្នន័យគម្រោង។</p>
@@ -2617,10 +2689,17 @@ function SettingsPage() {
           </div>
         </div>
 
-        <div className="pt-1 flex flex-col gap-2">
-          <div className="bg-white/10 p-2.5 rounded-xl border border-white/5 text-[9px] text-[#e3f4ee] flex items-center gap-2">
-            <Download size={14} className="text-yellow-300 shrink-0" />
-            <span>អ្នកអាចទាញយកដោយផ្ទាល់ត្រង់ផ្ទាំងបញ្ជារបស់ Google AI Studio Workspace!</span>
+        <div className="pt-2 flex flex-col gap-2">
+          <button 
+            type="button"
+            onClick={handleExportJSON}
+            className="w-full flex items-center justify-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-bold text-xs py-3 rounded-xl transition-colors cursor-pointer"
+          >
+            <Download size={16} />
+            <span>ទាញយកទិន្នន័យ (Export to JSON)</span>
+          </button>
+          <div className="bg-white/10 p-2.5 rounded-xl border border-white/5 text-[9px] text-[#e3f4ee] flex items-center justify-center gap-2 text-center mt-2">
+            <span>អ្នកក៏អាចនាំចូល (Import) ទិន្នន័យត្រឡប់មកវិញ ពីផ្ទាំងបញ្ជីសមាជិក ឬសន្សំបានផងដែរ។</span>
           </div>
         </div>
       </div>
