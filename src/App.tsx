@@ -10,7 +10,7 @@ import {
   FileText, PieChart, Home, Heart, MessageSquare, 
   Menu, Bot, BarChart3, Receipt, HandCoins, 
   ShieldCheck, Calendar, BookOpen, Sparkles, TrendingUp,
-  ChevronLeft, Plus, Download, Search, Upload, LogIn, UserCheck, Key, Lock, Eye, EyeOff, Save, X
+  ChevronLeft, Plus, Download, Search, Upload, LogIn, UserCheck, Key, Lock, Eye, EyeOff, Save, X, Trash2
 } from 'lucide-react';
 
 const getStoredData = (key: string, defaultValue: any) => {
@@ -51,6 +51,12 @@ const DEFAULT_GROUP_DATA = [
 
 const DEFAULT_DEPOSIT_DATA: any[] = [];
 const DEFAULT_LOAN_DATA: any[] = [];
+
+const DEFAULT_EXPENSE_DATA = [
+  { id: '1', date: '2026-04-15', supplier: 'SOF', description: 'ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់ លី រ៉ា', category: 'ចំណាយប្រតិបត្តិការ', qty: 1, price: 170.00, total: 170.00 },
+  { id: '2', date: '2026-04-15', supplier: 'SOF', description: 'ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់ ផាត សុភាព', category: 'ចំណាយប្រតិបត្តិការ', qty: 1, price: 30.00, total: 30.00 },
+  { id: '3', date: '2026-04-15', supplier: 'SOF', description: 'កាតទូរស័ព្ទប្រចាំខែសម្រាប់ លី រ៉ា', category: 'ចំណាយប្រតិបត្តិការ', qty: 2, price: 4.00, total: 8.00 }
+];
 
 function SidebarLink({ to, label }: { to: string, label: string }) {
   const navigate = useNavigate();
@@ -144,7 +150,7 @@ export default function App() {
                   <SidebarLink to="/members" label="👥 ពត៌មានសមាជិក (Members)" />
                   <SidebarLink to="/savings" label="💰 ប្រាក់សន្សំ (Savings)" />
                   <SidebarLink to="/loans" label="🤝 ប្រាក់កម្ចី (Loans)" />
-                  <SidebarLink to="/payroll" label="💸 បើកប្រាក់បៀវត្សរ៍ (Payroll)" />
+                  <SidebarLink to="/expenses" label="💸 ការចំណាយ (Expenses)" />
                   <SidebarLink to="/reports" label="📈 របាយការណ៍បិទបញ្ជី (Reports)" />
                   <SidebarLink to="/history" label="📜 ប្រវត្តិប្រតិបត្តិការ (Logs)" />
                   <SidebarLink to="/settings" label="⚙️ ការកំណត់ប្រព័ន្ធ (Settings)" />
@@ -203,9 +209,9 @@ export default function App() {
                   <Loans />
                 </AdminGuard>
               } />
-              <Route path="/payroll" element={
+              <Route path="/expenses" element={
                 <AdminGuard userRole={userRole}>
-                  <Payroll />
+                  <Expenses />
                 </AdminGuard>
               } />
               <Route path="/reports" element={
@@ -1142,9 +1148,9 @@ function DashboardGeneral() {
               color: "bg-amber-50 text-amber-600 border-amber-100/60 hover:bg-amber-100/90" 
             },
             { 
-              title: "បើកប្រាក់បៀវត្សរ៍ (Payroll)", 
-              desc: "ចាត់ចែងបើកប្រាក់បៀវត្សរ៍ប្រចាំខែ", 
-              path: "/payroll", 
+              title: "ការចំណាយ (Expenses)", 
+              desc: "កត់ត្រា និងគ្រប់គ្រងរាល់ការចំណាយផ្សេងៗ", 
+              path: "/expenses", 
               icon: <Receipt className="w-5 h-5" />, 
               color: "bg-blue-50 text-blue-600 border-blue-100/60 hover:bg-blue-100/90" 
             },
@@ -1782,12 +1788,349 @@ function Loans() {
   );
 }
 
-function Payroll() {
+function Expenses() {
+  const [selectedMonth, setSelectedMonth] = useState('មេសា ២០២៦');
+  const months = ['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'];
+
+  const [expenses, setExpenses] = useState<any[]>(() => 
+    getStoredData('sof_expenses_data', DEFAULT_EXPENSE_DATA)
+  );
+
+  const [isAdding, setIsAdding] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('ទាំងអស់');
+
+  // New expense form inputs
+  const [formDate, setFormDate] = useState('2026-04-15');
+  const [formSupplier, setFormSupplier] = useState('SOF');
+  const [formDesc, setFormDesc] = useState('');
+  const [formCategory, setFormCategory] = useState('ចំណាយប្រតិបត្តិការ');
+  const [formQty, setFormQty] = useState(1);
+  const [formPrice, setFormPrice] = useState(0);
+  const [successMsg, setSuccessMsg] = useState('');
+
+  const handleAddExpense = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formDesc.trim()) {
+      alert("សូមបញ្ចូល មុខចំណាយ (Expense item)!");
+      return;
+    }
+
+    const newExpense = {
+      id: String(Date.now()),
+      date: formDate,
+      supplier: formSupplier || '-',
+      description: formDesc,
+      category: formCategory,
+      qty: Number(formQty) || 1,
+      price: Number(formPrice) || 0,
+      total: (Number(formQty) || 1) * (Number(formPrice) || 0)
+    };
+
+    const updated = [...expenses, newExpense];
+    setExpenses(updated);
+    setStoredData('sof_expenses_data', updated);
+
+    // Reset Form
+    setFormDesc('');
+    setFormQty(1);
+    setFormPrice(0);
+    setIsAdding(false);
+    triggerSuccess("បានរក្សាទុកការចំណាយថ្មីដោយជោគជ័យ!");
+  };
+
+  const triggerSuccess = (msg: string) => {
+    setSuccessMsg(msg);
+    setTimeout(() => setSuccessMsg(''), 4000);
+  };
+
+  const handleDelete = (id: string) => {
+    const updated = expenses.filter(exp => exp.id !== id);
+    setExpenses(updated);
+    setStoredData('sof_expenses_data', updated);
+    triggerSuccess("បានលុបទិន្នន័យការចំណាយរួចរាល់!");
+  };
+
+  const handleResetDefaults = () => {
+    setExpenses(DEFAULT_EXPENSE_DATA);
+    setStoredData('sof_expenses_data', DEFAULT_EXPENSE_DATA);
+    triggerSuccess("បានកំណត់ទិន្នន័យការចំណាយទៅដើមវិញរួចរាល់!");
+  };
+
+  // Filter logic
+  const filteredExpenses = expenses.filter(exp => {
+    const matchesSearch = 
+      exp.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      exp.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      exp.category.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesCategory = selectedCategory === 'ទាំងអស់' || exp.category === selectedCategory;
+
+    return matchesSearch && matchesCategory;
+  });
+
+  const totalAmount = filteredExpenses.reduce((sum, exp) => sum + (Number(exp.total) || 0), 0);
+
   return (
-    <PageView title="បើកប្រាក់ខែ (Payroll)">
-      <p className="text-slate-500 font-medium mb-6">ទូទាត់ប្រាក់ខែ និងកាត់ប្រាក់សន្សំដោយស្វ័យប្រវត្តិ។</p>
-      <div className="flex items-center justify-center h-48 bg-blue-50 text-blue-600 rounded-2xl font-bold border border-blue-100">
-        កុំព្យូទ័រគណនាប្រាក់ខែ និងទម្រង់ Import Excel
+    <PageView 
+      hideUpload={true} 
+      hideDownload={true} 
+      hideAdd={true}
+      title={
+        <div className="flex flex-col md:flex-row md:items-center gap-3">
+          <span>បញ្ជីការចំណាយ (Expenses) - </span>
+          <select 
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="text-lg md:text-xl font-bold bg-[#eef8f2] border border-green-200 text-[#0a6652] px-3 py-1 rounded-lg outline-none cursor-pointer shadow-sm w-fit"
+          >
+            {months.map(m => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+        </div>
+      }
+    >
+      {/* Notifications */}
+      {successMsg && (
+        <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-bold rounded-2xl flex items-center justify-between shadow-sm">
+          <span>✅ {successMsg}</span>
+          <button onClick={() => setSuccessMsg('')} className="text-emerald-500 hover:text-emerald-700">
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+        <div className="bg-[#eef8f2] p-5 rounded-3xl border border-green-200/60 shadow-sm">
+          <div className="text-xs font-black text-slate-500 uppercase tracking-wide mb-1">ការចំណាយសរុប (Total filtered)</div>
+          <div className="text-3xl font-black text-[#0a6652]">${totalAmount.toFixed(2)}</div>
+          <div className="text-[10px] text-slate-400 font-bold mt-1">ស្មើនឹង {filteredExpenses.length} ប្រតិបត្តិការ</div>
+        </div>
+        <div className="bg-blue-50/60 p-5 rounded-3xl border border-blue-100 shadow-sm">
+          <div className="text-xs font-black text-slate-500 uppercase tracking-wide mb-1">ប្រភេទប្រតិបត្តិការ</div>
+          <div className="text-3xl font-black text-blue-700">
+            {new Set(filteredExpenses.map(e => e.category)).size}
+          </div>
+          <div className="text-[10px] text-slate-400 font-bold mt-1">ប្រភេទចំណាយប្លែកៗគ្នា</div>
+        </div>
+        <div className="bg-amber-50/60 p-5 rounded-3xl border border-amber-100 shadow-sm flex flex-col justify-between">
+          <div className="text-xs font-black text-slate-500 uppercase tracking-wide mb-1">ប្រតិបត្តិការសរុបទាំងអស់</div>
+          <div className="text-3xl font-black text-amber-700">{expenses.length}</div>
+          <div className="text-[10px] text-slate-400 font-bold mt-1">កត់ត្រាក្នុងប្រព័ន្ធ</div>
+        </div>
+      </div>
+
+      {/* Filter and Add Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-wrap items-center flex-1 max-w-2xl gap-3">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="ស្វែងរកតាម មុខចំណាយ ឬអ្នកផ្គត់ផ្គង់..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 hover:bg-slate-100/50 focus:bg-white text-xs font-medium text-slate-800 placeholder-slate-400 rounded-xl border border-slate-200 outline-none transition-colors"
+            />
+          </div>
+          {/* Category Dropdown */}
+          <select 
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 rounded-xl border border-slate-200 outline-none cursor-pointer transition-colors"
+          >
+            <option value="ទាំងអស់">ប្រភេទចំណាយ៖ ទាំងអស់</option>
+            <option value="ចំណាយប្រតិបត្តិការ">ចំណាយប្រតិបត្តិការ</option>
+            <option value="ទុនសង្គម">ទុនសង្គម</option>
+            <option value="ទុនបម្រុង">ទុនបម្រុង</option>
+            <option value="ចំណាយផ្សេងៗ">ចំណាយផ្សេងៗ</option>
+          </select>
+        </div>
+
+        <div className="flex gap-2">
+          <button 
+            onClick={() => setIsAdding(!isAdding)}
+            className="flex items-center gap-2 bg-[#0a6652] hover:bg-[#084f40] text-white font-bold text-xs py-2 px-4 rounded-xl shadow-md cursor-pointer transition-colors"
+          >
+            <Plus size={16} />
+            <span>{isAdding ? "បិទហ្វម" : "បន្ថែមការចំណាយថ្មី"}</span>
+          </button>
+          
+          <button 
+            onClick={handleResetDefaults}
+            className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl border border-rose-100 cursor-pointer transition-colors"
+            title="កំណត់ទិន្នន័យដើមវិញ"
+          >
+            បិទឡើងវិញ (Reset)
+          </button>
+        </div>
+      </div>
+
+      {/* Add Form collapsible block */}
+      {isAdding && (
+        <form onSubmit={handleAddExpense} className="mb-8 p-6 bg-slate-50 border border-slate-200 rounded-3xl">
+          <h3 className="text-sm font-black text-slate-700 mb-4 flex items-center gap-2">
+            <span className="w-2.5 h-2.5 bg-[#0a6652] rounded-full"></span>
+            បញ្ចូលទិន្នន័យការចំណាយថ្មី
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1.5">ថ្ងៃទីខែឆ្នាំ</label>
+              <input 
+                type="date" 
+                value={formDate} 
+                onChange={(e) => setFormDate(e.target.value)}
+                className="w-full text-xs bg-white border border-slate-200 px-3.5 py-2.5 rounded-xl outline-none font-medium text-slate-800"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1.5">អ្នកផ្គត់ផ្គង់ / ស្ថាប័ន</label>
+              <input 
+                type="text" 
+                value={formSupplier} 
+                onChange={(e) => setFormSupplier(e.target.value)}
+                className="w-full text-xs bg-white border border-slate-200 px-3.5 py-2.5 rounded-xl outline-none font-medium text-slate-800 placeholder-slate-300"
+                placeholder="ឧ. SOF, ហាងលក់សម្ភារៈ..."
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1.5">ប្រភេទការចំណាយ</label>
+              <select 
+                value={formCategory} 
+                onChange={(e) => setFormCategory(e.target.value)}
+                className="w-full text-xs bg-white border border-slate-200 px-3.5 py-2.5 rounded-xl outline-none font-bold text-slate-800 cursor-pointer"
+              >
+                <option value="ចំណាយប្រតិបត្តិការ">ចំណាយប្រតិបត្តិការ</option>
+                <option value="ទុនសង្គម">ទុនសង្គម</option>
+                <option value="ទុនបម្រុង">ទុនបម្រុង</option>
+                <option value="ចំណាយផ្សេងៗ">ចំណាយផ្សេងៗ</option>
+              </select>
+            </div>
+            <div className="md:col-span-3">
+              <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1.5">មុខចំណាយ / បរិយាយការចំណាយ</label>
+              <input 
+                type="text" 
+                value={formDesc} 
+                onChange={(e) => setFormDesc(e.target.value)}
+                className="w-full text-xs bg-white border border-slate-200 px-3.5 py-2.5 rounded-xl outline-none font-medium text-slate-800 placeholder-slate-300"
+                placeholder="ឧ. ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់បុគ្គលិក, កាតទូរស័ព្ទ..."
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1.5">ឯកតា (ចំនួន)</label>
+              <input 
+                type="number" 
+                min="1"
+                value={formQty} 
+                onChange={(e) => setFormQty(Number(e.target.value) || 1)}
+                className="w-full text-xs bg-white border border-slate-200 px-3.5 py-2.5 rounded-xl outline-none font-medium text-slate-800"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1.5">តម្លៃឯកតា ($)</label>
+              <input 
+                type="number" 
+                step="0.01" 
+                min="0"
+                value={formPrice} 
+                onChange={(e) => setFormPrice(Number(e.target.value) || 0)}
+                className="w-full text-xs bg-white border border-slate-200 px-3.5 py-2.5 rounded-xl outline-none font-medium text-slate-800"
+                required
+              />
+            </div>
+            <div className="flex items-end">
+              <button 
+                type="submit" 
+                className="w-full flex items-center justify-center gap-2 bg-[#0a6652] hover:bg-[#084f40] text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow-md cursor-pointer transition-colors"
+              >
+                <Save size={16} />
+                <span>រក្សាទុក (Save Expense)</span>
+              </button>
+            </div>
+          </div>
+        </form>
+      )}
+
+      {/* Main Table area */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6 animate-fade-in animate-duration-300">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[800px] border-collapse">
+            <thead>
+              <tr className="bg-[#eef8f2] border-b-[3px] border-[#0a6652] text-xs h-12 text-[#0a6652] font-black">
+                <th className="px-4 py-2 text-center border-r border-green-100 w-12">ល.រ</th>
+                <th className="px-4 py-2 border-r border-green-100">ថ្ងៃខែឆ្នាំ</th>
+                <th className="px-4 py-2 border-r border-green-100">អ្នកផ្គត់ផ្គង់</th>
+                <th className="px-4 py-2 border-r border-green-100 font-bold min-w-[200px]">មុខចំណាយ / ពិពណ៌នា</th>
+                <th className="px-4 py-2 border-r border-green-100 whitespace-nowrap">ប្រភេទចំណាយ</th>
+                <th className="px-4 py-2 border-r border-green-100 text-center w-16">ចំនួន</th>
+                <th className="px-4 py-2 border-r border-green-100 text-right">តម្លៃឯកតា</th>
+                <th className="px-4 py-2 border-r border-green-100 text-right">សរុបចំណាយ</th>
+                <th className="px-4 py-2 text-center w-20">ជម្រើស</th>
+              </tr>
+            </thead>
+            <tbody className="text-xs text-slate-700">
+              {filteredExpenses.length > 0 ? (
+                filteredExpenses.map((exp, index) => (
+                  <tr key={exp.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors h-11">
+                    <td className="px-4 py-2.5 border-r border-slate-100 text-center font-bold text-slate-500">
+                      {index + 1}
+                    </td>
+                    <td className="px-4 py-2.5 border-r border-slate-100 font-medium whitespace-nowrap">
+                      {exp.date}
+                    </td>
+                    <td className="px-4 py-2.5 border-r border-slate-100 font-bold text-slate-800">
+                      {exp.supplier}
+                    </td>
+                    <td className="px-4 py-2.5 border-r border-slate-100 font-medium max-w-[280px] truncate" title={exp.description}>
+                      {exp.description}
+                    </td>
+                    <td className="px-4 py-2.5 border-r border-slate-100">
+                      <span className={`px-2 py-1 rounded-md text-[10px] font-black ${
+                        exp.category === 'ចំណាយប្រតិបត្តិការ' ? 'bg-orange-50 text-orange-700 border border-orange-100' :
+                        exp.category === 'ទុនសង្គម' ? 'bg-purple-50 text-purple-700 border border-purple-100' :
+                        exp.category === 'ទុនបម្រុង' ? 'bg-teal-50 text-teal-700 border border-teal-100' :
+                        'bg-slate-100 text-slate-700 border border-slate-200'
+                      }`}>
+                        {exp.category}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 border-r border-slate-100 text-center font-semibold text-slate-600">
+                      {exp.qty}
+                    </td>
+                    <td className="px-4 py-2.5 border-r border-slate-100 text-right font-medium text-slate-600">
+                      ${Number(exp.price).toFixed(2)}
+                    </td>
+                    <td className="px-4 py-2.5 border-r border-slate-100 text-right font-black text-[#0a6652]">
+                      ${Number(exp.total).toFixed(2)}
+                    </td>
+                    <td className="px-4 py-2.5 text-center">
+                      <button 
+                        onClick={() => handleDelete(exp.id)}
+                        className="p-1 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg border border-rose-100 cursor-pointer transition-colors inline-flex items-center gap-1.5 font-bold"
+                        title="លុបប្រតិបត្តិការ"
+                      >
+                        <Trash2 size={12} />
+                        <span>លុប</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={9} className="text-center py-12 text-slate-400 font-medium text-xs">
+                    មិនមានទិន្នន័យចំណាយត្រូវគ្នានឹងការស្វែងរកឡើយ!
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </PageView>
   );
@@ -2163,6 +2506,19 @@ function SettingsPage() {
   const [interestRate, setInterestRate] = useState('1.5%');
   const [telegramNotification, setTelegramNotification] = useState(true);
 
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [passwordSuccessMsg, setPasswordSuccessMsg] = useState('');
+
+  const handleChangePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newAdminPassword.trim() !== '') {
+      localStorage.setItem('adminPassword', newAdminPassword);
+      setPasswordSuccessMsg('ប្តូរលេខសំងាត់បានជោគជ័យ! (Password changed)');
+      setTimeout(() => setPasswordSuccessMsg(''), 3000);
+      setNewAdminPassword('');
+    }
+  };
+
   return (
     <PageView title="បញ្ជូល និងកំណត់ទិន្នន័យ (Settings)" hideUpload={true} hideDownload={true} hideAdd={true}>
       <p className="text-slate-500 font-medium text-xs mb-6">ការកំណត់ប្រព័ន្ធ អត្រាការប្រាក់ និងការនាំចេញទិន្នន័យគម្រោង។</p>
@@ -2192,12 +2548,45 @@ function SettingsPage() {
             </div>
             <button 
               onClick={() => setTelegramNotification(!telegramNotification)}
-              className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none ${telegramNotification ? 'bg-[#0a6652]' : 'bg-slate-300'}`}
+              className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none cursor-pointer ${telegramNotification ? 'bg-[#0a6652]' : 'bg-slate-300'}`}
             >
               <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-200 ${telegramNotification ? 'translate-x-4' : 'translate-x-0'}`} />
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Security Info */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4 mb-6">
+        <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2 pb-2 border-b border-slate-100">
+          <Lock size={16} className="text-rose-600" />
+          <span>សុវត្ថិភាព (Security)</span>
+        </h3>
+        
+        <form onSubmit={handleChangePassword} className="space-y-3">
+          {passwordSuccessMsg && (
+            <div className="p-2 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-lg border border-emerald-100">
+              ✅ {passwordSuccessMsg}
+            </div>
+          )}
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 mb-1">លេខសំងាត់ថ្មី (New Admin Password)</label>
+            <input 
+              type="password" 
+              value={newAdminPassword} 
+              onChange={(e) => setNewAdminPassword(e.target.value)}
+              className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:border-rose-500 outline-none"
+              placeholder="វាយបញ្ចូលលេខសំងាត់ថ្មីនៅទីនេះ..."
+              required
+            />
+          </div>
+          <button 
+            type="submit" 
+            className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] py-2.5 rounded-xl transition-colors cursor-pointer"
+          >
+            ផ្លាស់ប្តូរលេខសំងាត់ (Change Password)
+          </button>
+        </form>
       </div>
 
       {/* Export & Download Section for Claude / Developers */}
@@ -2269,12 +2658,13 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
         navigate(`/member-report?id=${loginId}`);
       }
     } else {
-      if (adminUsername.trim() === 'admin' && adminPassword === 'admin123') {
+      const storedAdminPassword = localStorage.getItem('adminPassword') || 'admin123';
+      if (adminUsername.trim() === 'admin' && adminPassword === storedAdminPassword) {
         localStorage.setItem('userRole', 'admin');
         onLogin('admin', '');
         navigate('/admin');
       } else {
-        alert('គណនីអ្នកគ្រប់គ្រងមិនត្រឹមត្រូវទេ! (គណនីសាកល្បង៖ admin / admin123)');
+        alert(`គណនីអ្នកគ្រប់គ្រងមិនត្រឹមត្រូវទេ! (គណនីសាកល្បង៖ admin / ${storedAdminPassword})`);
       }
     }
   };
@@ -2390,14 +2780,14 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
                     type={showPassword ? "text" : "password"}
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
-                    placeholder="admin123" 
+                    placeholder={localStorage.getItem('adminPassword') || 'admin123'} 
                     className="w-full pl-4 pr-12 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent font-black text-xs sm:text-sm text-slate-800 placeholder:font-normal placeholder:text-slate-400"
                     required
                   />
                   <button 
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -2405,7 +2795,7 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
               </div>
               
               <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-[10px] font-bold text-slate-500 leading-normal">
-                💡 គណនីសាកល្បង៖ <span className="text-rose-600 font-extrabold">admin</span> / លេខកូដ៖ <span className="text-rose-600 font-extrabold">admin123</span>
+                💡 គណនីសាកល្បង៖ <span className="text-rose-600 font-extrabold">admin</span> / លេខកូដ៖ <span className="text-rose-600 font-extrabold">{localStorage.getItem('adminPassword') || 'admin123'}</span>
               </div>
 
               <button type="submit" className="w-full h-11 bg-rose-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-rose-950/20 hover:bg-rose-700 transition-colors flex items-center justify-center gap-2 mt-2 text-xs sm:text-sm cursor-pointer">
