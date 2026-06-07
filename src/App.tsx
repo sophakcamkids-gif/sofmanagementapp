@@ -1505,7 +1505,7 @@ function Members() {
                   const name = row['ឈ្មោះ'] || row['Name'] || row['Full Name'] || Object.values(row)[0] || '';
                   if (!name) return;
                   
-                  const totalExisting = currentMembers.length + count;
+                  const totalExisting = isDeposit ? depositProfiles.length : activeProfiles.length;
                   const newIdNum = totalExisting + 1;
                   const newCode = (isDeposit ? 'D' : 'C') + String(newIdNum).padStart(3, '0');
                   const khmerNum = ["០", "១", "២", "៣", "៤", "៥", "៦", "៧", "៨", "៩"];
