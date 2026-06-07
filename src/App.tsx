@@ -1478,6 +1478,11 @@ function Members() {
                const activeProfiles = getStoredData('sof_profile_data', DEFAULT_PROFILE_DATA);
                const depositProfiles = getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA);
                const currentMembers = getStoredData('sof_member_list_data', DEFAULT_MEMBER_LIST_DATA);
+               
+               const savings = getStoredData('sof_savings_data', DEFAULT_SAVING_DATA);
+               const depositSavings = getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA);
+               const loans = getStoredData('sof_loans_data', DEFAULT_LOAN_DATA);
+               
                let count = 0;
                data.forEach(row => {
                   const name = row['ឈ្មោះ'] || row['Name'] || row['Full Name'] || Object.values(row)[0] || '';
@@ -1485,17 +1490,18 @@ function Members() {
                   
                   const totalExisting = currentMembers.length + count;
                   const newIdNum = totalExisting + 1;
-                  const newCode = `C${String(newIdNum).padStart(3, '0')}`;
+                  const newCode = (isDeposit ? 'D' : 'C') + String(newIdNum).padStart(3, '0');
                   const khmerNum = ["០", "១", "២", "៣", "៤", "៥", "៦", "៧", "៨", "៩"];
                   const khmerIdPrefix = String(newIdNum).split('').map(char => khmerNum[parseInt(char)] || char).join('');
                   const newId = `${khmerIdPrefix} ${newCode}`;
                   
                   const targetType = isDeposit ? 'បញ្ញើ' : (row['ប្រភេទសមាជិក'] || row['ប្រភេទ'] || row['តួនាទី'] || 'សកម្ម');
+                  const gender = row['ភេទ'] || 'ប្រុស';
                   
                   const newProfileItem = {
                     id: newId,
                     name: String(name),
-                    gender: row['ភេទ'] || 'ប្រុស',
+                    gender: gender,
                     role: row['តួនាទី'] || (isDeposit ? 'សមាជិកបញ្ញើ' : 'សមាជិក'),
                     job: row['មុខរបរ'] || '-',
                     phone: row['លេខទូរស័ព្ទ'] || '-',
@@ -1509,15 +1515,55 @@ function Members() {
                   
                   if (isDeposit) {
                     depositProfiles.push(newProfileItem);
+                    depositSavings.push({
+                      id: newCode,
+                      name: String(name),
+                      gender: gender,
+                      village: '0',
+                      startCapital: '0.00',
+                      addSaving: '-',
+                      profit: '0',
+                      withdraw: '-',
+                      deductFee: '-',
+                      actualFee: '-',
+                      total: '0.00',
+                      checked: true
+                    });
                   } else {
                     activeProfiles.push(newProfileItem);
+                    savings.push({
+                      id: newCode,
+                      name: String(name),
+                      gender: gender,
+                      startCapital: '0.00',
+                      share: '0.00%',
+                      addSaving: '-',
+                      profit: '0',
+                      withdraw: '-',
+                      deductFee: '-',
+                      actualFee: '-',
+                      total: '0.00',
+                      checked: true
+                    });
+                    loans.push({
+                      id: newCode,
+                      name: String(name),
+                      gender: gender,
+                      loanValue: '-',
+                      repayment: '-',
+                      interest: '-',
+                      newLoan: '-',
+                      remaining: '-',
+                      interestPaid: '-',
+                      checked: true
+                    });
                   }
                   
                   currentMembers.push({
                     id: khmerIdPrefix,
                     code: newCode,
                     name: String(name),
-                    gender: row['ភេទ'] || 'ប្រុស',
+                    gender: gender,
                     type: targetType
                   });
                   count++;
@@ -1525,8 +1571,11 @@ function Members() {
                
                if (isDeposit) {
                  setStoredData('sof_deposit_profile_data', depositProfiles);
+                 setStoredData('sof_savings_deposit_data', depositSavings);
                } else {
                  setStoredData('sof_profile_data', activeProfiles);
+                 setStoredData('sof_savings_data', savings);
+                 setStoredData('sof_loans_data', loans);
                }
                setStoredData('sof_member_list_data', currentMembers);
                alert(`បាននាំចូលសមាជិកចំនួន ${count} នាក់ពីឯកសារ Excel ដោយជូច្ច័យ!`);
@@ -1809,9 +1858,57 @@ function Savings() {
   const [activeTab, setActiveTab] = useState('members');
   const months = ['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'];
 
-  const [savingData, setSavingData] = useState(() => getStoredData('sof_savings_data', DEFAULT_SAVING_DATA));
+  const [savingData, setSavingData] = useState(() => {
+    const sd = getStoredData('sof_savings_data', DEFAULT_SAVING_DATA) || [];
+    const pfd = getStoredData('sof_profile_data', DEFAULT_PROFILE_DATA) || [];
+    let modified = false;
+    pfd.forEach((p: any) => {
+      let code = typeof p.id === 'string' ? p.id.split(' ').pop() : p.code;
+      if (!code) code = p.code;
+      let s = sd.find((x: any) => x.id === code);
+      if (!s) {
+        sd.push({
+           id: code, name: p.name, gender: p.gender, 
+           startCapital: '0.00', share: '0.00%', addSaving: '-', profit: '0', 
+           withdraw: '-', deductFee: '-', actualFee: '-', total: '0.00', checked: true
+        });
+        modified = true;
+      } else if (s.name !== p.name || s.gender !== p.gender) {
+        s.name = p.name;
+        s.gender = p.gender;
+        modified = true;
+      }
+    });
+    if (modified) setStoredData('sof_savings_data', sd);
+    return sd;
+  });
+
   const [groupData, setGroupData] = useState(() => getStoredData('sof_savings_group_data', DEFAULT_GROUP_DATA));
-  const [depositData, setDepositData] = useState(() => getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA));
+
+  const [depositData, setDepositData] = useState(() => {
+    const sd = getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA) || [];
+    const dp = getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA) || [];
+    let modified = false;
+    dp.forEach((p: any) => {
+      let code = typeof p.id === 'string' ? p.id.split(' ').pop() : p.code;
+      if (!code) code = p.code;
+      let s = sd.find((x: any) => x.id === code);
+      if (!s) {
+        sd.push({
+           id: code, name: p.name, gender: p.gender,
+           village: '0', startCapital: '0.00', addSaving: '-', profit: '0',
+           withdraw: '-', deductFee: '-', actualFee: '-', total: '0.00', checked: true
+        });
+        modified = true;
+      } else if (s.name !== p.name || s.gender !== p.gender) {
+        s.name = p.name;
+        s.gender = p.gender;
+        modified = true;
+      }
+    });
+    if (modified) setStoredData('sof_savings_deposit_data', sd);
+    return sd;
+  });
 
   return (
     <PageView 
@@ -2012,7 +2109,33 @@ function Loans() {
   const [activeTab, setActiveTab] = useState('members');
   const months = ['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'];
 
-  const [loanData, setLoanData] = useState(() => getStoredData('sof_loans_data', DEFAULT_LOAN_DATA));
+  const [loanData, setLoanData] = useState(() => {
+    const ld = getStoredData('sof_loans_data', DEFAULT_LOAN_DATA) || [];
+    const pfd = getStoredData('sof_profile_data', DEFAULT_PROFILE_DATA) || [];
+    const dpf = getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA) || [];
+    const allMembers = [...pfd, ...dpf];
+    
+    let modified = false;
+    allMembers.forEach((p: any) => {
+      let code = typeof p.id === 'string' ? p.id.split(' ').pop() : p.code;
+      if (!code) code = p.code;
+      let l = ld.find((x: any) => x.id === code);
+      if (!l) {
+        ld.push({
+           id: code, name: p.name, gender: p.gender,
+           loanValue: '-', repayment: '-', interest: '-', newLoan: '-', remaining: '-', interestPaid: '-', checked: true
+        });
+        modified = true;
+      } else if (l.name !== p.name || l.gender !== p.gender) {
+        l.name = p.name;
+        l.gender = p.gender;
+        modified = true;
+      }
+    });
+    
+    if (modified) setStoredData('sof_loans_data', ld);
+    return ld;
+  });
 
   const externalLoanData = [
     { id: 'I01', name: 'កម្ចីទទួលបានពី LSG', gender: 'ក្រុម', received: '-', repayment: '-', interestRate: '1.20%', duration: '', newLoan: '-', remaining: '-', interest: '-', totalToPay: '-', note: '' },
