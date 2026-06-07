@@ -772,7 +772,7 @@ function DashboardGeneral() {
   const recentLogs = getStoredData('sof_query_logs', []);
 
   return (
-    <PageView title="ផ្ទាំងគ្រប់គ្រងទូទៅ (Dashboard)" hideBack={true} hideUpload={true} hideDownload={true} hideAdd={true}>
+    <PageView title="ផ្ទាំងគ្រប់គ្រងទូទៅ (Dashboard)" hideBack={true} hideDownload={true} hideAdd={true}>
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {[
           { label: 'ទុនសន្សំសមាជិកសកម្ម', value: '$24,500.00', color: 'text-[#0a6652]' },
@@ -3091,7 +3091,6 @@ function MemberReport() {
   return (
     <PageView 
       title={activeTab === 'dashboard' ? "ព័ត៌មានផ្ទាល់ខ្លួន" : activeTab} 
-      hideUpload 
       hideAdd 
       hideDownload={activeTab !== 'របាយការណ៍ផ្ទាល់ខ្លួន'}
       downloadLabel="ទាញយក PDF"
