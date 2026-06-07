@@ -344,7 +344,8 @@ function PageView({
   hideBack = false,
   hideDownload = false,
   onBack,
-  onUpload
+  onUpload,
+  onAddClick
 }: { 
   title: React.ReactNode | string; 
   children: React.ReactNode;
@@ -356,6 +357,7 @@ function PageView({
   hideDownload?: boolean;
   onBack?: () => void;
   onUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onAddClick?: () => void;
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -517,7 +519,10 @@ function PageView({
               </button>
             )}
             {!hideAdd && (
-              <button className="flex text-xs items-center gap-1.5 bg-[#0a6652] text-white px-3 py-1.5 rounded-full font-bold shadow-md hover:bg-[#084f40] transition-colors">
+              <button 
+                onClick={onAddClick}
+                className="flex text-xs items-center gap-1.5 bg-[#0a6652] text-white px-3 py-1.5 rounded-full font-bold shadow-md hover:bg-[#084f40] transition-colors"
+               >
                 <Plus size={14} strokeWidth={2.5} /> បន្ថែមថ្មី
               </button>
             )}
@@ -543,9 +548,10 @@ function PageView({
 
 function DashboardGeneral() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Active form tab
-  const [entryTab, setEntryTab] = useState<'savings' | 'loan' | 'repayment' | 'member'>('savings');
+  const [entryTab, setEntryTab] = useState<'savings' | 'loan' | 'repayment' | 'member'>((location.state as any)?.tab || 'savings');
   
   // Feedback
   const [successMsg, setSuccessMsg] = useState('');
@@ -708,6 +714,15 @@ function DashboardGeneral() {
       };
       setStoredData('sof_deposit_profile_data', [...depositProfiles, newDepositProfile]);
       db.addMember(newDepositProfile).catch(err => console.error("Supabase error:", err));
+
+      const memberList = getStoredData('sof_member_list_data', DEFAULT_MEMBER_LIST_DATA);
+      setStoredData('sof_member_list_data', [...memberList, {
+        id: khmerIdPrefix,
+        code: newCode,
+        name: mName.trim(),
+        gender: mGender,
+        type: 'បញ្ញើ'
+      }]);
 
       // Insert blank savings row
       const depositSavings = getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA);
@@ -1338,7 +1353,9 @@ function DashboardGeneral() {
 }
 
 function Members() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('list');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [profileData, setProfileData] = useState(() => getStoredData('sof_profile_data', DEFAULT_PROFILE_DATA));
   const [depositProfileData, setDepositProfileData] = useState(() => getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA));
@@ -1346,6 +1363,25 @@ function Members() {
 
   const [editingListIndex, setEditingListIndex] = useState<number | null>(null);
   const [editingListData, setEditingListData] = useState<any>(null);
+
+  const displayedMembers = memberListData
+    .map((row: any, idx: number) => ({ ...row, originalIndex: idx }))
+    .filter((row: any) => {
+      if (activeTab === 'list') {
+        if (row.type === 'បញ្ញើ') return false;
+      } else if (activeTab === 'list_deposit') {
+        if (row.type !== 'បញ្ញើ') return false;
+      } else {
+        return false;
+      }
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        const nameMatch = row.name?.toLowerCase().includes(query);
+        const codeMatch = row.code?.toLowerCase().includes(query);
+        return nameMatch || codeMatch;
+      }
+      return true;
+    });
 
   const handleEditMember = (index: number, row: any) => {
     setEditingListIndex(index);
@@ -1409,14 +1445,20 @@ function Members() {
   };
 
   return (
-    <PageView title="ពត៌មានសមាជិក (Members)">
+    <PageView title="ពត៌មានសមាជិក (Members)" onAddClick={() => navigate('/dashboard', { state: { tab: 'member' } })}>
       {/* Tabs */}
       <div className="flex flex-wrap gap-3 mb-6">
         <button 
           onClick={() => setActiveTab('list')}
           className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'list' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
         >
-          បញ្ជីសមាជិក
+          សមាជិកសកម្ម
+        </button>
+        <button 
+          onClick={() => setActiveTab('list_deposit')}
+          className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'list_deposit' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          សមាជិកបញ្ញើរសន្សំ
         </button>
         <button 
           onClick={() => setActiveTab('profile')}
@@ -1432,11 +1474,17 @@ function Members() {
         </button>
       </div>
 
-      {activeTab === 'list' && (
+      {(activeTab === 'list' || activeTab === 'list_deposit') && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
           <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-full px-4 py-2 w-full md:w-96 mb-6">
             <Search size={18} className="text-slate-400" />
-            <input type="text" placeholder="ស្វែងរកឈ្មោះសមាជិក..." className="bg-transparent border-none outline-none w-full text-sm font-medium" />
+            <input 
+              type="text" 
+              placeholder="ស្វែងរកឈ្មោះសមាជិក..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-transparent border-none outline-none w-full text-sm font-medium" 
+            />
           </div>
           <div className="overflow-x-auto border border-slate-300 rounded-xl">
             <table className="w-full text-left border-collapse text-sm min-w-[800px]">
@@ -1451,9 +1499,9 @@ function Members() {
                 </tr>
               </thead>
               <tbody>
-                {memberListData.map((row, i) => (
+                {displayedMembers.map((row, i) => (
                   <tr key={i} className="border-b border-slate-300 hover:bg-slate-50 transition-colors">
-                    {editingListIndex === i ? (
+                    {editingListIndex === row.originalIndex ? (
                       <>
                         <td className="px-1 py-1 border-r border-slate-300 text-center text-slate-500 font-medium">{getKhmerNum(i + 1)}</td>
                         <td className="px-1 py-1 border-r border-slate-300 text-center"><input type="text" className="w-full px-2 py-1 border border-slate-300 rounded" value={editingListData.code} onChange={(e) => setEditingListData({...editingListData, code: e.target.value})} /></td>
@@ -1461,7 +1509,7 @@ function Members() {
                         <td className="px-1 py-1 border-r border-slate-300 text-center"><input type="text" className="w-full px-2 py-1 border border-slate-300 rounded" value={editingListData.gender} onChange={(e) => setEditingListData({...editingListData, gender: e.target.value})} /></td>
                         <td className="px-1 py-1 border-r border-slate-300 text-center"><input type="text" className="w-full px-2 py-1 border border-slate-300 rounded" value={editingListData.type} onChange={(e) => setEditingListData({...editingListData, type: e.target.value})} /></td>
                         <td className="px-2 py-2 text-center flex justify-center gap-2">
-                          <button onClick={() => handleSaveEditMember(i)} className="p-1.5 bg-green-100 text-green-700 hover:bg-green-200 rounded" title="រក្សាទុក (Save)"><Save size={16} /></button>
+                          <button onClick={() => handleSaveEditMember(row.originalIndex)} className="p-1.5 bg-green-100 text-green-700 hover:bg-green-200 rounded" title="រក្សាទុក (Save)"><Save size={16} /></button>
                           <button onClick={() => setEditingListIndex(null)} className="p-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded" title="បោះបង់ (Cancel)"><X size={16} /></button>
                         </td>
                       </>
@@ -1473,8 +1521,8 @@ function Members() {
                         <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                         <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600">{row.type}</td>
                         <td className="px-2 py-2 text-center flex justify-center gap-2">
-                          <button onClick={() => handleEditMember(i, row)} className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded" title="កែប្រែ (Edit)"><Edit size={16} /></button>
-                          <button onClick={() => handleDeleteMember(i)} className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded" title="លុប (Delete)"><Trash2 size={16} /></button>
+                          <button onClick={() => handleEditMember(row.originalIndex, row)} className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded" title="កែប្រែ (Edit)"><Edit size={16} /></button>
+                          <button onClick={() => handleDeleteMember(row.originalIndex)} className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded" title="លុប (Delete)"><Trash2 size={16} /></button>
                         </td>
                       </>
                     )}
@@ -1623,6 +1671,7 @@ function Members() {
 }
 
 function Savings() {
+  const navigate = useNavigate();
   const [selectedMonth, setSelectedMonth] = useState('មេសា ២០២៦');
   const [activeTab, setActiveTab] = useState('members');
   const months = ['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'];
@@ -1632,7 +1681,9 @@ function Savings() {
   const [depositData, setDepositData] = useState(() => getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA));
 
   return (
-    <PageView title={
+    <PageView 
+      onAddClick={() => navigate('/dashboard', { state: { tab: 'savings' } })}
+      title={
       <div className="flex flex-col md:flex-row md:items-center gap-3">
         <span>របាយការណ៍សន្សំប្រាក់{activeTab === 'group' ? 'ក្រុម' : activeTab === 'deposit' ? 'សមាជិកបញ្ញើសន្សំ' : 'សមាជិកសកម្ម'} - </span>
         <select 
@@ -1823,6 +1874,7 @@ function Savings() {
 }
 
 function Loans() {
+  const navigate = useNavigate();
   const [selectedMonth, setSelectedMonth] = useState('មេសា ២០២៦');
   const [activeTab, setActiveTab] = useState('members');
   const months = ['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'];
@@ -1842,7 +1894,9 @@ function Loans() {
   ];
 
   return (
-    <PageView title={
+    <PageView 
+      onAddClick={() => navigate('/dashboard', { state: { tab: 'loan' } })}
+      title={
       <div className="flex flex-col md:flex-row md:items-center gap-3">
         <span>របាយការណ៍កម្ចី - </span>
         <select 
