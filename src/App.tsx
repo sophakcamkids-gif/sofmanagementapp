@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx';
+import { db } from './lib/db';
 import { 
   Bell, Settings, Users, Wallet, 
   FileText, PieChart, Home, Heart, MessageSquare, 
@@ -82,6 +83,16 @@ function SidebarLink({ to, label }: { to: string, label: string }) {
 export default function App() {
   const [userRole, setUserRole] = useState<string | null>(localStorage.getItem('userRole'));
   const [memberId, setMemberId] = useState<string | null>(localStorage.getItem('memberId'));
+
+  // Clean up bad import once based on user request
+  useEffect(() => {
+    if (localStorage.getItem('clear_bad_import_v2') !== 'true') {
+      localStorage.removeItem('sof_profile_data');
+      localStorage.removeItem('sof_member_list_data');
+      localStorage.setItem('clear_bad_import_v2', 'true');
+      window.location.reload();
+    }
+  }, []);
 
   return (
     <Router>
@@ -625,6 +636,7 @@ function DashboardGeneral() {
         img: `https://i.pravatar.cc/150?u=${newIdNum}`
       };
       setStoredData('sof_profile_data', [...activeProfiles, newProfile]);
+      db.addMember(newProfile).catch(err => console.error("Supabase error:", err));
 
       // Insert member list
       const memberList = getStoredData('sof_member_list_data', DEFAULT_MEMBER_LIST_DATA);
@@ -695,6 +707,7 @@ function DashboardGeneral() {
         img: `https://i.pravatar.cc/150?img=${newIdNum}`
       };
       setStoredData('sof_deposit_profile_data', [...depositProfiles, newDepositProfile]);
+      db.addMember(newDepositProfile).catch(err => console.error("Supabase error:", err));
 
       // Insert blank savings row
       const depositSavings = getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA);
@@ -1220,7 +1233,7 @@ function DashboardGeneral() {
                 className="bg-[#0a6652] hover:bg-[#085343] text-white font-extrabold text-xs px-6 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
               >
                 <Save size={14} />
-                <span>ចុះឈ្មោះសមាជិកថ្មី</span>
+                <span>រក្សាទុកសមាជិកថ្មី</span>
               </button>
             </div>
           </form>
@@ -1357,6 +1370,7 @@ function Members() {
         setProfileData(activeData);
         setStoredData('sof_profile_data', activeData);
       }
+      db.updateMember(code, editingListData).catch(err => console.error("Supabase error:", err));
     }
     
     setEditingListIndex(null);
@@ -1366,9 +1380,12 @@ function Members() {
   const handleDeleteMember = (index: number, showConfirm = true) => {
     if (showConfirm && !window.confirm('តើអ្នកពិតជាចង់លុបសមាជិកនេះមែនទេ?')) return;
     const newData = [...memberListData];
-    newData.splice(index, 1);
+    const deleted = newData.splice(index, 1)[0];
     setMemberListData(newData);
     setStoredData('sof_member_list_data', newData);
+    if (deleted && deleted.code) {
+      db.deleteMember(deleted.code).catch(err => console.error("Supabase error:", err));
+    }
   };
 
   return (
