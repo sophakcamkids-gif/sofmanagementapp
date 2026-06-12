@@ -503,8 +503,10 @@ function PageView({
         const ws = XLSX.utils.table_to_sheet(table);
         XLSX.utils.book_append_sheet(wb, ws, `Sheet${index + 1}`);
       });
-      const fileName = typeof title === 'string' ? title.replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'export';
-      XLSX.writeFile(wb, `${fileName}.xlsx`);
+      const fileName = typeof title === 'string' 
+        ? title.replace(/[^a-zA-Z0-9\u1780-\u17FF]/gi, '_').replace(/_+/g, '_').replace(/_$/, '').toLowerCase() 
+        : 'export_data';
+      XLSX.writeFile(wb, `${fileName || 'export'}.xlsx`);
     } else {
       window.print();
     }
@@ -1871,6 +1873,7 @@ function Members() {
               <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
                 <tr>
                   <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ល.រ</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">លេខ ID</th>
                   <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle min-w-[140px]">ឈ្មោះ</th>
                   <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ភេទ</th>
                   <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">តួនាទីក្នុងក្រុម</th>
@@ -1898,6 +1901,7 @@ function Members() {
                 {profileData.map((row, i) => (
                   <tr key={i} className="border-b border-slate-300 hover:bg-slate-50 transition-colors">
                     <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-slate-500">{getKhmerNum(i + 1)}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-slate-500">{row.id || '-'}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-left text-slate-600 text-xs">{row.role}</td>
