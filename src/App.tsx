@@ -346,7 +346,8 @@ function PageView({
   hideDownload = false,
   onBack,
   onUpload,
-  onAddClick
+  onAddClick,
+  onDownloadClick
 }: { 
   title: React.ReactNode | string; 
   children: React.ReactNode;
@@ -359,6 +360,7 @@ function PageView({
   onBack?: () => void;
   onUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onAddClick?: () => void;
+  onDownloadClick?: () => void;
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -487,6 +489,27 @@ function PageView({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const handleDownloadClick = () => {
+    if (onDownloadClick) {
+      onDownloadClick();
+      return;
+    }
+    
+    // Default fallback: export visible tables to Excel
+    const tables = document.querySelectorAll('table');
+    if (tables.length > 0) {
+      const wb = XLSX.utils.book_new();
+      tables.forEach((table, index) => {
+        const ws = XLSX.utils.table_to_sheet(table);
+        XLSX.utils.book_append_sheet(wb, ws, `Sheet${index + 1}`);
+      });
+      const fileName = typeof title === 'string' ? title.replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'export';
+      XLSX.writeFile(wb, `${fileName}.xlsx`);
+    } else {
+      window.print();
+    }
+  };
+
   const handleBack = () => {
     if (onBack) {
       onBack();
@@ -515,7 +538,7 @@ function PageView({
               </button>
             )}
             {!hideDownload && (
-              <button className="flex text-xs items-center gap-1.5 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full font-bold hover:bg-indigo-100 transition-colors">
+              <button onClick={handleDownloadClick} className="flex text-xs items-center gap-1.5 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full font-bold hover:bg-indigo-100 transition-colors">
                 <Download size={14} strokeWidth={2.5} /> {downloadLabel}
               </button>
             )}
@@ -3897,6 +3920,7 @@ function MemberReport() {
       hideAdd 
       hideDownload={activeTab !== 'របាយការណ៍ផ្ទាល់ខ្លួន'}
       downloadLabel="ទាញយក PDF"
+      onDownloadClick={() => window.print()}
       hideBack={true}
     >
       {activeTab === 'dashboard' ? (
