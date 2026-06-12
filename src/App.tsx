@@ -414,9 +414,8 @@ function PageView({
                   if (!name) return;
                   const newIdNum = activeProfiles.length + 1;
                   const newCode = `C${String(newIdNum).padStart(3, '0')}`;
-                  const khmerNum = ["០", "១", "២", "៣", "៤", "៥", "៦", "៧", "៨", "៩"];
-                  const khmerIdPrefix = String(newIdNum).split('').map(char => khmerNum[parseInt(char)] || char).join('');
-                  const newId = `${khmerIdPrefix} ${newCode}`;
+                  const idPrefix = String(newIdNum);
+                  const newId = `${idPrefix} ${newCode}`;
                   
                   activeProfiles.push({
                     id: newId,
@@ -433,7 +432,7 @@ function PageView({
                     img: `https://i.pravatar.cc/150?u=${newIdNum}`
                   });
                   currentMembers.push({
-                    id: khmerIdPrefix,
+                    id: idPrefix,
                     code: newCode,
                     name: String(name),
                     gender: row['ភេទ'] || 'ប្រុស',
@@ -593,7 +592,7 @@ function DashboardGeneral() {
 
   // 2. New Savings form
   const [sMemberId, setSMemberId] = useState('');
-  const [sMonth, setSMonth] = useState('មេសា ២០២៦');
+  const [sMonth, setSMonth] = useState('មេសា 2026');
   const [sAmount, setSAmount] = useState('');
 
   // 3. New Loan form
@@ -601,13 +600,13 @@ function DashboardGeneral() {
   const [lAmount, setLAmount] = useState('');
   const [lRate, setLRate] = useState('0.8%');
   const [lTerm, setLTerm] = useState('12');
-  const [lMonth, setLMonth] = useState('មេសា ២០២៦');
+  const [lMonth, setLMonth] = useState('មេសា 2026');
 
   // 4. Loan Repayment form
   const [rMemberId, setRMemberId] = useState('');
   const [rPrincipal, setRPrincipal] = useState('');
   const [rInterest, setRInterest] = useState('');
-  const [rMonth, setRMonth] = useState('មេសា ២០២៦');
+  const [rMonth, setRMonth] = useState('មេសា 2026');
 
   // Load existing records for dropdowns
   const membersList = getStoredData('sof_member_list_data', DEFAULT_MEMBER_LIST_DATA);
@@ -654,9 +653,8 @@ function DashboardGeneral() {
     if (mType === 'សកម្ម') {
       const newIdNum = activeProfiles.length + 1;
       const newCode = `C${String(newIdNum).padStart(3, '0')}`;
-      const khmerNum = ["០", "១", "២", "៣", "៤", "៥", "៦", "៧", "៨", "៩"];
-      const khmerIdPrefix = String(newIdNum).split('').map(char => khmerNum[parseInt(char)] || char).join('');
-      const newId = `${khmerIdPrefix} ${newCode}`;
+      const idPrefix = String(newIdNum);
+      const newId = `${idPrefix} ${newCode}`;
 
       // Insert active profiles
       const newProfile = {
@@ -684,7 +682,7 @@ function DashboardGeneral() {
       // Insert member list
       const memberList = getStoredData('sof_member_list_data', DEFAULT_MEMBER_LIST_DATA);
       setStoredData('sof_member_list_data', [...memberList, {
-        id: khmerIdPrefix,
+        id: idPrefix,
         code: newCode,
         name: mName.trim(),
         gender: mGender,
@@ -727,11 +725,10 @@ function DashboardGeneral() {
       // Deposit member
       const newIdNum = depositProfiles.length + 1;
       const newCode = `D${String(newIdNum).padStart(3, '0')}`;
-      const khmerNum = ["០", "១", "២", "៣", "៤", "៥", "៦", "៧", "៨", "៩"];
-      const khmerIdPrefix = String(newIdNum).split('').map(char => khmerNum[parseInt(char)] || char).join('');
+      const idPrefix = String(newIdNum);
 
       const newDepositProfile = {
-        id: khmerIdPrefix,
+        id: idPrefix,
         code: newCode,
         name: mName.trim(),
         gender: mGender,
@@ -753,7 +750,7 @@ function DashboardGeneral() {
 
       const memberList = getStoredData('sof_member_list_data', DEFAULT_MEMBER_LIST_DATA);
       setStoredData('sof_member_list_data', [...memberList, {
-        id: khmerIdPrefix,
+        id: idPrefix,
         code: newCode,
         name: mName.trim(),
         gender: mGender,
@@ -1026,7 +1023,7 @@ function DashboardGeneral() {
                   onChange={(e) => setSMonth(e.target.value)}
                   className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
                 >
-                  {['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'].map(m => (
+                  {['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'].map(m => (
                     <option key={m} value={m}>{m}</option>
                   ))}
                 </select>
@@ -1186,7 +1183,7 @@ function DashboardGeneral() {
                   onChange={(e) => setRMonth(e.target.value)}
                   className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
                 >
-                  {['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'].map(m => (
+                  {['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'].map(m => (
                     <option key={m} value={m}>{m}</option>
                   ))}
                 </select>
@@ -1527,7 +1524,7 @@ function Members() {
   };
 
   const getKhmerNum = (num: number) => {
-    return String(num).split('').map(c => ["០", "១", "២", "៣", "៤", "៥", "៦", "៧", "៨", "៩"][parseInt(c)] || c).join('');
+    return String(num);
   };
 
   const handleDeleteAllMembers = () => {
@@ -1607,9 +1604,8 @@ function Members() {
                   const totalExisting = isDeposit ? depositProfiles.length : activeProfiles.length;
                   const newIdNum = totalExisting + 1;
                   const newCode = (isDeposit ? 'D' : 'C') + String(newIdNum).padStart(3, '0');
-                  const khmerNum = ["០", "១", "២", "៣", "៤", "៥", "៦", "៧", "៨", "៩"];
-                  const khmerIdPrefix = String(newIdNum).split('').map(char => khmerNum[parseInt(char)] || char).join('');
-                  const newId = `${khmerIdPrefix} ${newCode}`;
+                  const idPrefix = String(newIdNum);
+                  const newId = `${idPrefix} ${newCode}`;
                   
                   const targetType = isDeposit ? 'បញ្ញើ' : (row['ប្រភេទសមាជិក'] || row['ប្រភេទ'] || row['តួនាទី'] || 'សកម្ម');
                   const gender = row['ភេទ'] || 'ប្រុស';
@@ -1688,7 +1684,7 @@ function Members() {
                   }
                   
                   currentMembers.push({
-                    id: khmerIdPrefix,
+                    id: idPrefix,
                     code: newCode,
                     name: String(name),
                     gender: gender,
@@ -1990,9 +1986,9 @@ function Members() {
 
 function Savings() {
   const navigate = useNavigate();
-  const [selectedMonth, setSelectedMonth] = useState('មេសា ២០២៦');
+  const [selectedMonth, setSelectedMonth] = useState('មេសា 2026');
   const [activeTab, setActiveTab] = useState('members');
-  const months = ['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'];
+  const months = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
 
   const [savingData, setSavingData] = useState(() => {
     let sd = getStoredData('sof_savings_data', DEFAULT_SAVING_DATA) || [];
@@ -2294,9 +2290,9 @@ function Savings() {
 
 function Loans() {
   const navigate = useNavigate();
-  const [selectedMonth, setSelectedMonth] = useState('មេសា ២០២៦');
+  const [selectedMonth, setSelectedMonth] = useState('មេសា 2026');
   const [activeTab, setActiveTab] = useState('members');
-  const months = ['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'];
+  const months = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
 
   const [loanData, setLoanData] = useState(() => {
     let ld = getStoredData('sof_loans_data', DEFAULT_LOAN_DATA) || [];
@@ -2663,8 +2659,8 @@ function Loans() {
 }
 
 function Expenses() {
-  const [selectedMonth, setSelectedMonth] = useState('មេសា ២០២៦');
-  const months = ['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'];
+  const [selectedMonth, setSelectedMonth] = useState('មេសា 2026');
+  const months = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
 
   const [expenses, setExpenses] = useState<any[]>(() => 
     getStoredData('sof_expenses_data', DEFAULT_EXPENSE_DATA)
@@ -3012,8 +3008,8 @@ function Expenses() {
 
 function Reports() {
   const [activeTab, setActiveTab] = useState('balance');
-  const [selectedMonth, setSelectedMonth] = useState('មេសា ២០២៦');
-  const months = ['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'];
+  const [selectedMonth, setSelectedMonth] = useState('មេសា 2026');
+  const months = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
 
   return (
     <PageView 
@@ -3721,7 +3717,7 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
 function MemberReport() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [selectedMonth, setSelectedMonth] = useState('ឧសភា ២០២៦');
+  const [selectedMonth, setSelectedMonth] = useState('ឧសភា 2026');
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -3752,7 +3748,7 @@ function MemberReport() {
   const [repGuarantor2Id, setRepGuarantor2Id] = useState('CM024');
   const [repFreq, setRepFreq] = useState<'monthly' | 'weekly'>('weekly'); // they say 'អាទិត្យ' in sheet, so let's support both but default 'weekly'!
   const [contractNum, setContractNum] = useState('MFC-2026-008');
-  const [selectedReportYear, setSelectedReportYear] = useState('២០២៦');
+  const [selectedReportYear, setSelectedReportYear] = useState('2026');
 
   // Payment states for 'ការដាក់សន្សំ និងបង់កម្ចី' tab
   const [paymentType, setPaymentType] = useState<'savings' | 'loan'>('savings');
@@ -3903,7 +3899,7 @@ function MemberReport() {
   };
   
   const tabs = ['របាយការណ៍ផ្ទាល់ខ្លួន', 'ស្នើកម្ចី', 'របាយការណ៍កម្ចី', 'របាយការណ៍សន្សំ', 'ការដាក់សន្សំ និងបង់កម្ចី'];
-  const months = ['មករា ២០២៦', 'កុម្ភៈ ២០២៦', 'មីនា ២០២៦', 'មេសា ២០២៦', 'ឧសភា ២០២៦', 'មិថុនា ២០២៦', 'កក្កដា ២០២៦', 'សីហា ២០២៦', 'កញ្ញា ២០២៦', 'តុលា ២០២៦', 'វិច្ឆិកា ២០២៦', 'ធ្នូ ២០២៦'];
+  const months = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
 
   const handleChangePassword = (e: React.FormEvent) => {
     e.preventDefault();
@@ -4232,10 +4228,10 @@ function MemberReport() {
                   onChange={(e) => setDigitalTerm(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0a6652] focus:border-transparent text-slate-800 text-sm font-bold"
                 >
-                  <option value="6">៦ ខែ (6 Months)</option>
-                  <option value="12">១២ ខែ (12 Months)</option>
-                  <option value="18">១៨ ខែ (18 Months)</option>
-                  <option value="24">២៤ ខែ (24 Months)</option>
+                  <option value="6">6 ខែ (6 Months)</option>
+                  <option value="12">12 ខែ (12 Months)</option>
+                  <option value="18">18 ខែ (18 Months)</option>
+                  <option value="24">24 ខែ (24 Months)</option>
                 </select>
               </div>
 
@@ -4372,7 +4368,7 @@ function MemberReport() {
         </div>
 
         <div className="mt-20 flex flex-col items-center md:items-end text-sm text-slate-800 relative z-10 md:pr-10">
-          <p className="mb-3 font-medium text-slate-500">ធ្វើនៅថ្ងៃទី ៣១ ខែឧសភា ឆ្នាំ ២០២៣</p>
+          <p className="mb-3 font-medium text-slate-500">ធ្វើនៅថ្ងៃទី 31 ខែឧសភា ឆ្នាំ 2023</p>
           <p className="mb-8 font-bold text-slate-700">ហត្ថលេខាអ្នកធ្វើរបាយការណ៍</p>
           <div className="w-40 h-20 border-b-2 border-slate-200 border-dashed relative">
             <div className="absolute inset-0 flex items-center justify-center pb-4 text-4xl text-blue-800 font-serif -rotate-12 italic opacity-60">Rv</div>
@@ -4604,7 +4600,7 @@ function MemberReport() {
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500 font-semibold">កាលបរិច្ឆេទខ្ចីប្រាក់</span>
-                  <span className="font-bold text-slate-700">ថ្ងៃទី ១៥ ខែមករា ឆ្នាំ ២០២៦</span>
+                  <span className="font-bold text-slate-700">ថ្ងៃទី 15 ខែមករា ឆ្នាំ 2026</span>
                 </div>
               </div>
 
@@ -4638,7 +4634,7 @@ function MemberReport() {
                   />
                 </div>
                 <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
-                  <span className="text-slate-500 font-semibold">អ្នកធានាទី ១ (Guarantor 1)</span>
+                  <span className="text-slate-500 font-semibold">អ្នកធានាទី 1 (Guarantor 1)</span>
                   <input
                     type="text"
                     value={repGuarantor1}
@@ -4647,7 +4643,7 @@ function MemberReport() {
                   />
                 </div>
                 <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
-                  <span className="text-slate-500 font-semibold">លេខ ID ធានាទី ១</span>
+                  <span className="text-slate-500 font-semibold">លេខ ID ធានាទី 1</span>
                   <input
                     type="text"
                     value={repGuarantor1Id}
@@ -4656,7 +4652,7 @@ function MemberReport() {
                   />
                 </div>
                 <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
-                  <span className="text-slate-500 font-semibold">អ្នកធានាទី ២ (Guarantor 2)</span>
+                  <span className="text-slate-500 font-semibold">អ្នកធានាទី 2 (Guarantor 2)</span>
                   <input
                     type="text"
                     value={repGuarantor2}
@@ -4665,7 +4661,7 @@ function MemberReport() {
                   />
                 </div>
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 font-semibold">លេខ ID ធានាទី ២</span>
+                  <span className="text-slate-500 font-semibold">លេខ ID ធានាទី 2</span>
                   <input
                     type="text"
                     value={repGuarantor2Id}
@@ -4805,10 +4801,10 @@ function MemberReport() {
                     onChange={(e) => setSelectedReportYear(e.target.value)}
                     className="text-[11px] font-extrabold bg-transparent text-slate-700 outline-none cursor-pointer py-0.5"
                   >
-                    <option value="២០២៥">២០២៥</option>
-                    <option value="២០២៦">២០២៦</option>
-                    <option value="២០២៧">២០២៧</option>
-                    <option value="២០២៨">២០២៨</option>
+                    <option value="2025">2025</option>
+                    <option value="2026">2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
                   </select>
                 </div>
               </div>
@@ -4837,14 +4833,14 @@ function MemberReport() {
                 </thead>
                 <tbody className="divide-y divide-slate-300 text-[11px]">
                   {[
-                    { id: '០១', monthName: 'មករា', startCapital: 945.69, share: '1.31%', addSaving: 30.00, profit: 5.938979617, withdraw: '-', deductFee: '-', actualFee: '-', total: 981.63, note: '✓' },
-                    { id: '០២', monthName: 'កុម្ភៈ', startCapital: 145.85, share: '0.20%', addSaving: 0, profit: 0.915948925, withdraw: '-', deductFee: '-', actualFee: '-', total: 146.77, note: '✓' },
-                    { id: '០៣', monthName: 'មីនា', startCapital: 849.78, share: '1.18%', addSaving: 5.00, profit: 5.336650621, withdraw: '-', deductFee: '-', actualFee: '-', total: 860.12, note: '✓' },
-                    { id: '០៤', monthName: 'មេសា', startCapital: 550.63, share: '0.77%', addSaving: 0, profit: 3.457965883, withdraw: '-', deductFee: '-', actualFee: '-', total: 554.09, note: '✓' },
-                    { id: '០៥', monthName: 'ឧសភា', startCapital: 433.28, share: '0.60%', addSaving: 0, profit: 2.720984666, withdraw: '-', deductFee: '-', actualFee: '-', total: 436.00, note: '✓' },
-                    { id: '០៦', monthName: 'មិថុនា', startCapital: 1260.05, share: '1.75%', addSaving: 0, profit: 7.913150809, withdraw: '-', deductFee: '-', actualFee: '-', total: 1267.96, note: '✓' },
-                    { id: '០៧', monthName: 'កក្កដា', startCapital: 465.49, share: '0.65%', addSaving: 0, profit: 2.923260657, withdraw: '-', deductFee: '-', actualFee: '-', total: 468.41, note: '✓' },
-                    { id: '០៨', monthName: 'សីហា', startCapital: 492.60, share: '0.68%', addSaving: 5.00, profit: 3.093531719, withdraw: '-', deductFee: '-', actualFee: '-', total: 500.69, note: '✓' },
+                    { id: '01', monthName: 'មករា', startCapital: 945.69, share: '1.31%', addSaving: 30.00, profit: 5.938979617, withdraw: '-', deductFee: '-', actualFee: '-', total: 981.63, note: '✓' },
+                    { id: '02', monthName: 'កុម្ភៈ', startCapital: 145.85, share: '0.20%', addSaving: 0, profit: 0.915948925, withdraw: '-', deductFee: '-', actualFee: '-', total: 146.77, note: '✓' },
+                    { id: '03', monthName: 'មីនា', startCapital: 849.78, share: '1.18%', addSaving: 5.00, profit: 5.336650621, withdraw: '-', deductFee: '-', actualFee: '-', total: 860.12, note: '✓' },
+                    { id: '04', monthName: 'មេសា', startCapital: 550.63, share: '0.77%', addSaving: 0, profit: 3.457965883, withdraw: '-', deductFee: '-', actualFee: '-', total: 554.09, note: '✓' },
+                    { id: '05', monthName: 'ឧសភា', startCapital: 433.28, share: '0.60%', addSaving: 0, profit: 2.720984666, withdraw: '-', deductFee: '-', actualFee: '-', total: 436.00, note: '✓' },
+                    { id: '06', monthName: 'មិថុនា', startCapital: 1260.05, share: '1.75%', addSaving: 0, profit: 7.913150809, withdraw: '-', deductFee: '-', actualFee: '-', total: 1267.96, note: '✓' },
+                    { id: '07', monthName: 'កក្កដា', startCapital: 465.49, share: '0.65%', addSaving: 0, profit: 2.923260657, withdraw: '-', deductFee: '-', actualFee: '-', total: 468.41, note: '✓' },
+                    { id: '08', monthName: 'សីហា', startCapital: 492.60, share: '0.68%', addSaving: 5.00, profit: 3.093531719, withdraw: '-', deductFee: '-', actualFee: '-', total: 500.69, note: '✓' },
                   ].map((row, idx) => (
                     <tr key={idx} className="hover:bg-slate-50/50 transition-colors h-10">
                       <td className="py-2 px-2 text-center border-r border-slate-300 font-bold text-slate-400">{row.id}</td>
