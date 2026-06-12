@@ -1897,7 +1897,7 @@ function Members() {
                 {profileData.map((row, i) => (
                   <tr key={i} className="border-b border-slate-300 hover:bg-slate-50 transition-colors">
                     <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-slate-500">{getKhmerNum(i + 1)}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-slate-500">{row.id || '-'}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-slate-500">{row.code || (typeof row.id === 'string' ? row.id.split(' ').pop() : row.id) || '-'}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-left text-slate-600 text-xs">{row.role}</td>
@@ -2143,7 +2143,7 @@ function Savings() {
               <tbody>
                 {savingData.map((row) => (
                   <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.startCapital}</td>
@@ -2190,7 +2190,7 @@ function Savings() {
               <tbody>
                 {groupData.map((row) => (
                   <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.startCapital}</td>
@@ -2248,7 +2248,7 @@ function Savings() {
               <tbody>
                 {depositData.map((row) => (
                   <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.village}</td>
@@ -2453,7 +2453,7 @@ function Loans() {
               <tbody>
                 {loanData.map((row) => (
                   <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">
@@ -2510,7 +2510,7 @@ function Loans() {
               <tbody>
                 {depositLoanData.map((row) => (
                   <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">
@@ -2569,7 +2569,7 @@ function Loans() {
               <tbody>
                 {externalLoanData.map((row) => (
                   <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.received}</td>
@@ -2616,7 +2616,7 @@ function Loans() {
               <tbody>
                 {externalProvidedData.map((row) => (
                   <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.received}</td>
@@ -4843,7 +4843,7 @@ function MemberReport() {
                     { id: '08', monthName: 'សីហា', startCapital: 492.60, share: '0.68%', addSaving: 5.00, profit: 3.093531719, withdraw: '-', deductFee: '-', actualFee: '-', total: 500.69, note: '✓' },
                   ].map((row, idx) => (
                     <tr key={idx} className="hover:bg-slate-50/50 transition-colors h-10">
-                      <td className="py-2 px-2 text-center border-r border-slate-300 font-bold text-slate-400">{row.id}</td>
+                      <td className="py-2 px-2 text-center border-r border-slate-300 font-bold text-slate-400">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
                       <td className="py-2 px-3 border-r border-slate-300 font-bold text-slate-800 text-center bg-slate-50/10">{row.monthName}</td>
                       <td className="py-2 px-3 border-r border-slate-300 text-right font-medium">{row.startCapital.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                       <td className="py-2 px-2 border-r border-slate-300 text-center font-medium text-slate-500">{row.share}</td>
