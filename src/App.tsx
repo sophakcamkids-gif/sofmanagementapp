@@ -8,6 +8,7 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from
 import * as XLSX from 'xlsx';
 import { db } from './lib/db';
 import { loadAllCloudState, saveCloudState } from './lib/cloudStore';
+import { computeLoan, DEFAULT_RATES } from './lib/calcEngine';
 import { 
   Bell, Settings, Users, Wallet, 
   FileText, PieChart, Home, Heart, MessageSquare, 
@@ -2137,9 +2138,9 @@ function Savings() {
     return sd;
   });
 
-  // Load the savings ledger for the selected month from the imported monthly data
-  // (sof_savings_by_month / sof_deposit_by_month). Falls back to the flat roster
-  // for months that have no imported data.
+  // Load the savings ledger for the selected month from the imported monthly data.
+  // (Profit distribution stays as the imported Excel values until the exact
+  // share-denominator base is confirmed — engine wiring pending that answer.)
   useEffect(() => {
     const sByMonth = getStoredData('sof_savings_by_month', {});
     const dByMonth = getStoredData('sof_deposit_by_month', {});
@@ -2446,11 +2447,21 @@ function Loans() {
     return dld;
   });
 
-  // Load the internal-loan ledger for the selected month from the imported
-  // monthly data (sof_loans_by_month). Falls back to the flat roster otherwise.
+  // Load the selected month's loans and AUTO-CALCULATE interest (rate × beginning)
+  // and remaining (beginning + newLoan − repayment) via the engine.
   useEffect(() => {
     const byMonth = getStoredData('sof_loans_by_month', {});
-    if (byMonth[selectedMonth]) setLoanData(byMonth[selectedMonth]);
+    if (byMonth[selectedMonth]) {
+      const rows = byMonth[selectedMonth];
+      const fmt = (v: number) => v ? v.toFixed(2) : '-';
+      setLoanData(rows.map((r: any) => {
+        const res = computeLoan({
+          id: r.id, beginning: num(r.loanValue),
+          newLoan: num(r.newLoan), repayment: num(r.repayment),
+        }, DEFAULT_RATES);
+        return { ...r, interest: fmt(res.interest), remaining: fmt(res.remaining) };
+      }));
+    }
   }, [selectedMonth]);
 
   const externalLoanData = [
