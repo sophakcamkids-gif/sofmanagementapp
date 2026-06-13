@@ -8,7 +8,7 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from
 import * as XLSX from 'xlsx';
 import { db } from './lib/db';
 import { loadAllCloudState, saveCloudState } from './lib/cloudStore';
-import { computeLoan, DEFAULT_RATES } from './lib/calcEngine';
+import { computeSavings, computeLoan, DEFAULT_RATES } from './lib/calcEngine';
 import { 
   Bell, Settings, Users, Wallet, 
   FileText, PieChart, Home, Heart, MessageSquare, 
@@ -2138,14 +2138,41 @@ function Savings() {
     return sd;
   });
 
-  // Load the savings ledger for the selected month from the imported monthly data.
-  // (Profit distribution stays as the imported Excel values until the exact
-  // share-denominator base is confirmed — engine wiring pending that answer.)
+  // AUTO-CALCULATE the selected month's savings via the engine.
+  // Profit distribution pool = active members + group funds (reserve/social/YES):
+  //   share = beginning ÷ (Σ active beginning + Σ group beginning); profit = share × net profit.
+  // Deposit members do NOT share profit — they earn a fixed 0.5%/month instead.
   useEffect(() => {
     const sByMonth = getStoredData('sof_savings_by_month', {});
     const dByMonth = getStoredData('sof_deposit_by_month', {});
-    if (sByMonth[selectedMonth]) setSavingData(sByMonth[selectedMonth]);
-    if (dByMonth[selectedMonth]) setDepositData(dByMonth[selectedMonth]);
+    const gByMonth = getStoredData('sof_group_by_month', {});
+    const reports = getStoredData('sof_monthly_reports', {});
+    const net = num(((reports[selectedMonth] || {}).income || {}).netProfit);
+    const active = sByMonth[selectedMonth] || [];
+    const group = gByMonth[selectedMonth] || [];
+
+    // One shared distribution over active members + group funds.
+    const pool = [...active, ...group].map((r: any) => ({
+      id: r.id, beginning: num(r.startCapital), addSaving: num(r.addSaving),
+      withdraw: num(r.withdraw), penalty: num(r.actualFee),
+    }));
+    const byId: Record<string, any> = {};
+    computeSavings(pool, net).forEach((x) => { byId[x.id] = x; });
+    const apply = (rows: any[]) => rows.map((r: any) => {
+      const c = byId[r.id];
+      return c ? { ...r, share: (c.share * 100).toFixed(2) + '%', profit: c.profit.toFixed(2), total: c.total.toFixed(2) } : r;
+    });
+
+    if (active.length) setSavingData(apply(active));
+    if (group.length) setGroupData(apply(group));
+    if (dByMonth[selectedMonth]) {
+      setDepositData(dByMonth[selectedMonth].map((r: any) => {
+        const beginning = num(r.startCapital);
+        const profit = DEFAULT_RATES.deposit * beginning;
+        const total = beginning + num(r.addSaving) + profit - num(r.withdraw);
+        return { ...r, profit: profit.toFixed(2), total: total.toFixed(2) };
+      }));
+    }
   }, [selectedMonth]);
 
   const handleDeleteAllSavings = () => {
