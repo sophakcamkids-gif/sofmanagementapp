@@ -2138,20 +2138,34 @@ function Savings() {
     return sd;
   });
 
-  // AUTO-CALCULATE the selected month's savings via the engine.
-  // Profit distribution pool = active members + group funds (reserve/social/YES):
-  //   share = beginning ÷ (Σ active beginning + Σ group beginning); profit = share × net profit.
-  // Deposit members do NOT share profit — they earn a fixed 0.5%/month instead.
+  // AUTO-CALCULATE the selected month's savings via the engine, with month-to-month
+  // carry-forward: each row's ទុនចាប់ផ្តើម (beginning) = the PREVIOUS month's total.
+  // Only ទុនសន្សំបន្ថែម (monthly deposit) is entered. First month (មករា) opening is entered.
+  // Profit pool = active members + group funds (reserve/social/YES); deposit members get 0.5%.
   useEffect(() => {
-    const sByMonth = getStoredData('sof_savings_by_month', {});
-    const dByMonth = getStoredData('sof_deposit_by_month', {});
-    const gByMonth = getStoredData('sof_group_by_month', {});
+    const sBy = getStoredData('sof_savings_by_month', {});
+    const dBy = getStoredData('sof_deposit_by_month', {});
+    const gBy = getStoredData('sof_group_by_month', {});
     const reports = getStoredData('sof_monthly_reports', {});
     const net = num(((reports[selectedMonth] || {}).income || {}).netProfit);
-    const active = sByMonth[selectedMonth] || [];
-    const group = gByMonth[selectedMonth] || [];
+    const mi = months.indexOf(selectedMonth);
+    const prev = mi > 0 ? months[mi - 1] : null;
 
-    // One shared distribution over active members + group funds.
+    // Base rows: saved month data if present, else the current roster.
+    let active = (sBy[selectedMonth] && sBy[selectedMonth].length) ? sBy[selectedMonth] : getStoredData('sof_savings_data', DEFAULT_SAVING_DATA) || [];
+    let group = (gBy[selectedMonth] && gBy[selectedMonth].length) ? gBy[selectedMonth] : getStoredData('sof_savings_group_data', DEFAULT_GROUP_DATA) || [];
+    let deposit = (dBy[selectedMonth] && dBy[selectedMonth].length) ? dBy[selectedMonth] : getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA) || [];
+
+    // Carry forward: beginning of this month = total of previous month (per member/fund).
+    if (prev) {
+      const totals = (arr: any[]) => { const m: Record<string, any> = {}; (arr || []).forEach((r: any) => { m[r.id] = r.total; }); return m; };
+      const pa = totals(sBy[prev]), pg = totals(gBy[prev]), pd = totals(dBy[prev]);
+      active = active.map((r: any) => (pa[r.id] !== undefined ? { ...r, startCapital: String(pa[r.id]) } : r));
+      group = group.map((r: any) => (pg[r.id] !== undefined ? { ...r, startCapital: String(pg[r.id]) } : r));
+      deposit = deposit.map((r: any) => (pd[r.id] !== undefined ? { ...r, startCapital: String(pd[r.id]) } : r));
+    }
+
+    // Distribute net profit over active + group pool.
     const pool = [...active, ...group].map((r: any) => ({
       id: r.id, beginning: num(r.startCapital), addSaving: num(r.addSaving),
       withdraw: num(r.withdraw), penalty: num(r.actualFee),
@@ -2163,16 +2177,14 @@ function Savings() {
       return c ? { ...r, share: (c.share * 100).toFixed(2) + '%', profit: c.profit.toFixed(2), total: c.total.toFixed(2) } : r;
     });
 
-    if (active.length) setSavingData(apply(active));
-    if (group.length) setGroupData(apply(group));
-    if (dByMonth[selectedMonth]) {
-      setDepositData(dByMonth[selectedMonth].map((r: any) => {
-        const beginning = num(r.startCapital);
-        const profit = DEFAULT_RATES.deposit * beginning;
-        const total = beginning + num(r.addSaving) + profit - num(r.withdraw);
-        return { ...r, profit: profit.toFixed(2), total: total.toFixed(2) };
-      }));
-    }
+    setSavingData(apply(active));
+    setGroupData(apply(group));
+    setDepositData(deposit.map((r: any) => {
+      const beginning = num(r.startCapital);
+      const profit = DEFAULT_RATES.deposit * beginning;
+      const total = beginning + num(r.addSaving) + profit - num(r.withdraw);
+      return { ...r, profit: profit.toFixed(2), total: total.toFixed(2) };
+    }));
   }, [selectedMonth]);
 
   // Recompute the active + group profit distribution for the given rows (engine).
@@ -2202,6 +2214,8 @@ function Savings() {
     const sBy = getStoredData('sof_savings_by_month', {}); sBy[selectedMonth] = savingData; setStoredData('sof_savings_by_month', sBy);
     const gBy = getStoredData('sof_group_by_month', {}); gBy[selectedMonth] = groupData; setStoredData('sof_group_by_month', gBy);
   };
+  // Beginning capital is editable only in the first month (opening); later months carry forward.
+  const isFirstMonth = selectedMonth === months[0];
 
   const handleDeleteAllSavings = () => {
     if (window.confirm('តើអ្នកពិតជាចង់លុបទិន្នន័យនេះមែនទេ? (សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ)')) {
@@ -2291,8 +2305,12 @@ function Savings() {
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={row.startCapital} onChange={(e) => editSavingRaw(idx, 'startCapital', e.target.value)} onBlur={saveSavingsMonth}
-                        className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                      {isFirstMonth ? (
+                        <input value={row.startCapital} onChange={(e) => editSavingRaw(idx, 'startCapital', e.target.value)} onBlur={saveSavingsMonth}
+                          className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                      ) : (
+                        <span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីសរុបខែមុន">{row.startCapital}</span>
+                      )}
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right text-slate-500 text-xs">{row.share}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
