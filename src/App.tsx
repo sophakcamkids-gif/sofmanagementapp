@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { db } from './lib/db';
+import { loadAllCloudState, saveCloudState } from './lib/cloudStore';
 import { 
   Bell, Settings, Users, Wallet, 
   FileText, PieChart, Home, Heart, MessageSquare, 
@@ -34,6 +35,8 @@ const setStoredData = (key: string, value: any) => {
   if (typeof window !== 'undefined') {
     const mappedKey = key.startsWith('sof_') ? key.replace('sof_', 'sof_live_') : key;
     localStorage.setItem(mappedKey, JSON.stringify(value));
+    // Mirror to Supabase cloud (fire-and-forget; local cache stays the working copy).
+    saveCloudState(mappedKey, value).catch(err => console.error('Cloud sync error:', err));
   }
 };
 
@@ -84,6 +87,7 @@ function SidebarLink({ to, label }: { to: string, label: string }) {
 export default function App() {
   const [userRole, setUserRole] = useState<string | null>(localStorage.getItem('userRole'));
   const [memberId, setMemberId] = useState<string | null>(localStorage.getItem('memberId'));
+  const [hydrated, setHydrated] = useState(false);
 
   // Clean up bad import once based on user request
   useEffect(() => {
@@ -94,6 +98,49 @@ export default function App() {
       window.location.reload();
     }
   }, []);
+
+  // Hydrate the local cache from Supabase cloud on startup (cloud = source of truth).
+  // Falls back to local-only if the table is missing or the network is unavailable.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const cloud = await loadAllCloudState();
+        // Overwrite local cache with cloud values so every device sees the same data.
+        for (const [k, v] of Object.entries(cloud)) {
+          localStorage.setItem(k, JSON.stringify(v));
+        }
+        // First-time migration: push any local-only keys up to the cloud.
+        const localKeys: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('sof_live_')) localKeys.push(k);
+        }
+        for (const k of localKeys) {
+          if (!(k in cloud)) {
+            try {
+              saveCloudState(k, JSON.parse(localStorage.getItem(k) || 'null'))
+                .catch(err => console.error('Cloud seed error:', err));
+            } catch { /* skip unparseable key */ }
+          }
+        }
+      } catch (err) {
+        console.error('Cloud hydration skipped (using local cache):', err);
+      } finally {
+        if (!cancelled) setHydrated(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!hydrated) {
+    return (
+      <div className="min-h-screen bg-[#eef8f2] flex flex-col items-center justify-center gap-3 text-[#0a6652]">
+        <div className="w-10 h-10 border-4 border-[#1fb487] border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-sm font-black">កំពុងទាញទិន្នន័យពី Cloud...</p>
+      </div>
+    );
+  }
 
   return (
     <Router>

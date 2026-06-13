@@ -98,6 +98,23 @@ CREATE TABLE system_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- ==========================================
+-- TABLE: app_state (key/value cloud cache for the live app)
+-- Mirrors the browser LocalStorage so data syncs across devices.
+-- Used by src/lib/cloudStore.ts (loadAllCloudState / saveCloudState).
+-- ==========================================
+CREATE TABLE IF NOT EXISTS app_state (
+    key TEXT PRIMARY KEY,                -- LocalStorage key (ex: sof_live_profile_data)
+    value JSONB NOT NULL,                -- the stored JSON value
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- The app talks to Supabase with the anon key (no Supabase Auth login), so the
+-- anon role needs full access to this table. Acceptable for an internal admin tool.
+ALTER TABLE app_state ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow anon full access - app_state" ON app_state;
+CREATE POLICY "Allow anon full access - app_state" ON app_state FOR ALL TO anon USING (true) WITH CHECK (true);
+
 -- =====================================================================================
 -- ROW LEVEL SECURITY (RLS) - SUPABASE BEST PRACTICES
 -- =====================================================================================
