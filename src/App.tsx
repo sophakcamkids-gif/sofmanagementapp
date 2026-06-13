@@ -2175,6 +2175,34 @@ function Savings() {
     }
   }, [selectedMonth]);
 
+  // Recompute the active + group profit distribution for the given rows (engine).
+  const recomputeSavingsRows = (activeRows: any[], groupRows: any[]) => {
+    const reports = getStoredData('sof_monthly_reports', {});
+    const net = num(((reports[selectedMonth] || {}).income || {}).netProfit);
+    const pool = [...activeRows, ...groupRows].map((r: any) => ({
+      id: r.id, beginning: num(r.startCapital), addSaving: num(r.addSaving),
+      withdraw: num(r.withdraw), penalty: num(r.actualFee),
+    }));
+    const byId: Record<string, any> = {};
+    computeSavings(pool, net).forEach((x) => { byId[x.id] = x; });
+    const apply = (rows: any[]) => rows.map((r: any) => {
+      const c = byId[r.id];
+      return c ? { ...r, share: (c.share * 100).toFixed(2) + '%', profit: c.profit.toFixed(2), total: c.total.toFixed(2) } : r;
+    });
+    return { active: apply(activeRows), group: apply(groupRows) };
+  };
+  // Edit a raw input cell (startCapital / addSaving) → live recompute (no cloud write yet).
+  const editSavingRaw = (idx: number, field: string, value: string) => {
+    const next = savingData.map((r: any, i: number) => (i === idx ? { ...r, [field]: value } : r));
+    const { active, group } = recomputeSavingsRows(next, groupData);
+    setSavingData(active); setGroupData(group);
+  };
+  // Persist the current month's savings + group to the cloud (called on blur).
+  const saveSavingsMonth = () => {
+    const sBy = getStoredData('sof_savings_by_month', {}); sBy[selectedMonth] = savingData; setStoredData('sof_savings_by_month', sBy);
+    const gBy = getStoredData('sof_group_by_month', {}); gBy[selectedMonth] = groupData; setStoredData('sof_group_by_month', gBy);
+  };
+
   const handleDeleteAllSavings = () => {
     if (window.confirm('តើអ្នកពិតជាចង់លុបទិន្នន័យនេះមែនទេ? (សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ)')) {
       if (activeTab === 'members') {
@@ -2262,9 +2290,15 @@ function Savings() {
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.startCapital}</td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={row.startCapital} onChange={(e) => editSavingRaw(idx, 'startCapital', e.target.value)} onBlur={saveSavingsMonth}
+                        className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                    </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right text-slate-500 text-xs">{row.share}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.addSaving !== '-' ? row.addSaving : <span className="text-slate-300">-</span>}</td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={row.addSaving} onChange={(e) => editSavingRaw(idx, 'addSaving', e.target.value)} onBlur={saveSavingsMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                    </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.profit}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.withdraw}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.deductFee}</td>
@@ -2491,6 +2525,24 @@ function Loans() {
     }
   }, [selectedMonth]);
 
+  // Edit a raw loan input (loanValue/repayment/newLoan) → live recompute interest + remaining.
+  const editLoanRaw = (idx: number, field: string, value: string) => {
+    const fmt = (v: number) => (v ? v.toFixed(2) : '-');
+    const next = loanData.map((r: any, i: number) => {
+      if (i !== idx) return r;
+      const merged = { ...r, [field]: value };
+      const res = computeLoan({
+        id: merged.id, beginning: num(merged.loanValue),
+        newLoan: num(merged.newLoan), repayment: num(merged.repayment),
+      }, DEFAULT_RATES);
+      return { ...merged, interest: fmt(res.interest), remaining: fmt(res.remaining) };
+    });
+    setLoanData(next);
+  };
+  const saveLoansMonth = () => {
+    const by = getStoredData('sof_loans_by_month', {}); by[selectedMonth] = loanData; setStoredData('sof_loans_by_month', by);
+  };
+
   const externalLoanData = [
     { id: 'I01', name: 'កម្ចីទទួលបានពី LSG', gender: 'ក្រុម', received: '-', repayment: '-', interestRate: '1.20%', duration: '', newLoan: '-', remaining: '-', interest: '-', totalToPay: '-', note: '' }
   ];
@@ -2587,21 +2639,21 @@ function Loans() {
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">
-                      {row.loanValue !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
-                      {row.loanValue}
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={row.loanValue} onChange={(e) => editLoanRaw(idx, 'loanValue', e.target.value)} onBlur={saveLoansMonth}
+                        className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-amber-600">
-                      {row.repayment !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
-                      {row.repayment}
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={row.repayment} onChange={(e) => editLoanRaw(idx, 'repayment', e.target.value)} onBlur={saveLoansMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-amber-600 focus:bg-amber-50 outline-none font-medium text-amber-700" />
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-indigo-600">
                       {row.interest !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
                       {row.interest}
                     </td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-emerald-600">
-                      {row.newLoan !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
-                      {row.newLoan}
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={row.newLoan} onChange={(e) => editLoanRaw(idx, 'newLoan', e.target.value)} onBlur={saveLoansMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-emerald-600 focus:bg-emerald-50 outline-none font-medium text-emerald-700" />
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium bg-slate-50">
                       {row.remaining !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
