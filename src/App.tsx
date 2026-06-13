@@ -995,22 +995,30 @@ function DashboardGeneral() {
 
   const recentLogs = getStoredData('sof_query_logs', []);
 
-  // Live summary figures computed from the stored data (was hardcoded demo values).
+  // Live summary figures. Prefer the latest imported monthly report snapshot
+  // (from the Excel financial report); fall back to summing the per-member data.
   const dashSavings = getStoredData('sof_savings_data', DEFAULT_SAVING_DATA);
   const dashDeposit = getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA);
   const dashGroup = getStoredData('sof_savings_group_data', DEFAULT_GROUP_DATA);
   const groupTotalBy = (needle: string) =>
     num((dashGroup.find((g: any) => (g.name || '').includes(needle)) || {}).total);
+  const dashReports = getStoredData('sof_monthly_reports', {});
+  // Pick the latest month that has data, using a fixed calendar order (jsonb key order is not reliable).
+  const MONTH_ORDER = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
+  const latestMonth = [...MONTH_ORDER].reverse().find(m => dashReports[m]);
+  const latestBal = latestMonth ? (dashReports[latestMonth] || {}).balance : null;
+  const dashVal = (key: string, fallback: number) =>
+    (latestBal && typeof latestBal[key] === 'number') ? latestBal[key] : fallback;
 
   return (
     <PageView title="ផ្ទាំងគ្រប់គ្រងទូទៅ (Dashboard)" hideBack={true} hideDownload={true} hideAdd={true}>
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {[
-          { label: 'ទុនសន្សំសមាជិកសកម្ម', value: '$' + fmtMoney(sumField(dashSavings, 'total')), color: 'text-[#0a6652]' },
-          { label: 'ទុនសន្សំសមាជិកបញ្ញើ', value: '$' + fmtMoney(sumField(dashDeposit, 'total')), color: 'text-blue-600' },
-          { label: 'ទុនសន្សំក្រុម(ខាងក្រៅ)', value: '$' + fmtMoney(groupTotalBy('យេស')), color: 'text-amber-600' },
-          { label: 'ទុនបម្រុង', value: '$' + fmtMoney(groupTotalBy('បម្រុង')), color: 'text-rose-500' },
-          { label: 'ទុនសង្គម', value: '$' + fmtMoney(groupTotalBy('សង្គម')), color: 'text-violet-600' }
+          { label: 'ទុនសន្សំសមាជិកសកម្ម', value: '$' + fmtMoney(dashVal('memberSavings', sumField(dashSavings, 'total'))), color: 'text-[#0a6652]' },
+          { label: 'ទុនសន្សំសមាជិកបញ្ញើ', value: '$' + fmtMoney(dashVal('depositSavings', sumField(dashDeposit, 'total'))), color: 'text-blue-600' },
+          { label: 'គណនីសន្សំមានកាលកំណត់', value: '$' + fmtMoney(dashVal('fixedTerm', 0)), color: 'text-amber-600' },
+          { label: 'ទុនបម្រុង', value: '$' + fmtMoney(dashVal('reserve', groupTotalBy('បម្រុង'))), color: 'text-rose-500' },
+          { label: 'ទុនសង្គម', value: '$' + fmtMoney(dashVal('social', groupTotalBy('សង្គម'))), color: 'text-violet-600' }
         ].map((stat, i) => (
           <div key={i} className="bg-[#eef8f2] p-4 md:p-5 rounded-2xl border border-green-100">
             <div className="text-[10px] md:text-xs font-bold text-slate-500 mb-1 leading-tight truncate-2-lines line-clamp-2 h-8 flex items-center">{stat.label}</div>
@@ -3081,8 +3089,12 @@ function Reports() {
   const [selectedMonth, setSelectedMonth] = useState('មេសា 2026');
   const months = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
 
-  // Balance-sheet figures computed live from stored data (was hardcoded).
-  // Cash-on-hand, bank balance and external borrowing have no data source yet, so they are 0.
+  // Prefer the imported monthly report snapshot (from the Excel financial report)
+  // for the selected month; fall back to live computation from per-member data
+  // when a month has no snapshot.
+  const monthlyReports = getStoredData('sof_monthly_reports', {});
+  const snap = monthlyReports[selectedMonth] || null;
+
   const rSavings = getStoredData('sof_savings_data', DEFAULT_SAVING_DATA);
   const rDeposit = getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA);
   const rGroup = getStoredData('sof_savings_group_data', DEFAULT_GROUP_DATA);
@@ -3091,19 +3103,28 @@ function Reports() {
   const rGroupBy = (needle: string) => num((rGroup.find((g: any) => (g.name || '').includes(needle)) || {}).total);
   const outstanding = (arr: any[]) => (arr || []).reduce((s: number, l: any) => s + (num(l.remaining) || num(l.loanValue)), 0);
 
-  const bsMemberSavings = sumField(rSavings, 'total');
-  const bsDepositSavings = sumField(rDeposit, 'total');
-  const bsLoansMembers = outstanding(rLoans);
-  const bsLoansExternal = outstanding(rLoansDep);
-  const bsCashOnHand = 0;
-  const bsBankBalance = 0;
-  const bsExternalBorrow = 0;
-  const bsReserve = rGroupBy('បម្រុង');
-  const bsSocial = rGroupBy('សង្គម');
-  const bsYes = rGroupBy('យេស');
-  const bsTotalAssets = bsCashOnHand + bsBankBalance + bsLoansMembers + bsLoansExternal;
-  const bsTotalLiabilities = bsMemberSavings + bsDepositSavings + bsExternalBorrow;
-  const bsTotalEquity = bsReserve + bsSocial + bsYes;
+  const bal = (snap && snap.balance) || null;
+  const pick = (k: string, fallback: number) => (bal && typeof bal[k] === 'number') ? bal[k] : fallback;
+
+  const bsMemberSavings = pick('memberSavings', sumField(rSavings, 'total'));
+  const bsDepositSavings = pick('depositSavings', sumField(rDeposit, 'total'));
+  const bsLoansMembers = pick('loansToMembers', outstanding(rLoans));
+  const bsLoansExternal = pick('loansExternal', outstanding(rLoansDep));
+  const bsCashOnHand = pick('cashOnHand', 0);
+  const bsBankBalance = pick('bankBalance', 0);
+  const bsExternalBorrow = pick('externalBorrow', 0);
+  const bsFixedTerm = pick('fixedTerm', 0);
+  const bsReserve = pick('reserve', rGroupBy('បម្រុង'));
+  const bsSocial = pick('social', rGroupBy('សង្គម'));
+  const bsYes = pick('yes', rGroupBy('យេស'));
+  const bsTotalAssets = bal ? bal.totalAssets : (bsCashOnHand + bsBankBalance + bsLoansMembers + bsLoansExternal);
+  const bsTotalLiabilities = bal ? bal.totalLiabilities : (bsMemberSavings + bsDepositSavings + bsExternalBorrow + bsFixedTerm);
+  const bsTotalEquity = bal ? bal.totalEquity : (bsReserve + bsSocial + bsYes);
+
+  // Income & cash-flow snapshots for their tabs (null when the month has no data).
+  const inc = (snap && snap.income) || null;
+  const cf = (snap && snap.cashflow) || null;
+  const m2 = (v: number | undefined) => (typeof v === 'number' ? fmtMoney(v) : '-');
 
   return (
     <PageView 
@@ -3221,6 +3242,10 @@ function Reports() {
                     <span>កម្ចីទទួលបានពីខាងក្រៅ</span>
                     <span className={bsExternalBorrow ? "font-bold" : "text-slate-400"}>{bsExternalBorrow ? fmtMoney(bsExternalBorrow) : '-'}</span>
                   </div>
+                  <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                    <span>គណនីសន្សំមានកាលកំណត់</span>
+                    <span className={bsFixedTerm ? "font-bold" : "text-slate-400"}>{bsFixedTerm ? fmtMoney(bsFixedTerm) : '-'}</span>
+                  </div>
                 </div>
                 <div className="bg-orange-50 px-6 py-4 border-t border-orange-100 flex justify-between items-center">
                   <span className="font-bold text-orange-700">សរុបបំណុល</span>
@@ -3271,33 +3296,54 @@ function Reports() {
             </div>
             <div className="p-6 space-y-4 flex-1">
               {[
-                { label: 'សាច់ប្រាក់នៅក្នុងហ៊ីបប្រាក់', value: '3,083.71' },
-                { label: 'សាច់ប្រាក់នៅធនាគារ', value: '-' },
-                { label: 'ប្រាក់ដាក់សន្សំសមាជិកម្ចាស់ភាគហ៊ុន', value: '309.75' },
-                { label: 'ប្រាក់សន្សំសមាជិកបញ្ញើសន្សំ', value: '10.00' },
-                { label: 'ប្រាក់បង់រំលោះ', value: '3,936.61' },
-                { label: 'ទុនសន្សំបន្ថែមក្រុម', value: '1.00' },
-                { label: 'ទទួលប្រាក់កម្ចីពីខាងក្រៅ', value: '150.00' },
-                { label: 'ប្រាក់ពិន័យ/សមាជិកភាព', value: '-' },
-                { label: 'ការប្រាក់ទទួលបាន', value: '839.57' },
-                { label: 'ចំណូលផ្សេងៗ', value: '-' },
-                { label: 'ការប្រាក់ពីធនាគារ', value: '-' },
-                { label: 'ប្រាក់លំអៀង', value: '-' }
+                { label: 'សាច់ប្រាក់នៅក្នុងហ៊ីបប្រាក់', value: cf?.openingCash },
+                { label: 'ប្រាក់ដាក់សន្សំសមាជិកម្ចាស់ភាគហ៊ុន', value: cf?.memberSavingsIn },
+                { label: 'ប្រាក់សន្សំសមាជិកបញ្ញើសន្សំ', value: cf?.depositSavingsIn },
+                { label: 'ប្រាក់បង់រំលោះ', value: cf?.repayment },
+                { label: 'ទុនសន្សំបន្ថែមក្រុម', value: cf?.groupExtra },
+                { label: 'ទទួលប្រាក់កម្ចីពីខាងក្រៅ', value: cf?.externalLoanReceived },
+                { label: 'ប្រាក់ពិន័យ/សមាជិកភាព', value: cf?.fines },
+                { label: 'ការប្រាក់ទទួលបាន', value: cf?.interestReceived },
+                { label: 'ចំណូលផ្សេងៗ', value: cf?.otherIncome }
               ].map((item, i) => (
                 <div key={i} className="flex justify-between items-center text-sm font-medium text-slate-700">
                   <span>{item.label}</span>
-                  <span className={item.value !== '-' ? "font-bold" : "text-slate-400"}>{item.value}</span>
+                  <span className={item.value ? "font-bold" : "text-slate-400"}>{item.value ? fmtMoney(item.value) : '-'}</span>
                 </div>
               ))}
             </div>
             <div className="bg-[#eef8f2] px-6 py-4 border-t border-green-100 flex justify-between items-center">
               <span className="font-bold text-[#0a6652]">សរុប</span>
-              <span className="font-black text-[#0a6652] text-lg">8,330.64</span>
+              <span className="font-black text-[#0a6652] text-lg">{m2(cf?.totalInflow)}</span>
             </div>
           </div>
 
-          <div className="flex items-center justify-center p-12 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
-            <p className="text-slate-400 font-medium">មិនទាន់មានទិន្នន័យប្រាក់ហូរចេញ</p>
+          {/* Cash Outflow Section */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
+              <h3 className="font-bold text-slate-800 text-lg">ប្រាក់ហូរចេញ</h3>
+            </div>
+            <div className="p-6 space-y-4 flex-1">
+              {[
+                { label: 'ប្រាក់ដកចេញ', value: cf?.withdrawals },
+                { label: 'ការចំណាយប្រតិបត្តិការ', value: cf?.operatingExpense },
+                { label: 'ការបង់ការប្រាក់កម្ចី', value: cf?.interestPaid },
+                { label: 'ការផ្តល់កម្ចី', value: cf?.loanGiven }
+              ].map((item, i) => (
+                <div key={i} className="flex justify-between items-center text-sm font-medium text-slate-700">
+                  <span>{item.label}</span>
+                  <span className={item.value ? "font-bold" : "text-slate-400"}>{item.value ? fmtMoney(item.value) : '-'}</span>
+                </div>
+              ))}
+            </div>
+            <div className="bg-orange-50 px-6 py-4 border-t border-orange-100 flex justify-between items-center">
+              <span className="font-bold text-orange-700">សរុប</span>
+              <span className="font-black text-orange-700 text-lg">{m2(cf?.totalOutflow)}</span>
+            </div>
+            <div className="bg-slate-800 px-6 py-4 flex justify-between items-center text-white">
+              <span className="font-bold">តុល្យភាពលំហូរសុទ្ធ</span>
+              <span className="font-black text-lg">{m2(cf?.netCash)}</span>
+            </div>
           </div>
         </div>
       )}
@@ -3311,16 +3357,16 @@ function Reports() {
               <div className="space-y-3 pl-4">
                 <div className="flex justify-between items-center text-sm font-medium text-slate-700">
                   <span>ការប្រាក់សមាជិកកម្ចី</span>
-                  <span className="font-bold">839.57</span>
+                  <span className="font-bold">{m2(inc?.interestIncome)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm font-medium text-slate-700">
                   <span>ចំណូលផ្សេងៗ</span>
-                  <span className="text-slate-400">-</span>
+                  <span className={inc?.otherIncome ? "font-bold" : "text-slate-400"}>{inc?.otherIncome ? fmtMoney(inc.otherIncome) : '-'}</span>
                 </div>
               </div>
               <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-200">
                  <span className="font-bold text-slate-800">សរុបចំណូល</span>
-                 <span className="font-black text-[#0a6652] text-lg">839.57</span>
+                 <span className="font-black text-[#0a6652] text-lg">{m2(inc?.totalIncome)}</span>
               </div>
             </div>
 
@@ -3329,20 +3375,20 @@ function Reports() {
               <div className="space-y-3 pl-4">
                 <div className="flex justify-between items-center text-sm font-medium text-slate-700">
                   <span>ការប្រាក់សមាជិកបញ្ញើ</span>
-                  <span className="font-bold">9.70</span>
+                  <span className="font-bold">{m2(inc?.depositInterestCost)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm font-medium text-slate-700">
                   <span>កម្ចីពីខាងក្រៅ</span>
-                  <span className="text-slate-400">-</span>
+                  <span className={inc?.externalLoanInterest ? "font-bold" : "text-slate-400"}>{inc?.externalLoanInterest ? fmtMoney(inc.externalLoanInterest) : '-'}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm font-medium text-slate-700">
                   <span>ការប្រាក់គណនីមានកាលកំណត់</span>
-                  <span className="font-bold">81.75</span>
+                  <span className="font-bold">{m2(inc?.fixedTermInterest)}</span>
                 </div>
               </div>
               <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-200">
                  <span className="font-bold text-slate-800">ចំណេញដុល</span>
-                 <span className="font-black text-indigo-600 text-lg">748.12</span>
+                 <span className="font-black text-indigo-600 text-lg">{m2(inc?.grossProfit)}</span>
               </div>
             </div>
 
@@ -3351,22 +3397,22 @@ function Reports() {
               <div className="space-y-3 pl-4">
                 <div className="flex justify-between items-center text-sm font-medium text-slate-700">
                   <span>ចំណាយប្រតិបត្តិការ</span>
-                  <span className="font-bold">208.00</span>
+                  <span className="font-bold">{m2(inc?.operatingExpense)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm font-medium text-slate-700">
                   <span>ទុនបម្រុង</span>
-                  <span className="font-bold">83.96</span>
+                  <span className="font-bold">{m2(inc?.reserveAlloc)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm font-medium text-slate-700">
                   <span>ទុនសង្គម</span>
-                  <span className="font-bold">4.20</span>
+                  <span className="font-bold">{m2(inc?.socialAlloc)}</span>
                 </div>
               </div>
             </div>
           </div>
           <div className="bg-[#eef8f2] px-6 md:px-8 py-5 border-t border-green-100 flex justify-between items-center">
             <span className="font-bold text-[#0a6652] text-lg">ប្រាក់ចំណេញសរុប</span>
-            <span className="font-black text-[#0a6652] text-xl">451.96</span>
+            <span className="font-black text-[#0a6652] text-xl">{m2(inc?.netProfit)}</span>
           </div>
         </div>
       )}
