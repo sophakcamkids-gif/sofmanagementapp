@@ -2454,15 +2454,13 @@ function Loans() {
   }, [selectedMonth]);
 
   const externalLoanData = [
-    { id: 'I01', name: 'កម្ចីទទួលបានពី LSG', gender: 'ក្រុម', received: '-', repayment: '-', interestRate: '1.20%', duration: '', newLoan: '-', remaining: '-', interest: '-', totalToPay: '-', note: '' },
-    ...Array(11).fill(null).map((_, i) => ({ id: `I${(i + 2).toString().padStart(2, '0')}`, name: '-', gender: '-', received: '-', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '-', interest: '-', totalToPay: '-', note: '' }))
+    { id: 'I01', name: 'កម្ចីទទួលបានពី LSG', gender: 'ក្រុម', received: '-', repayment: '-', interestRate: '1.20%', duration: '', newLoan: '-', remaining: '-', interest: '-', totalToPay: '-', note: '' }
   ];
 
   const externalProvidedData = [
     { id: 'O01', name: 'ដៃគូ SIG', gender: '-', received: '391.70', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '391.70', interest: '-', totalToPay: '-', note: '' },
     { id: 'O02', name: 'ដៃគូ ឃ្លាំង', gender: '-', received: '2,870.91', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '2,870.91', interest: '-', totalToPay: '-', note: '' },
-    { id: 'O03', name: 'ដៃគូ SOF', gender: '-', received: '7,286.91', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '7,286.91', interest: '-', totalToPay: '-', note: '' },
-    ...Array(8).fill(null).map((_, i) => ({ id: `O${(i + 4).toString().padStart(2, '0')}`, name: '-', gender: '-', received: '-', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '-', interest: '-', totalToPay: '-', note: '' }))
+    { id: 'O03', name: 'ដៃគូ SOF', gender: '-', received: '7,286.91', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '7,286.91', interest: '-', totalToPay: '-', note: '' }
   ];
 
   const handleDeleteAllLoans = () => {
