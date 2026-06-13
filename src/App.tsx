@@ -2446,6 +2446,13 @@ function Loans() {
     return dld;
   });
 
+  // Load the internal-loan ledger for the selected month from the imported
+  // monthly data (sof_loans_by_month). Falls back to the flat roster otherwise.
+  useEffect(() => {
+    const byMonth = getStoredData('sof_loans_by_month', {});
+    if (byMonth[selectedMonth]) setLoanData(byMonth[selectedMonth]);
+  }, [selectedMonth]);
+
   const externalLoanData = [
     { id: 'I01', name: 'កម្ចីទទួលបានពី LSG', gender: 'ក្រុម', received: '-', repayment: '-', interestRate: '1.20%', duration: '', newLoan: '-', remaining: '-', interest: '-', totalToPay: '-', note: '' },
     ...Array(11).fill(null).map((_, i) => ({ id: `I${(i + 2).toString().padStart(2, '0')}`, name: '-', gender: '-', received: '-', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '-', interest: '-', totalToPay: '-', note: '' }))
@@ -2539,8 +2546,8 @@ function Loans() {
                 </tr>
               </thead>
               <tbody>
-                {loanData.map((row) => (
-                  <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
+                {loanData.map((row, idx) => (
+                  <tr key={`${row.id}-${idx}`} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
