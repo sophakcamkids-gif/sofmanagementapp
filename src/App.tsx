@@ -2137,6 +2137,16 @@ function Savings() {
     return sd;
   });
 
+  // Load the savings ledger for the selected month from the imported monthly data
+  // (sof_savings_by_month / sof_deposit_by_month). Falls back to the flat roster
+  // for months that have no imported data.
+  useEffect(() => {
+    const sByMonth = getStoredData('sof_savings_by_month', {});
+    const dByMonth = getStoredData('sof_deposit_by_month', {});
+    if (sByMonth[selectedMonth]) setSavingData(sByMonth[selectedMonth]);
+    if (dByMonth[selectedMonth]) setDepositData(dByMonth[selectedMonth]);
+  }, [selectedMonth]);
+
   const handleDeleteAllSavings = () => {
     if (window.confirm('តើអ្នកពិតជាចង់លុបទិន្នន័យនេះមែនទេ? (សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ)')) {
       if (activeTab === 'members') {
@@ -2219,8 +2229,8 @@ function Savings() {
                 </tr>
               </thead>
               <tbody>
-                {savingData.map((row) => (
-                  <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
+                {savingData.map((row, idx) => (
+                  <tr key={`${row.id}-${idx}`} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
@@ -2324,8 +2334,8 @@ function Savings() {
                 </tr>
               </thead>
               <tbody>
-                {depositData.map((row) => (
-                  <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
+                {depositData.map((row, idx) => (
+                  <tr key={`${row.id}-${idx}`} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
