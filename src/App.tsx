@@ -2217,6 +2217,31 @@ function Savings() {
   // Beginning capital is editable only in the first month (opening); later months carry forward.
   const isFirstMonth = selectedMonth === months[0];
 
+  // Paste-import monthly savings: one line per member → engine recomputes for the month.
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState('');
+  const codeOf = (r: any) => (typeof r.id === 'string' && r.id.includes(' ') ? r.id.split(' ').pop() : r.id);
+  const handlePasteImport = () => {
+    const lines = importText.split('\n').map((l) => l.trim()).filter(Boolean);
+    const next = [...savingData];
+    let count = 0;
+    lines.forEach((line) => {
+      const p = line.split(/[\t,]+|\s{2,}|\s+/).map((s) => s.trim()).filter(Boolean);
+      if (p.length < 2) return;
+      const code = p[0].toUpperCase();
+      const i = next.findIndex((r: any) => String(codeOf(r)).toUpperCase() === code);
+      if (i < 0) return;
+      next[i] = p.length >= 3 ? { ...next[i], startCapital: p[1], addSaving: p[2] } : { ...next[i], addSaving: p[1] };
+      count++;
+    });
+    const { active, group } = recomputeSavingsRows(next, groupData);
+    setSavingData(active); setGroupData(group);
+    const sBy = getStoredData('sof_savings_by_month', {}); sBy[selectedMonth] = active; setStoredData('sof_savings_by_month', sBy);
+    const gBy = getStoredData('sof_group_by_month', {}); gBy[selectedMonth] = group; setStoredData('sof_group_by_month', gBy);
+    setShowImport(false); setImportText('');
+    alert(`នាំចូល ${count} សមាជិក សម្រាប់ខែ ${selectedMonth} ដោយជោគជ័យ!`);
+  };
+
   const handleDeleteAllSavings = () => {
     if (window.confirm('តើអ្នកពិតជាចង់លុបទិន្នន័យនេះមែនទេ? (សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ)')) {
       if (activeTab === 'members') {
@@ -2277,6 +2302,30 @@ function Savings() {
 
       {activeTab === 'members' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
+          <div className="flex justify-end mb-3">
+            <button onClick={() => setShowImport(true)} className="flex items-center gap-1.5 bg-[#0a6652] text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-[#084f40] transition-colors cursor-pointer">
+              <Upload size={14} strokeWidth={2.5} /> នាំចូលទុនសន្សំ (បិទភ្ជាប់)
+            </button>
+          </div>
+          {showImport && (
+            <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowImport(false)}>
+              <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl" onClick={(e) => e.stopPropagation()}>
+                <h3 className="font-bold text-lg text-[#0a6652] mb-2">នាំចូលទុនសន្សំ — {selectedMonth}</h3>
+                <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+                  បិទភ្ជាប់ពី Excel ៖ មួយជួរក្នុងមួយសមាជិក។<br />
+                  ទម្រង់៖ <b>លេខកូដ ⟶ ទុនសន្សំបន្ថែម</b> (ឧ. <code className="bg-slate-100 px-1">C001  50</code>)<br />
+                  ឬ <b>លេខកូដ ⟶ ទុនចាប់ផ្តើម ⟶ ទុនសន្សំបន្ថែម</b> (ឧ. <code className="bg-slate-100 px-1">C001  1000  50</code> សម្រាប់ដើមដំបូង)
+                </p>
+                <textarea value={importText} onChange={(e) => setImportText(e.target.value)} rows={10}
+                  placeholder={"C001\t50\nC002\t30\nC003\t100"}
+                  className="w-full border border-slate-300 rounded-lg p-3 text-sm font-mono outline-none focus:border-[#0a6652]" />
+                <div className="flex justify-end gap-2 mt-3">
+                  <button onClick={() => setShowImport(false)} className="px-4 py-2 rounded-full text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer">បោះបង់</button>
+                  <button onClick={handlePasteImport} className="px-4 py-2 rounded-full text-sm font-bold bg-[#0a6652] text-white hover:bg-[#084f40] cursor-pointer">នាំចូល</button>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="overflow-x-auto border border-slate-300 rounded-xl">
             <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
               <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
