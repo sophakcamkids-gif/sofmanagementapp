@@ -659,9 +659,12 @@ function DashboardGeneral() {
   const membersList = getStoredData('sof_member_list_data', DEFAULT_MEMBER_LIST_DATA);
   const depositProfiles = getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA);
 
-  // Combine lists of active and deposit members for dropdown selections
+  // Combine lists of active and deposit members for dropdown selections.
+  // member_list_data already holds both types, so take only active rows from it
+  // and add deposit members from depositProfiles — otherwise deposit codes appear
+  // twice (duplicate React keys).
   const allMembersForSelect = [
-    ...membersList.map((m: any) => ({ code: m.code, name: m.name, type: 'សកម្ម' })),
+    ...membersList.filter((m: any) => m.type !== 'បញ្ញើ').map((m: any) => ({ code: m.code, name: m.name, type: 'សកម្ម' })),
     ...depositProfiles.map((m: any) => ({ code: m.code, name: m.name, type: 'បញ្ញើ' }))
   ];
 
