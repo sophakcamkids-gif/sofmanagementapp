@@ -2746,70 +2746,57 @@ function Loans() {
     return dld;
   });
 
-  // Load the selected month's loans and AUTO-CALCULATE interest (rate × beginning)
-  // and remaining (beginning + newLoan − repayment) via the engine.
+  // Recompute one loan row via the engine. Unpaid interest (ការប្រាក់ត្រូវបង់ −
+  // ការប្រាក់បានបង់) auto-capitalises into កម្ចីថ្មី (newLoan), so remaining grows
+  // by the unpaid amount — UNLESS the user has typed a value into the newLoan column.
+  const recalcLoanRow = (merged: any) => {
+    const fmt = (v: number) => (v ? v.toFixed(2) : '-');
+    const beginning = num(merged.loanValue);
+    const rate = num(merged.rate) > 0 ? num(merged.rate) / 100 : undefined;
+    const interestDue = (rate ?? DEFAULT_RATES.loan) * beginning;
+    const unpaid = Math.max(0, interestDue - num(merged.interestPaid));
+    const newLoanVal = merged.newLoanEdited ? num(merged.newLoan) : unpaid;
+    const res = computeLoan({
+      id: merged.id, beginning, newLoan: newLoanVal, repayment: num(merged.repayment), rate,
+    }, DEFAULT_RATES);
+    return {
+      ...merged,
+      interest: fmt(res.interest),
+      newLoan: merged.newLoanEdited ? merged.newLoan : fmt(unpaid),
+      remaining: fmt(res.remaining),
+    };
+  };
+
+  // Load the selected month's loans and AUTO-CALCULATE interest, auto new-loan & remaining.
   useEffect(() => {
     const byMonth = getStoredData('sof_loans_by_month', {});
-    if (byMonth[selectedMonth]) {
-      const rows = byMonth[selectedMonth];
-      const fmt = (v: number) => v ? v.toFixed(2) : '-';
-      setLoanData(rows.map((r: any) => {
-        const res = computeLoan({
-          id: r.id, beginning: num(r.loanValue),
-          newLoan: num(r.newLoan), repayment: num(r.repayment),
-          rate: num(r.rate) > 0 ? num(r.rate) / 100 : undefined,
-        }, DEFAULT_RATES);
-        return { ...r, interest: fmt(res.interest), remaining: fmt(res.remaining) };
-      }));
-    }
+    if (byMonth[selectedMonth]) setLoanData(byMonth[selectedMonth].map(recalcLoanRow));
     const depByMonth = getStoredData('sof_loans_deposit_by_month', {});
-    if (depByMonth[selectedMonth]) {
-      const fmt = (v: number) => v ? v.toFixed(2) : '-';
-      setDepositLoanData(depByMonth[selectedMonth].map((r: any) => {
-        const res = computeLoan({
-          id: r.id, beginning: num(r.loanValue),
-          newLoan: num(r.newLoan), repayment: num(r.repayment),
-          rate: num(r.rate) > 0 ? num(r.rate) / 100 : undefined,
-        }, DEFAULT_RATES);
-        return { ...r, interest: fmt(res.interest), remaining: fmt(res.remaining) };
-      }));
-    }
+    if (depByMonth[selectedMonth]) setDepositLoanData(depByMonth[selectedMonth].map(recalcLoanRow));
   }, [selectedMonth]);
 
   // Show a blank input instead of the placeholder "-" so typing doesn't produce "1-".
   const showVal = (v: any) => (v === '-' || v == null ? '' : v);
-  // Edit a raw loan input (loanValue/rate/repayment/interestPaid) → live recompute interest + remaining.
+  // Edit a raw loan input. Typing into newLoan marks it manual; clearing it reverts to auto.
   const editLoanRaw = (idx: number, field: string, value: string) => {
-    const fmt = (v: number) => (v ? v.toFixed(2) : '-');
-    const next = loanData.map((r: any, i: number) => {
+    setLoanData(loanData.map((r: any, i: number) => {
       if (i !== idx) return r;
       const merged = { ...r, [field]: value };
-      const res = computeLoan({
-        id: merged.id, beginning: num(merged.loanValue),
-        newLoan: num(merged.newLoan), repayment: num(merged.repayment),
-        rate: num(merged.rate) > 0 ? num(merged.rate) / 100 : undefined,
-      }, DEFAULT_RATES);
-      return { ...merged, interest: fmt(res.interest), remaining: fmt(res.remaining) };
-    });
-    setLoanData(next);
+      if (field === 'newLoan') merged.newLoanEdited = value.trim() !== '' && value.trim() !== '-';
+      return recalcLoanRow(merged);
+    }));
   };
   const saveLoansMonth = () => {
     const by = getStoredData('sof_loans_by_month', {}); by[selectedMonth] = loanData; setStoredData('sof_loans_by_month', by);
   };
   // Deposit-member loans: same engine, separate dataset/storage.
   const editDepositLoanRaw = (idx: number, field: string, value: string) => {
-    const fmt = (v: number) => (v ? v.toFixed(2) : '-');
-    const next = depositLoanData.map((r: any, i: number) => {
+    setDepositLoanData(depositLoanData.map((r: any, i: number) => {
       if (i !== idx) return r;
       const merged = { ...r, [field]: value };
-      const res = computeLoan({
-        id: merged.id, beginning: num(merged.loanValue),
-        newLoan: num(merged.newLoan), repayment: num(merged.repayment),
-        rate: num(merged.rate) > 0 ? num(merged.rate) / 100 : undefined,
-      }, DEFAULT_RATES);
-      return { ...merged, interest: fmt(res.interest), remaining: fmt(res.remaining) };
-    });
-    setDepositLoanData(next);
+      if (field === 'newLoan') merged.newLoanEdited = value.trim() !== '' && value.trim() !== '-';
+      return recalcLoanRow(merged);
+    }));
   };
   const saveDepositLoanMonth = () => {
     const by = getStoredData('sof_loans_deposit_by_month', {}); by[selectedMonth] = depositLoanData; setStoredData('sof_loans_deposit_by_month', by);
