@@ -2901,6 +2901,7 @@ function Loans() {
                   <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">ការប្រាក់ត្រូវបង់</th>
                   <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">បង់រំលស់ដើម</th>
                   <th className="px-3 py-3 border-r border-slate-300 align-middle text-right text-[#084f40] bg-[#f3faf6]">ការប្រាក់បានបង់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីថ្មី</th>
                   <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីនៅសល់សរុប</th>
                 </tr>
               </thead>
@@ -2933,6 +2934,10 @@ function Loans() {
                       <input value={showVal(row.interestPaid)} onChange={(e) => editLoanRaw(idx, 'interestPaid', e.target.value)} onBlur={saveLoansMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-white outline-none font-bold text-[#0a6652]" />
                     </td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={showVal(row.newLoan)} onChange={(e) => editLoanRaw(idx, 'newLoan', e.target.value)} onBlur={saveLoansMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-emerald-600 focus:bg-emerald-50 outline-none font-medium text-emerald-700" />
+                    </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium bg-slate-50">
                       {row.remaining !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
                       {row.remaining}
@@ -2959,6 +2964,7 @@ function Loans() {
                   <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">ការប្រាក់ត្រូវបង់</th>
                   <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">បង់រំលស់ដើម</th>
                   <th className="px-3 py-3 border-r border-slate-300 align-middle text-right text-[#084f40] bg-[#f3faf6]">ការប្រាក់បានបង់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីថ្មី</th>
                   <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីនៅសល់សរុប</th>
                 </tr>
               </thead>
@@ -2990,6 +2996,10 @@ function Loans() {
                     <td className="px-1 py-1 border-r border-slate-300 text-right bg-[#f3faf6]">
                       <input value={showVal(row.interestPaid)} onChange={(e) => editDepositLoanRaw(idx, 'interestPaid', e.target.value)} onBlur={saveDepositLoanMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-white outline-none font-bold text-[#0a6652]" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={showVal(row.newLoan)} onChange={(e) => editDepositLoanRaw(idx, 'newLoan', e.target.value)} onBlur={saveDepositLoanMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-emerald-600 focus:bg-emerald-50 outline-none font-medium text-emerald-700" />
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium bg-slate-50">
                       {row.remaining !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
