@@ -2753,15 +2753,17 @@ function Loans() {
     const fmt = (v: number) => (v ? v.toFixed(2) : '-');
     const beginning = num(merged.loanValue);
     const rate = num(merged.rate) > 0 ? num(merged.rate) / 100 : undefined;
-    const interestDue = (rate ?? DEFAULT_RATES.loan) * beginning;
-    const unpaid = Math.max(0, interestDue - num(merged.interestPaid));
+    // Interest due, rounded to cents so the displayed columns reconcile exactly:
+    //   កម្ចីថ្មី (auto) = ការប្រាក់ត្រូវបង់ − ការប្រាក់បានបង់.
+    const interestDue = Number(((rate ?? DEFAULT_RATES.loan) * beginning).toFixed(2));
+    const unpaid = Math.max(0, Number((interestDue - num(merged.interestPaid)).toFixed(2)));
     const newLoanVal = merged.newLoanEdited ? num(merged.newLoan) : unpaid;
     const res = computeLoan({
       id: merged.id, beginning, newLoan: newLoanVal, repayment: num(merged.repayment), rate,
     }, DEFAULT_RATES);
     return {
       ...merged,
-      interest: fmt(res.interest),
+      interest: fmt(interestDue),
       newLoan: merged.newLoanEdited ? merged.newLoan : fmt(unpaid),
       remaining: fmt(res.remaining),
     };
