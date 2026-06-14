@@ -2826,6 +2826,37 @@ function Loans() {
     const by = getStoredData('sof_loans_deposit_by_month', {}); by[selectedMonth] = depositLoanData; setStoredData('sof_loans_deposit_by_month', by);
   };
 
+  // First-month (មករា) paste import: one line per member → set the opening loan.
+  const [showLoanImport, setShowLoanImport] = useState(false);
+  const [loanImportText, setLoanImportText] = useState('');
+  const loanCodeOf = (r: any) => (typeof r.id === 'string' && r.id.includes(' ') ? r.id.split(' ').pop() : r.id);
+  const handlePasteLoanImport = () => {
+    const isDeposit = activeTab === 'deposit_members';
+    const data = isDeposit ? depositLoanData : loanData;
+    const setData = isDeposit ? setDepositLoanData : setLoanData;
+    const saveKey = isDeposit ? 'sof_loans_deposit_by_month' : 'sof_loans_by_month';
+    const lines = loanImportText.split('\n').map((l) => l.trim()).filter(Boolean);
+    const next = [...data];
+    let count = 0;
+    lines.forEach((line) => {
+      const p = line.split(/[\t,]+|\s{2,}|\s+/).map((s) => s.trim()).filter(Boolean);
+      if (p.length < 2) return;
+      const code = p[0].toUpperCase();
+      const i = next.findIndex((r: any) => String(loanCodeOf(r)).toUpperCase() === code);
+      if (i < 0) return;
+      const merged: any = { ...next[i], loanValue: p[1] };
+      if (p[2] !== undefined) merged.rate = p[2];
+      if (p[3] !== undefined) merged.repayment = p[3];
+      if (p[4] !== undefined) merged.interestPaid = p[4];
+      next[i] = recalcLoanRow(merged);
+      count++;
+    });
+    setData(next);
+    const by = getStoredData(saveKey, {}); by[selectedMonth] = next; setStoredData(saveKey, by);
+    setShowLoanImport(false); setLoanImportText('');
+    alert(`នាំចូល ${count} កម្ចី សម្រាប់ខែ ${selectedMonth} ដោយជោគជ័យ!`);
+  };
+
   const externalLoanData = [
     { id: 'I01', name: 'កម្ចីទទួលបានពី LSG', gender: 'ក្រុម', received: '-', repayment: '-', interestRate: '1.20%', duration: '', newLoan: '-', remaining: '-', interest: '-', totalToPay: '-', note: '' }
   ];
@@ -2898,8 +2929,35 @@ function Loans() {
         </button>
       </div>
 
+      {showLoanImport && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowLoanImport(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold text-lg text-[#0a6652] mb-2">នាំចូលកម្ចីដើមគ្រា — {selectedMonth}</h3>
+            <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+              បិទភ្ជាប់ពី Excel ៖ មួយជួរក្នុងមួយសមាជិក។<br />
+              ទម្រង់៖ <b>លេខកូដ ⟶ កម្ចីដើមគ្រា</b> (ឧ. <code className="bg-slate-100 px-1">C001  100</code>)<br />
+              ឬបន្ថែម៖ <b>លេខកូដ ⟶ កម្ចីដើមគ្រា ⟶ អត្រា% ⟶ បង់រំលស់ ⟶ ការប្រាក់បានបង់</b>
+            </p>
+            <textarea value={loanImportText} onChange={(e) => setLoanImportText(e.target.value)} rows={10}
+              placeholder={"C001\t100\nC002\t250\nC003\t80"}
+              className="w-full border border-slate-300 rounded-lg p-3 text-sm font-mono outline-none focus:border-[#0a6652]" />
+            <div className="flex justify-end gap-2 mt-3">
+              <button onClick={() => setShowLoanImport(false)} className="px-4 py-2 rounded-full text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer">បោះបង់</button>
+              <button onClick={handlePasteLoanImport} className="px-4 py-2 rounded-full text-sm font-bold bg-[#0a6652] text-white hover:bg-[#084f40] cursor-pointer">នាំចូល</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'members' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
+          {isFirstMonth && (
+            <div className="flex justify-end mb-3">
+              <button onClick={() => setShowLoanImport(true)} className="flex items-center gap-1.5 bg-[#0a6652] text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-[#084f40] transition-colors cursor-pointer">
+                <Upload size={14} strokeWidth={2.5} /> បិទភ្ជាប់ (Paste)
+              </button>
+            </div>
+          )}
           <div className="frz2 overflow-x-auto border border-slate-300 rounded-xl">
             <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
               <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
@@ -2967,6 +3025,13 @@ function Loans() {
 
       {activeTab === 'deposit_members' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
+          {isFirstMonth && (
+            <div className="flex justify-end mb-3">
+              <button onClick={() => setShowLoanImport(true)} className="flex items-center gap-1.5 bg-[#0a6652] text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-[#084f40] transition-colors cursor-pointer">
+                <Upload size={14} strokeWidth={2.5} /> បិទភ្ជាប់ (Paste)
+              </button>
+            </div>
+          )}
           <div className="frz2 overflow-x-auto border border-slate-300 rounded-xl">
             <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
               <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
