@@ -2434,9 +2434,18 @@ function Savings() {
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.profit}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.withdraw}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.deductFee}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.actualFee}</td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={row.withdraw} onChange={(e) => editSavingRaw(idx, 'withdraw', e.target.value)} onBlur={saveSavingsMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={row.deductFee} onChange={(e) => editSavingRaw(idx, 'deductFee', e.target.value)} onBlur={saveSavingsMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={row.actualFee} onChange={(e) => editSavingRaw(idx, 'actualFee', e.target.value)} onBlur={saveSavingsMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                    </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">{row.total}</td>
                     <td className="px-3 py-2 text-center text-green-600 font-bold">{row.checked ? '✓' : ''}</td>
                   </tr>
