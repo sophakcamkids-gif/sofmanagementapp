@@ -595,10 +595,12 @@ function PageView({
          <h2 className="text-base sm:text-lg md:text-xl font-bold text-[#0a6652]">{title}</h2>
          <div className="flex flex-wrap gap-2">
             {!hideUpload && (
-              <button onClick={handleUploadClick} className="flex text-xs items-center gap-1.5 bg-slate-100 text-slate-700 px-3 py-1.5 rounded-full font-bold hover:bg-slate-200 transition-colors cursor-pointer">
-                <Upload size={14} strokeWidth={2.5} /> នាំយកពីកុំព្យូទ័រ
+              <>
+                <button onClick={handleUploadClick} type="button" className="flex text-xs items-center gap-1.5 bg-slate-100 text-slate-700 px-3 py-1.5 rounded-full font-bold hover:bg-slate-200 transition-colors cursor-pointer">
+                  <Upload size={14} strokeWidth={2.5} /> នាំយកពីកុំព្យូទ័រ
+                </button>
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json,.csv,.xlsx" />
-              </button>
+              </>
             )}
             {!hideDownload && (
               <button onClick={handleDownloadClick} className="flex text-xs items-center gap-1.5 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full font-bold hover:bg-indigo-100 transition-colors">
@@ -2242,7 +2244,8 @@ function Savings() {
     alert(`នាំចូល ${count} សមាជិក សម្រាប់ខែ ${selectedMonth} ដោយជោគជ័យ!`);
   };
 
-  // Import an Excel/CSV file with columns: លេខ ID, ឈ្មោះ, សន្សំប្រចាំ (+ ទុនចាប់ផ្តើម optional).
+  // Import an Excel/CSV file → set the selected month's deposit per member, recompute.
+  // Robust: finds the header row anywhere in the first rows, flexible column names & ID format.
   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -2251,36 +2254,45 @@ function Savings() {
       try {
         const wb = XLSX.read(ev.target?.result as ArrayBuffer, { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' }) as any[];
-        const field = (row: any, keys: string[]) => {
-          for (const k of Object.keys(row)) {
-            const kn = k.replace(/[\s​]/g, '');
-            if (keys.some((x) => kn.includes(x))) return row[k];
-          }
-          return undefined;
-        };
+        const grid = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as any[][];
+        const nz = (s: any) => String(s).replace(/[\s​]/g, '').toLowerCase();
+        const hasKey = (cell: any, keys: string[]) => keys.some((k) => nz(cell).includes(nz(k)));
+        // Locate the header row + the code / deposit / opening columns.
+        let hr = -1, cCode = -1, cDep = -1, cOpen = -1;
+        for (let r = 0; r < Math.min(15, grid.length); r++) {
+          let code = -1, dep = -1, open = -1;
+          (grid[r] || []).forEach((cell: any, ci: number) => {
+            if (code < 0 && hasKey(cell, ['id', 'កូដ', 'លេខ'])) code = ci;
+            if (dep < 0 && hasKey(cell, ['សន្សំ', 'ប្រចាំ', 'បន្ថែម', 'saving', 'deposit'])) dep = ci;
+            if (open < 0 && hasKey(cell, ['ចាប់ផ្តើម', 'ដើម', 'opening'])) open = ci;
+          });
+          if (code >= 0 && dep >= 0) { hr = r; cCode = code; cDep = dep; cOpen = open; break; }
+        }
+        if (hr < 0) {
+          alert('រកមិនឃើញជួរក្បាល (header) ដែលមាន "លេខ ID" និង "សន្សំប្រចាំ" ទេ។\nជួរទី១របស់ឯកសារ៖ ' + JSON.stringify(grid[0] || []).slice(0, 150));
+          return;
+        }
+        const stripCode = (v: any) => { let s = String(v).trim().toUpperCase(); if (s.includes(' ')) s = s.split(' ').pop() || s; return s; };
         const next = [...savingData];
-        let count = 0;
-        rows.forEach((row) => {
-          const code = String(field(row, ['ID', 'កូដ', 'លេខ']) ?? '').trim().toUpperCase();
-          if (!code) return;
-          const i = next.findIndex((r: any) => String(codeOf(r)).toUpperCase() === code);
-          if (i < 0) return;
-          const dep = field(row, ['សន្សំ', 'ប្រចាំ', 'បន្ថែម', 'Saving', 'Deposit']);
-          const open = field(row, ['ចាប់ផ្តើម', 'Opening', 'ដើម']);
+        let count = 0; const unmatched: string[] = [];
+        for (let r = hr + 1; r < grid.length; r++) {
+          const code = stripCode((grid[r] || [])[cCode] ?? '');
+          if (!code || !/^[A-Z]+\d+$/.test(code)) continue;
+          const i = next.findIndex((x: any) => stripCode(codeOf(x)) === code);
+          if (i < 0) { unmatched.push(code); continue; }
           const upd: any = { ...next[i] };
-          if (dep !== undefined && dep !== '') upd.addSaving = String(dep);
-          if (open !== undefined && open !== '') upd.startCapital = String(open);
-          next[i] = upd;
-          count++;
-        });
+          const dep = grid[r][cDep];
+          if (dep !== '' && dep != null) upd.addSaving = String(dep);
+          if (cOpen >= 0) { const o = grid[r][cOpen]; if (o !== '' && o != null) upd.startCapital = String(o); }
+          next[i] = upd; count++;
+        }
         const { active, group } = recomputeSavingsRows(next, groupData);
         setSavingData(active); setGroupData(group);
         const sBy = getStoredData('sof_savings_by_month', {}); sBy[selectedMonth] = active; setStoredData('sof_savings_by_month', sBy);
         const gBy = getStoredData('sof_group_by_month', {}); gBy[selectedMonth] = group; setStoredData('sof_group_by_month', gBy);
-        alert(`នាំចូល ${count} សមាជិក ពីឯកសារ Excel សម្រាប់ខែ ${selectedMonth}!`);
+        alert(`នាំចូល ${count} សមាជិក សម្រាប់ខែ ${selectedMonth}!` + (unmatched.length ? `\nរកមិនឃើញកូដ ${unmatched.length}៖ ${unmatched.slice(0, 8).join(', ')}` : ''));
       } catch (err) {
-        alert('មានបញ្ហាក្នុងការអានឯកសារ។ សូមប្រាកដថាជា Excel/CSV ត្រឹមត្រូវ ហើយមានជួរ លេខID / ឈ្មោះ / សន្សំប្រចាំ។');
+        alert('មានបញ្ហាក្នុងការអានឯកសារ៖ ' + err);
       }
     };
     reader.readAsArrayBuffer(file);
