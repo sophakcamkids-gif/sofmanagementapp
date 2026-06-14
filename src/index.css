@@ -1,5 +1,54 @@
 @import "tailwindcss";
 
+/* Savings tables: freeze the header row and the first two columns (No. + Name)
+   so they stay visible while scrolling vertically/horizontally. */
+.sav-frz {
+  max-height: 75vh;
+  overflow: auto;
+}
+.sav-frz thead {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+/* Column 1 (ល.រ) */
+.sav-frz thead tr:first-child th:nth-child(1) {
+  position: sticky;
+  left: 0;
+  z-index: 35;
+  background: #eef8f2;
+  width: 64px;
+  min-width: 64px;
+}
+.sav-frz tbody tr:not(.sav-tot) td:nth-child(1) {
+  position: sticky;
+  left: 0;
+  z-index: 20;
+  background: #fff;
+  width: 64px;
+  min-width: 64px;
+}
+/* Column 2 (ឈ្មោះ) */
+.sav-frz thead tr:first-child th:nth-child(2) {
+  position: sticky;
+  left: 64px;
+  z-index: 35;
+  background: #eef8f2;
+}
+.sav-frz tbody tr:not(.sav-tot) td:nth-child(2) {
+  position: sticky;
+  left: 64px;
+  z-index: 20;
+  background: #fff;
+}
+/* Totals row: keep the "សរុប" label pinned left */
+.sav-frz tbody tr.sav-tot td:nth-child(1) {
+  position: sticky;
+  left: 0;
+  z-index: 20;
+  background: #f8fafc;
+}
+
 @media print {
   .no-print, header, nav, footer, button, .tabs-container {
     display: none !important;

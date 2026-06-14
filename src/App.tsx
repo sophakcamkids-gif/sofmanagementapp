@@ -2409,7 +2409,7 @@ function Savings() {
               </div>
             </div>
           )}
-          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+          <div className="sav-frz overflow-x-auto border border-slate-300 rounded-xl">
             <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
               <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
                 <tr>
@@ -2466,7 +2466,7 @@ function Savings() {
                     <td className="px-3 py-2 text-center text-green-600 font-bold">{row.checked ? '✓' : ''}</td>
                   </tr>
                 ))}
-                <tr className="bg-slate-50 text-slate-800 font-bold border-t-2 border-slate-800 h-12">
+                <tr className="sav-tot bg-slate-50 text-slate-800 font-bold border-t-2 border-slate-800 h-12">
                   <td colSpan={3} className="px-3 py-2 border-r border-slate-300 text-center">សរុប</td>
                   <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(savingData, 'startCapital'))}</td>
                   <td className="px-3 py-2 border-r border-slate-300 text-right text-xs">{sumOf(savingData, 'share').toFixed(2)}%</td>
@@ -2487,7 +2487,7 @@ function Savings() {
       {activeTab === 'group' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
           <h3 className="font-bold text-slate-800 text-lg mb-4">ទុនរក្សាទុកក្រុម</h3>
-          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+          <div className="sav-frz overflow-x-auto border border-slate-300 rounded-xl">
             <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
               <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
                 <tr>
@@ -2544,7 +2544,7 @@ function Savings() {
                     <td className="px-3 py-2 text-center text-green-600 font-bold">{row.checked ? '✓' : ''}</td>
                   </tr>
                 ))}
-                <tr className="bg-slate-50 text-slate-800 font-bold !border-t-2 !border-slate-800 h-12">
+                <tr className="sav-tot bg-slate-50 text-slate-800 font-bold !border-t-2 !border-slate-800 h-12">
                   <td colSpan={3} className="px-3 py-2 border-r border-slate-300 text-center">សរុប</td>
                   <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(groupData, 'startCapital'))}</td>
                   <td className="px-3 py-2 border-r border-slate-300 text-right text-xs">{sumOf(groupData, 'share').toFixed(2)}%</td>
@@ -2564,7 +2564,7 @@ function Savings() {
 
       {activeTab === 'deposit' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
-          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+          <div className="sav-frz overflow-x-auto border border-slate-300 rounded-xl">
             <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
               <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
                 <tr>
@@ -2621,7 +2621,7 @@ function Savings() {
                     <td className="px-3 py-2 text-center text-green-600 font-bold">{row.checked ? '✓' : ''}</td>
                   </tr>
                 ))}
-                <tr className="bg-slate-50 text-slate-800 font-bold !border-t-2 !border-slate-800 h-12">
+                <tr className="sav-tot bg-slate-50 text-slate-800 font-bold !border-t-2 !border-slate-800 h-12">
                   <td colSpan={4} className="px-3 py-2 border-r border-slate-300 text-center">សរុប</td>
                   <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(depositData, 'startCapital'))}</td>
                   <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(depositData, 'addSaving'))}</td>
