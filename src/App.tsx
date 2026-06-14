@@ -2140,34 +2140,25 @@ function Savings() {
     return sd;
   });
 
-  // AUTO-CALCULATE the selected month's savings via the engine, with month-to-month
-  // carry-forward: each row's ទុនចាប់ផ្តើម (beginning) = the PREVIOUS month's total.
-  // Only ទុនសន្សំបន្ថែម (monthly deposit) is entered. First month (មករា) opening is entered.
-  // Profit pool = active members + group funds (reserve/social/YES); deposit members get 0.5%.
-  useEffect(() => {
+  // Recompute ONE month's rows from raw inputs (saved snapshot, else current roster),
+  // applying the profit engine. The carry-forward beginning is supplied by the caller.
+  const computeMonth = (month: string, prevTotals: { active: Record<string, any>; group: Record<string, any>; deposit: Record<string, any> } | null) => {
     const sBy = getStoredData('sof_savings_by_month', {});
-    const dBy = getStoredData('sof_deposit_by_month', {});
     const gBy = getStoredData('sof_group_by_month', {});
+    const dBy = getStoredData('sof_deposit_by_month', {});
     const reports = getStoredData('sof_monthly_reports', {});
-    const net = num(((reports[selectedMonth] || {}).income || {}).netProfit);
-    const mi = months.indexOf(selectedMonth);
-    const prev = mi > 0 ? months[mi - 1] : null;
+    let active = (sBy[month] && sBy[month].length) ? sBy[month] : getStoredData('sof_savings_data', DEFAULT_SAVING_DATA) || [];
+    let group = (gBy[month] && gBy[month].length) ? gBy[month] : getStoredData('sof_savings_group_data', DEFAULT_GROUP_DATA) || [];
+    let deposit = (dBy[month] && dBy[month].length) ? dBy[month] : getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA) || [];
 
-    // Base rows: saved month data if present, else the current roster.
-    let active = (sBy[selectedMonth] && sBy[selectedMonth].length) ? sBy[selectedMonth] : getStoredData('sof_savings_data', DEFAULT_SAVING_DATA) || [];
-    let group = (gBy[selectedMonth] && gBy[selectedMonth].length) ? gBy[selectedMonth] : getStoredData('sof_savings_group_data', DEFAULT_GROUP_DATA) || [];
-    let deposit = (dBy[selectedMonth] && dBy[selectedMonth].length) ? dBy[selectedMonth] : getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA) || [];
-
-    // Carry forward: beginning of this month = total of previous month (per member/fund).
-    if (prev) {
-      const totals = (arr: any[]) => { const m: Record<string, any> = {}; (arr || []).forEach((r: any) => { m[r.id] = r.total; }); return m; };
-      const pa = totals(sBy[prev]), pg = totals(gBy[prev]), pd = totals(dBy[prev]);
-      active = active.map((r: any) => (pa[r.id] !== undefined ? { ...r, startCapital: String(pa[r.id]) } : r));
-      group = group.map((r: any) => (pg[r.id] !== undefined ? { ...r, startCapital: String(pg[r.id]) } : r));
-      deposit = deposit.map((r: any) => (pd[r.id] !== undefined ? { ...r, startCapital: String(pd[r.id]) } : r));
+    // Carry forward: this month's beginning = previous month's freshly recomputed total.
+    if (prevTotals) {
+      active = active.map((r: any) => (prevTotals.active[r.id] !== undefined ? { ...r, startCapital: String(prevTotals.active[r.id]) } : r));
+      group = group.map((r: any) => (prevTotals.group[r.id] !== undefined ? { ...r, startCapital: String(prevTotals.group[r.id]) } : r));
+      deposit = deposit.map((r: any) => (prevTotals.deposit[r.id] !== undefined ? { ...r, startCapital: String(prevTotals.deposit[r.id]) } : r));
     }
 
-    // Distribute net profit over active + group pool.
+    const net = num(((reports[month] || {}).income || {}).netProfit);
     const pool = [...active, ...group].map((r: any) => ({
       id: r.id, beginning: num(r.startCapital), addSaving: num(r.addSaving),
       withdraw: num(r.withdraw), penalty: num(r.actualFee), deductFee: num(r.deductFee),
@@ -2178,10 +2169,28 @@ function Savings() {
       const c = byId[r.id];
       return c ? { ...r, share: (c.share * 100).toFixed(2) + '%', profit: c.profit.toFixed(2), total: c.total.toFixed(2) } : r;
     });
+    return { active: apply(active), group: apply(group), deposit: deposit.map((r: any) => computeDepositRow(r)) };
+  };
 
-    setSavingData(apply(active));
-    setGroupData(apply(group));
-    setDepositData(deposit.map((r: any) => computeDepositRow(r)));
+  // AUTO-CALCULATE the selected month. Every prior month is recomputed in order so the
+  // carry-forward beginning always equals the freshly recomputed previous-month total —
+  // this prevents drift between a stale saved snapshot and the live on-screen figures
+  // (e.g. when the income statement / net profit was edited after a month was saved).
+  // Only ទុនសន្សំបន្ថែម (monthly deposit) is entered; first month (មករា) opening is entered.
+  useEffect(() => {
+    const idx = months.indexOf(selectedMonth);
+    const colTotals = (arr: any[]) => { const m: Record<string, any> = {}; (arr || []).forEach((r: any) => { m[r.id] = r.total; }); return m; };
+    let prevTotals: any = null;
+    let result: any = null;
+    for (let i = 0; i <= idx; i++) {
+      result = computeMonth(months[i], prevTotals);
+      prevTotals = { active: colTotals(result.active), group: colTotals(result.group), deposit: colTotals(result.deposit) };
+    }
+    if (result) {
+      setSavingData(result.active);
+      setGroupData(result.group);
+      setDepositData(result.deposit);
+    }
   }, [selectedMonth]);
 
   // Recompute the active + group profit distribution for the given rows (engine).
