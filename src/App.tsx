@@ -2349,7 +2349,7 @@ function Savings() {
       onUpload={handleFileImport}
       title={
       <div className="flex flex-col md:flex-row md:items-center gap-3">
-        <span>របាយការណ៍សន្សំប្រាក់{activeTab === 'group' ? 'ក្រុម' : activeTab === 'deposit' ? 'សমាជិកបញ្ញើសន្សំ' : 'សমាជិកសកម្ម'} - </span>
+        <span>របាយការណ៍សន្សំប្រាក់{activeTab === 'group' ? 'ក្រុម' : activeTab === 'deposit' ? 'សមាជិកបញ្ញើសន្សំ' : 'សមាជិកសកម្ម'} - </span>
         <select 
           value={selectedMonth}
           onChange={(e) => setSelectedMonth(e.target.value)}
