@@ -2769,12 +2769,34 @@ function Loans() {
     };
   };
 
-  // Load the selected month's loans and AUTO-CALCULATE interest, auto new-loan & remaining.
+  const isFirstMonth = selectedMonth === months[0];
+
+  // Compute one loan dataset up to `upto`, recomputing every prior month in order so the
+  // carry-forward beginning (កម្ចីដើមគ្រា) always equals the previous month's freshly
+  // recomputed remaining (កម្ចីនៅសល់សរុប). First month's beginning is entered manually.
+  const computeLoanChain = (upto: string, byKey: string, rosterKey: string, rosterDef: any[]) => {
+    const byMonth = getStoredData(byKey, {});
+    const idx = months.indexOf(upto);
+    let prevRemaining: Record<string, any> | null = null;
+    let result: any[] = [];
+    for (let i = 0; i <= idx; i++) {
+      const month = months[i];
+      let rows = (byMonth[month] && byMonth[month].length) ? byMonth[month] : getStoredData(rosterKey, rosterDef) || [];
+      if (prevRemaining) {
+        rows = rows.map((r: any) => (prevRemaining![r.id] !== undefined ? { ...r, loanValue: String(prevRemaining![r.id]) } : r));
+      }
+      rows = rows.map(recalcLoanRow);
+      prevRemaining = {};
+      rows.forEach((r: any) => { prevRemaining![r.id] = r.remaining; });
+      result = rows;
+    }
+    return result;
+  };
+
+  // Load the selected month's loans with carry-forward + auto interest/new-loan/remaining.
   useEffect(() => {
-    const byMonth = getStoredData('sof_loans_by_month', {});
-    if (byMonth[selectedMonth]) setLoanData(byMonth[selectedMonth].map(recalcLoanRow));
-    const depByMonth = getStoredData('sof_loans_deposit_by_month', {});
-    if (depByMonth[selectedMonth]) setDepositLoanData(depByMonth[selectedMonth].map(recalcLoanRow));
+    setLoanData(computeLoanChain(selectedMonth, 'sof_loans_by_month', 'sof_loans_data', DEFAULT_LOAN_DATA));
+    setDepositLoanData(computeLoanChain(selectedMonth, 'sof_loans_deposit_by_month', 'sof_loans_deposit_data', DEFAULT_DEPOSIT_LOAN_DATA));
   }, [selectedMonth]);
 
   // Show a blank input instead of the placeholder "-" so typing doesn't produce "1-".
@@ -2901,8 +2923,12 @@ function Loans() {
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={showVal(row.loanValue)} onChange={(e) => editLoanRaw(idx, 'loanValue', e.target.value)} onBlur={saveLoansMonth}
-                        className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                      {isFirstMonth ? (
+                        <input value={showVal(row.loanValue)} onChange={(e) => editLoanRaw(idx, 'loanValue', e.target.value)} onBlur={saveLoansMonth}
+                          className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                      ) : (
+                        <span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីកម្ចីនៅសល់ខែមុន">{row.loanValue}</span>
+                      )}
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-center">
                       <div className="flex items-center justify-center gap-0.5">
@@ -2964,8 +2990,12 @@ function Loans() {
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={showVal(row.loanValue)} onChange={(e) => editDepositLoanRaw(idx, 'loanValue', e.target.value)} onBlur={saveDepositLoanMonth}
-                        className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                      {isFirstMonth ? (
+                        <input value={showVal(row.loanValue)} onChange={(e) => editDepositLoanRaw(idx, 'loanValue', e.target.value)} onBlur={saveDepositLoanMonth}
+                          className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                      ) : (
+                        <span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីកម្ចីនៅសល់ខែមុន">{row.loanValue}</span>
+                      )}
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-center">
                       <div className="flex items-center justify-center gap-0.5">
