@@ -2762,6 +2762,18 @@ function Loans() {
         return { ...r, interest: fmt(res.interest), remaining: fmt(res.remaining) };
       }));
     }
+    const depByMonth = getStoredData('sof_loans_deposit_by_month', {});
+    if (depByMonth[selectedMonth]) {
+      const fmt = (v: number) => v ? v.toFixed(2) : '-';
+      setDepositLoanData(depByMonth[selectedMonth].map((r: any) => {
+        const res = computeLoan({
+          id: r.id, beginning: num(r.loanValue),
+          newLoan: num(r.newLoan), repayment: num(r.repayment),
+          rate: num(r.rate) > 0 ? num(r.rate) / 100 : undefined,
+        }, DEFAULT_RATES);
+        return { ...r, interest: fmt(res.interest), remaining: fmt(res.remaining) };
+      }));
+    }
   }, [selectedMonth]);
 
   // Show a blank input instead of the placeholder "-" so typing doesn't produce "1-".
@@ -2783,6 +2795,24 @@ function Loans() {
   };
   const saveLoansMonth = () => {
     const by = getStoredData('sof_loans_by_month', {}); by[selectedMonth] = loanData; setStoredData('sof_loans_by_month', by);
+  };
+  // Deposit-member loans: same engine, separate dataset/storage.
+  const editDepositLoanRaw = (idx: number, field: string, value: string) => {
+    const fmt = (v: number) => (v ? v.toFixed(2) : '-');
+    const next = depositLoanData.map((r: any, i: number) => {
+      if (i !== idx) return r;
+      const merged = { ...r, [field]: value };
+      const res = computeLoan({
+        id: merged.id, beginning: num(merged.loanValue),
+        newLoan: num(merged.newLoan), repayment: num(merged.repayment),
+        rate: num(merged.rate) > 0 ? num(merged.rate) / 100 : undefined,
+      }, DEFAULT_RATES);
+      return { ...merged, interest: fmt(res.interest), remaining: fmt(res.remaining) };
+    });
+    setDepositLoanData(next);
+  };
+  const saveDepositLoanMonth = () => {
+    const by = getStoredData('sof_loans_deposit_by_month', {}); by[selectedMonth] = depositLoanData; setStoredData('sof_loans_deposit_by_month', by);
   };
 
   const externalLoanData = [
@@ -2921,49 +2951,50 @@ function Loans() {
             <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
               <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
                 <tr>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle">ល.រ</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle">លេខ ID</th>
                   <th className="px-3 py-3 border-r border-slate-300 align-middle min-w-[140px]">ឈ្មោះ</th>
                   <th className="px-3 py-3 border-r border-slate-300 align-middle">ភេទ</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចី</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីសងត្រឡប់</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">ការប្រាក់</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីថ្មី</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីនៅសល់</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right text-[#084f40] bg-[#f3faf6] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">ការប្រាក់បានបង់</th>
-                  <th className="px-3 py-3 align-middle">កំណត់សំគាល់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីដើមគ្រា</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-center">អត្រាការប្រាក់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">ការប្រាក់ត្រូវបង់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">បង់រំលស់ដើម</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right text-[#084f40] bg-[#f3faf6]">ការប្រាក់បានបង់</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីនៅសល់សរុប</th>
                 </tr>
               </thead>
               <tbody>
-                {depositLoanData.map((row) => (
-                  <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
+                {depositLoanData.map((row, idx) => (
+                  <tr key={`${row.id}-${idx}`} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">
-                      {row.loanValue !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
-                      {row.loanValue}
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={showVal(row.loanValue)} onChange={(e) => editDepositLoanRaw(idx, 'loanValue', e.target.value)} onBlur={saveDepositLoanMonth}
+                        className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-amber-600">
-                      {row.repayment !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
-                      {row.repayment}
+                    <td className="px-1 py-1 border-r border-slate-300 text-center">
+                      <div className="flex items-center justify-center gap-0.5">
+                        <input value={row.rate ?? '1.50'} placeholder="1.50" onChange={(e) => editDepositLoanRaw(idx, 'rate', e.target.value)} onBlur={saveDepositLoanMonth}
+                          className="w-14 text-right bg-transparent px-1 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                        <span className="text-slate-400 text-xs">%</span>
+                      </div>
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-indigo-600">
                       {row.interest !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
                       {row.interest}
                     </td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-emerald-600">
-                      {row.newLoan !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
-                      {row.newLoan}
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={showVal(row.repayment)} onChange={(e) => editDepositLoanRaw(idx, 'repayment', e.target.value)} onBlur={saveDepositLoanMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-amber-600 focus:bg-amber-50 outline-none font-medium text-amber-700" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right bg-[#f3faf6]">
+                      <input value={showVal(row.interestPaid)} onChange={(e) => editDepositLoanRaw(idx, 'interestPaid', e.target.value)} onBlur={saveDepositLoanMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-white outline-none font-bold text-[#0a6652]" />
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium bg-slate-50">
                       {row.remaining !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
                       {row.remaining}
                     </td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">
-                      {row.interestPaid !== '-' ? <span className="text-[#0a6652]/60 mr-1">$</span> : null}
-                      {row.interestPaid}
-                    </td>
-                    <td className="px-3 py-2 text-center text-green-600 font-bold">{row.checked ? '✓' : ''}</td>
                   </tr>
                 ))}
               </tbody>
