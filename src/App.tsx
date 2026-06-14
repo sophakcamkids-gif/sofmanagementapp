@@ -2221,6 +2221,8 @@ function Savings() {
   const editDepositRaw = (idx: number, field: string, value: string) => {
     setDepositData(depositData.map((r: any, i: number) => (i === idx ? computeDepositRow({ ...r, [field]: value }) : r)));
   };
+  // Show an empty input instead of the placeholder "-" so typing doesn't produce "1-".
+  const showVal = (v: any) => (v === '-' || v == null ? '' : v);
   // Persist the current month's savings + group + deposit to the cloud (called on blur).
   const saveSavingsMonth = () => {
     const sBy = getStoredData('sof_savings_by_month', {}); sBy[selectedMonth] = savingData; setStoredData('sof_savings_by_month', sBy);
@@ -2433,7 +2435,7 @@ function Savings() {
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
                       {isFirstMonth ? (
-                        <input value={row.startCapital} onChange={(e) => editSavingRaw(idx, 'startCapital', e.target.value)} onBlur={saveSavingsMonth}
+                        <input value={showVal(row.startCapital)} onChange={(e) => editSavingRaw(idx, 'startCapital', e.target.value)} onBlur={saveSavingsMonth}
                           className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                       ) : (
                         <span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីសរុបខែមុន">{row.startCapital}</span>
@@ -2441,20 +2443,20 @@ function Savings() {
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right text-slate-500 text-xs">{row.share}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={row.addSaving} onChange={(e) => editSavingRaw(idx, 'addSaving', e.target.value)} onBlur={saveSavingsMonth}
+                      <input value={showVal(row.addSaving)} onChange={(e) => editSavingRaw(idx, 'addSaving', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.profit}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={row.withdraw} onChange={(e) => editSavingRaw(idx, 'withdraw', e.target.value)} onBlur={saveSavingsMonth}
+                      <input value={showVal(row.withdraw)} onChange={(e) => editSavingRaw(idx, 'withdraw', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={row.deductFee} onChange={(e) => editSavingRaw(idx, 'deductFee', e.target.value)} onBlur={saveSavingsMonth}
+                      <input value={showVal(row.deductFee)} onChange={(e) => editSavingRaw(idx, 'deductFee', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={row.actualFee} onChange={(e) => editSavingRaw(idx, 'actualFee', e.target.value)} onBlur={saveSavingsMonth}
+                      <input value={showVal(row.actualFee)} onChange={(e) => editSavingRaw(idx, 'actualFee', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">{row.total}</td>
@@ -2499,7 +2501,7 @@ function Savings() {
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
                       {isFirstMonth ? (
-                        <input value={row.startCapital} onChange={(e) => editGroupRaw(idx, 'startCapital', e.target.value)} onBlur={saveSavingsMonth}
+                        <input value={showVal(row.startCapital)} onChange={(e) => editGroupRaw(idx, 'startCapital', e.target.value)} onBlur={saveSavingsMonth}
                           className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                       ) : (
                         <span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីសរុបខែមុន">{row.startCapital}</span>
@@ -2507,20 +2509,20 @@ function Savings() {
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right text-slate-500 text-xs">{row.share}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={row.addSaving} onChange={(e) => editGroupRaw(idx, 'addSaving', e.target.value)} onBlur={saveSavingsMonth}
+                      <input value={showVal(row.addSaving)} onChange={(e) => editGroupRaw(idx, 'addSaving', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.profit}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={row.withdraw} onChange={(e) => editGroupRaw(idx, 'withdraw', e.target.value)} onBlur={saveSavingsMonth}
+                      <input value={showVal(row.withdraw)} onChange={(e) => editGroupRaw(idx, 'withdraw', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={row.deductFee} onChange={(e) => editGroupRaw(idx, 'deductFee', e.target.value)} onBlur={saveSavingsMonth}
+                      <input value={showVal(row.deductFee)} onChange={(e) => editGroupRaw(idx, 'deductFee', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={row.actualFee} onChange={(e) => editGroupRaw(idx, 'actualFee', e.target.value)} onBlur={saveSavingsMonth}
+                      <input value={showVal(row.actualFee)} onChange={(e) => editGroupRaw(idx, 'actualFee', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">{row.total}</td>
@@ -2577,27 +2579,27 @@ function Savings() {
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.village}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
                       {isFirstMonth ? (
-                        <input value={row.startCapital} onChange={(e) => editDepositRaw(idx, 'startCapital', e.target.value)} onBlur={saveSavingsMonth}
+                        <input value={showVal(row.startCapital)} onChange={(e) => editDepositRaw(idx, 'startCapital', e.target.value)} onBlur={saveSavingsMonth}
                           className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                       ) : (
                         <span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីសរុបខែមុន">{row.startCapital}</span>
                       )}
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={row.addSaving} onChange={(e) => editDepositRaw(idx, 'addSaving', e.target.value)} onBlur={saveSavingsMonth}
+                      <input value={showVal(row.addSaving)} onChange={(e) => editDepositRaw(idx, 'addSaving', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.profit}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={row.withdraw} onChange={(e) => editDepositRaw(idx, 'withdraw', e.target.value)} onBlur={saveSavingsMonth}
+                      <input value={showVal(row.withdraw)} onChange={(e) => editDepositRaw(idx, 'withdraw', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={row.deductFee} onChange={(e) => editDepositRaw(idx, 'deductFee', e.target.value)} onBlur={saveSavingsMonth}
+                      <input value={showVal(row.deductFee)} onChange={(e) => editDepositRaw(idx, 'deductFee', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={row.actualFee} onChange={(e) => editDepositRaw(idx, 'actualFee', e.target.value)} onBlur={saveSavingsMonth}
+                      <input value={showVal(row.actualFee)} onChange={(e) => editDepositRaw(idx, 'actualFee', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">{row.total}</td>
