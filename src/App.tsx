@@ -2242,6 +2242,51 @@ function Savings() {
     alert(`នាំចូល ${count} សមាជិក សម្រាប់ខែ ${selectedMonth} ដោយជោគជ័យ!`);
   };
 
+  // Import an Excel/CSV file with columns: លេខ ID, ឈ្មោះ, សន្សំប្រចាំ (+ ទុនចាប់ផ្តើម optional).
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const wb = XLSX.read(ev.target?.result as ArrayBuffer, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' }) as any[];
+        const field = (row: any, keys: string[]) => {
+          for (const k of Object.keys(row)) {
+            const kn = k.replace(/[\s​]/g, '');
+            if (keys.some((x) => kn.includes(x))) return row[k];
+          }
+          return undefined;
+        };
+        const next = [...savingData];
+        let count = 0;
+        rows.forEach((row) => {
+          const code = String(field(row, ['ID', 'កូដ', 'លេខ']) ?? '').trim().toUpperCase();
+          if (!code) return;
+          const i = next.findIndex((r: any) => String(codeOf(r)).toUpperCase() === code);
+          if (i < 0) return;
+          const dep = field(row, ['សន្សំ', 'ប្រចាំ', 'បន្ថែម', 'Saving', 'Deposit']);
+          const open = field(row, ['ចាប់ផ្តើម', 'Opening', 'ដើម']);
+          const upd: any = { ...next[i] };
+          if (dep !== undefined && dep !== '') upd.addSaving = String(dep);
+          if (open !== undefined && open !== '') upd.startCapital = String(open);
+          next[i] = upd;
+          count++;
+        });
+        const { active, group } = recomputeSavingsRows(next, groupData);
+        setSavingData(active); setGroupData(group);
+        const sBy = getStoredData('sof_savings_by_month', {}); sBy[selectedMonth] = active; setStoredData('sof_savings_by_month', sBy);
+        const gBy = getStoredData('sof_group_by_month', {}); gBy[selectedMonth] = group; setStoredData('sof_group_by_month', gBy);
+        alert(`នាំចូល ${count} សមាជិក ពីឯកសារ Excel សម្រាប់ខែ ${selectedMonth}!`);
+      } catch (err) {
+        alert('មានបញ្ហាក្នុងការអានឯកសារ។ សូមប្រាកដថាជា Excel/CSV ត្រឹមត្រូវ ហើយមានជួរ លេខID / ឈ្មោះ / សន្សំប្រចាំ។');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = '';
+  };
+
   // Undo snapshot for the last "delete all" so an accidental delete is recoverable.
   const [undoSavings, setUndoSavings] = useState<{ tab: string; data: any[] } | null>(null);
   const handleDeleteAllSavings = () => {
@@ -2271,11 +2316,12 @@ function Savings() {
   };
 
   return (
-    <PageView 
+    <PageView
       onAddClick={() => navigate('/dashboard', { state: { tab: 'savings' } })}
+      onUpload={handleFileImport}
       title={
       <div className="flex flex-col md:flex-row md:items-center gap-3">
-        <span>របាយការណ៍សន្សំប្រាក់{activeTab === 'group' ? 'ក្រុម' : activeTab === 'deposit' ? 'សមាជិកបញ្ញើសន្សំ' : 'សមាជិកសកម្ម'} - </span>
+        <span>របាយការណ៍សន្សំប្រាក់{activeTab === 'group' ? 'ក្រុម' : activeTab === 'deposit' ? 'សমាជិកបញ្ញើសន្សំ' : 'សমាជិកសកម្ម'} - </span>
         <select 
           value={selectedMonth}
           onChange={(e) => setSelectedMonth(e.target.value)}
@@ -2311,9 +2357,9 @@ function Savings() {
 
       {activeTab === 'members' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
-          <div className="flex justify-end mb-3">
+          <div className="flex justify-end gap-2 mb-3">
             <button onClick={() => setShowImport(true)} className="flex items-center gap-1.5 bg-[#0a6652] text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-[#084f40] transition-colors cursor-pointer">
-              <Upload size={14} strokeWidth={2.5} /> នាំចូលទុនសន្សំ (បិទភ្ជាប់)
+              <Upload size={14} strokeWidth={2.5} /> បិទភ្ជាប់ (Paste)
             </button>
           </div>
           {showImport && (
