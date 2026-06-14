@@ -2242,19 +2242,28 @@ function Savings() {
     alert(`នាំចូល ${count} សមាជិក សម្រាប់ខែ ${selectedMonth} ដោយជោគជ័យ!`);
   };
 
+  // Undo snapshot for the last "delete all" so an accidental delete is recoverable.
+  const [undoSavings, setUndoSavings] = useState<{ tab: string; data: any[] } | null>(null);
   const handleDeleteAllSavings = () => {
-    if (window.confirm('តើអ្នកពិតជាចង់លុបទិន្នន័យនេះមែនទេ? (សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ)')) {
+    if (window.confirm('តើអ្នកពិតជាចង់លុបទិន្នន័យនេះមែនទេ? (អាចចុច "មិនធ្វើវិញ" ដើម្បីយកមកវិញ)')) {
       if (activeTab === 'members') {
-        setSavingData([]);
-        setStoredData('sof_savings_data', []);
+        setUndoSavings({ tab: 'members', data: savingData });
+        setSavingData([]); setStoredData('sof_savings_data', []);
       } else if (activeTab === 'group') {
-        setGroupData([]);
-        setStoredData('sof_savings_group_data', []);
+        setUndoSavings({ tab: 'group', data: groupData });
+        setGroupData([]); setStoredData('sof_savings_group_data', []);
       } else if (activeTab === 'deposit') {
-        setDepositData([]);
-        setStoredData('sof_savings_deposit_data', []);
+        setUndoSavings({ tab: 'deposit', data: depositData });
+        setDepositData([]); setStoredData('sof_savings_deposit_data', []);
       }
     }
+  };
+  const handleUndoSavings = () => {
+    if (!undoSavings) return;
+    if (undoSavings.tab === 'members') { setSavingData(undoSavings.data); setStoredData('sof_savings_data', undoSavings.data); }
+    else if (undoSavings.tab === 'group') { setGroupData(undoSavings.data); setStoredData('sof_savings_group_data', undoSavings.data); }
+    else if (undoSavings.tab === 'deposit') { setDepositData(undoSavings.data); setStoredData('sof_savings_deposit_data', undoSavings.data); }
+    setUndoSavings(null);
   };
 
   const handleSaveAllSavings = async () => {
@@ -2486,6 +2495,15 @@ function Savings() {
       )}
 
       <div className="flex justify-end gap-3 mt-4">
+        {undoSavings && (
+          <button
+            onClick={handleUndoSavings}
+            className="bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95 border border-amber-200"
+          >
+            <ChevronLeft size={16} />
+            <span>មិនធ្វើវិញ (Undo លុប)</span>
+          </button>
+        )}
         <button
           onClick={handleDeleteAllSavings}
           className="bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
