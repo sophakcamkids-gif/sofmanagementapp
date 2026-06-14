@@ -2223,6 +2223,9 @@ function Savings() {
   };
   // Show an empty input instead of the placeholder "-" so typing doesn't produce "1-".
   const showVal = (v: any) => (v === '-' || v == null ? '' : v);
+  // Column totals for the footer "សរុប" row.
+  const sumOf = (rows: any[], field: string) => rows.reduce((s, r) => s + num(r[field]), 0);
+  const n2 = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   // Persist the current month's savings + group + deposit to the cloud (called on blur).
   const saveSavingsMonth = () => {
     const sBy = getStoredData('sof_savings_by_month', {}); sBy[selectedMonth] = savingData; setStoredData('sof_savings_by_month', sBy);
@@ -2463,6 +2466,18 @@ function Savings() {
                     <td className="px-3 py-2 text-center text-green-600 font-bold">{row.checked ? '✓' : ''}</td>
                   </tr>
                 ))}
+                <tr className="bg-slate-50 text-slate-800 font-bold border-t-2 border-slate-800 h-12">
+                  <td colSpan={3} className="px-3 py-2 border-r border-slate-300 text-center">សរុប</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(savingData, 'startCapital'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right text-xs">{sumOf(savingData, 'share').toFixed(2)}%</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(savingData, 'addSaving'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(savingData, 'profit'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(savingData, 'withdraw'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(savingData, 'deductFee'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(savingData, 'actualFee'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right text-[#0a6652] bg-[#fafdfa]">{n2(sumOf(savingData, 'total'))}</td>
+                  <td className="px-3 py-2"></td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -2531,14 +2546,14 @@ function Savings() {
                 ))}
                 <tr className="bg-slate-50 text-slate-800 font-bold !border-t-2 !border-slate-800 h-12">
                   <td colSpan={3} className="px-3 py-2 border-r border-slate-300 text-center">សរុប</td>
-                  <td className="px-3 py-2 border-r border-slate-300 text-right">11,602.74</td>
-                  <td className="px-3 py-2 border-r border-slate-300 text-right">16.12%</td>
-                  <td className="px-3 py-2 border-r border-slate-300 text-right">89.15</td>
-                  <td className="px-3 py-2 border-r border-slate-300 text-right">72.87</td>
-                  <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">-</td>
-                  <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">-</td>
-                  <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">-</td>
-                  <td className="px-3 py-2 border-r border-slate-300 text-right text-[#0a6652] bg-[#fafdfa]">11,764.76</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(groupData, 'startCapital'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right text-xs">{sumOf(groupData, 'share').toFixed(2)}%</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(groupData, 'addSaving'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(groupData, 'profit'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(groupData, 'withdraw'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(groupData, 'deductFee'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(groupData, 'actualFee'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right text-[#0a6652] bg-[#fafdfa]">{n2(sumOf(groupData, 'total'))}</td>
                   <td className="px-3 py-2"></td>
                 </tr>
               </tbody>
@@ -2606,6 +2621,17 @@ function Savings() {
                     <td className="px-3 py-2 text-center text-green-600 font-bold">{row.checked ? '✓' : ''}</td>
                   </tr>
                 ))}
+                <tr className="bg-slate-50 text-slate-800 font-bold !border-t-2 !border-slate-800 h-12">
+                  <td colSpan={4} className="px-3 py-2 border-r border-slate-300 text-center">សរុប</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(depositData, 'startCapital'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(depositData, 'addSaving'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(depositData, 'profit'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(depositData, 'withdraw'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(depositData, 'deductFee'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(depositData, 'actualFee'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right text-[#0a6652] bg-[#fafdfa]">{n2(sumOf(depositData, 'total'))}</td>
+                  <td className="px-3 py-2"></td>
+                </tr>
               </tbody>
             </table>
           </div>
