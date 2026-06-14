@@ -2170,7 +2170,7 @@ function Savings() {
     // Distribute net profit over active + group pool.
     const pool = [...active, ...group].map((r: any) => ({
       id: r.id, beginning: num(r.startCapital), addSaving: num(r.addSaving),
-      withdraw: num(r.withdraw), penalty: num(r.actualFee),
+      withdraw: num(r.withdraw), penalty: num(r.actualFee), deductFee: num(r.deductFee),
     }));
     const byId: Record<string, any> = {};
     computeSavings(pool, net).forEach((x) => { byId[x.id] = x; });
@@ -2181,12 +2181,7 @@ function Savings() {
 
     setSavingData(apply(active));
     setGroupData(apply(group));
-    setDepositData(deposit.map((r: any) => {
-      const beginning = num(r.startCapital);
-      const profit = DEFAULT_RATES.deposit * beginning;
-      const total = beginning + num(r.addSaving) + profit - num(r.withdraw);
-      return { ...r, profit: profit.toFixed(2), total: total.toFixed(2) };
-    }));
+    setDepositData(deposit.map((r: any) => computeDepositRow(r)));
   }, [selectedMonth]);
 
   // Recompute the active + group profit distribution for the given rows (engine).
@@ -2195,7 +2190,7 @@ function Savings() {
     const net = num(((reports[selectedMonth] || {}).income || {}).netProfit);
     const pool = [...activeRows, ...groupRows].map((r: any) => ({
       id: r.id, beginning: num(r.startCapital), addSaving: num(r.addSaving),
-      withdraw: num(r.withdraw), penalty: num(r.actualFee),
+      withdraw: num(r.withdraw), penalty: num(r.actualFee), deductFee: num(r.deductFee),
     }));
     const byId: Record<string, any> = {};
     computeSavings(pool, net).forEach((x) => { byId[x.id] = x; });
@@ -2205,16 +2200,32 @@ function Savings() {
     });
     return { active: apply(activeRows), group: apply(groupRows) };
   };
-  // Edit a raw input cell (startCapital / addSaving) → live recompute (no cloud write yet).
+  // Deposit row total: deposit members earn a flat 0.5%, no profit-pool share.
+  const computeDepositRow = (r: any) => {
+    const beginning = num(r.startCapital);
+    const profit = DEFAULT_RATES.deposit * beginning;
+    const total = beginning + num(r.addSaving) + profit - num(r.withdraw) - num(r.actualFee) - num(r.deductFee);
+    return { ...r, profit: profit.toFixed(2), total: total.toFixed(2) };
+  };
+  // Edit a raw input cell (startCapital / addSaving / withdraw / deductFee / actualFee) → live recompute.
   const editSavingRaw = (idx: number, field: string, value: string) => {
     const next = savingData.map((r: any, i: number) => (i === idx ? { ...r, [field]: value } : r));
     const { active, group } = recomputeSavingsRows(next, groupData);
     setSavingData(active); setGroupData(group);
   };
-  // Persist the current month's savings + group to the cloud (called on blur).
+  const editGroupRaw = (idx: number, field: string, value: string) => {
+    const next = groupData.map((r: any, i: number) => (i === idx ? { ...r, [field]: value } : r));
+    const { active, group } = recomputeSavingsRows(savingData, next);
+    setSavingData(active); setGroupData(group);
+  };
+  const editDepositRaw = (idx: number, field: string, value: string) => {
+    setDepositData(depositData.map((r: any, i: number) => (i === idx ? computeDepositRow({ ...r, [field]: value }) : r)));
+  };
+  // Persist the current month's savings + group + deposit to the cloud (called on blur).
   const saveSavingsMonth = () => {
     const sBy = getStoredData('sof_savings_by_month', {}); sBy[selectedMonth] = savingData; setStoredData('sof_savings_by_month', sBy);
     const gBy = getStoredData('sof_group_by_month', {}); gBy[selectedMonth] = groupData; setStoredData('sof_group_by_month', gBy);
+    const dBy = getStoredData('sof_deposit_by_month', {}); dBy[selectedMonth] = depositData; setStoredData('sof_deposit_by_month', dBy);
   };
   // Beginning capital is editable only in the first month (opening); later months carry forward.
   const isFirstMonth = selectedMonth === months[0];
@@ -2481,18 +2492,37 @@ function Savings() {
                 </tr>
               </thead>
               <tbody>
-                {groupData.map((row) => (
+                {groupData.map((row, idx) => (
                   <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.startCapital}</td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      {isFirstMonth ? (
+                        <input value={row.startCapital} onChange={(e) => editGroupRaw(idx, 'startCapital', e.target.value)} onBlur={saveSavingsMonth}
+                          className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                      ) : (
+                        <span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីសរុបខែមុន">{row.startCapital}</span>
+                      )}
+                    </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right text-slate-500 text-xs">{row.share}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.addSaving !== '-' ? row.addSaving : <span className="text-slate-300">-</span>}</td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={row.addSaving} onChange={(e) => editGroupRaw(idx, 'addSaving', e.target.value)} onBlur={saveSavingsMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                    </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.profit}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.withdraw}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.deductFee}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.actualFee}</td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={row.withdraw} onChange={(e) => editGroupRaw(idx, 'withdraw', e.target.value)} onBlur={saveSavingsMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={row.deductFee} onChange={(e) => editGroupRaw(idx, 'deductFee', e.target.value)} onBlur={saveSavingsMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={row.actualFee} onChange={(e) => editGroupRaw(idx, 'actualFee', e.target.value)} onBlur={saveSavingsMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                    </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">{row.total}</td>
                     <td className="px-3 py-2 text-center text-green-600 font-bold">{row.checked ? '✓' : ''}</td>
                   </tr>
@@ -2545,12 +2575,31 @@ function Savings() {
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.village}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.startCapital}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.addSaving !== '-' ? row.addSaving : <span className="text-slate-300">-</span>}</td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      {isFirstMonth ? (
+                        <input value={row.startCapital} onChange={(e) => editDepositRaw(idx, 'startCapital', e.target.value)} onBlur={saveSavingsMonth}
+                          className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                      ) : (
+                        <span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីសរុបខែមុន">{row.startCapital}</span>
+                      )}
+                    </td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={row.addSaving} onChange={(e) => editDepositRaw(idx, 'addSaving', e.target.value)} onBlur={saveSavingsMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                    </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.profit}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.withdraw}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.deductFee}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-300">{row.actualFee}</td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={row.withdraw} onChange={(e) => editDepositRaw(idx, 'withdraw', e.target.value)} onBlur={saveSavingsMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={row.deductFee} onChange={(e) => editDepositRaw(idx, 'deductFee', e.target.value)} onBlur={saveSavingsMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={row.actualFee} onChange={(e) => editDepositRaw(idx, 'actualFee', e.target.value)} onBlur={saveSavingsMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                    </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">{row.total}</td>
                     <td className="px-3 py-2 text-center text-green-600 font-bold">{row.checked ? '✓' : ''}</td>
                   </tr>

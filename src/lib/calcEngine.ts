@@ -101,12 +101,13 @@ export interface SavingInput {
   beginning: number;   // start-of-month total (= prior month's total)
   addSaving: number;   // imported monthly deposit
   withdraw?: number;
-  penalty?: number;
+  penalty?: number;    // fine/membership paid in actual cash (ជាក់ស្តែង)
+  deductFee?: number;  // fine/membership deducted from capital (កាត់ទុន)
 }
 export interface SavingResult extends SavingInput {
   share: number;       // beginning ÷ Σ beginning (fraction; ×100 for %)
   profit: number;      // share × net profit
-  total: number;       // beginning + addSaving + profit − withdraw − penalty (→ next beginning)
+  total: number;       // beginning + addSaving + profit − withdraw − penalty − deductFee (→ next beginning)
 }
 
 /** Distribute a month's net profit across members by share of beginning capital. */
@@ -115,7 +116,7 @@ export function computeSavings(members: SavingInput[], netProfit: number): Savin
   return members.map((m) => {
     const share = totalBeginning > 0 ? m.beginning / totalBeginning : 0;
     const profit = share * netProfit;
-    const total = m.beginning + m.addSaving + profit - (m.withdraw || 0) - (m.penalty || 0);
+    const total = m.beginning + m.addSaving + profit - (m.withdraw || 0) - (m.penalty || 0) - (m.deductFee || 0);
     return { ...m, share, profit, total };
   });
 }
