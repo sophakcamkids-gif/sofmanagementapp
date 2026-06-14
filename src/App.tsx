@@ -1879,7 +1879,7 @@ function Members() {
               className="bg-transparent border-none outline-none w-full text-sm font-medium" 
             />
           </div>
-          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+          <div className="frz3 overflow-x-auto border border-slate-300 rounded-xl">
             <table className="w-full text-left border-collapse text-sm min-w-[800px]">
               <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
                 <tr>
@@ -1945,7 +1945,7 @@ function Members() {
 
       {activeTab === 'profile' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
-          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+          <div className="frz3 overflow-x-auto border border-slate-300 rounded-xl">
             <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
               <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
                 <tr>
@@ -2007,7 +2007,7 @@ function Members() {
 
       {activeTab === 'deposit_profile' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
-          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+          <div className="frz3 overflow-x-auto border border-slate-300 rounded-xl">
             <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
               <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
                 <tr>
@@ -2855,7 +2855,7 @@ function Loans() {
 
       {activeTab === 'members' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
-          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+          <div className="frz2 overflow-x-auto border border-slate-300 rounded-xl">
             <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
               <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
                 <tr>
@@ -2912,7 +2912,7 @@ function Loans() {
 
       {activeTab === 'deposit_members' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
-          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+          <div className="frz2 overflow-x-auto border border-slate-300 rounded-xl">
             <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
               <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
                 <tr>
@@ -2969,7 +2969,7 @@ function Loans() {
 
       {activeTab === 'group' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
-          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+          <div className="frz2 overflow-x-auto border border-slate-300 rounded-xl">
             <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
               <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
                 <tr>
@@ -3016,7 +3016,7 @@ function Loans() {
 
       {activeTab === 'external_provided' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
-          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+          <div className="frz2 overflow-x-auto border border-slate-300 rounded-xl">
             <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
               <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
                 <tr>

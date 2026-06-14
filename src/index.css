@@ -49,6 +49,84 @@
   background: #f8fafc;
 }
 
+/* Generic freeze for other tables: sticky header + leading identity columns.
+   .frz2 freezes the first 2 columns (ល.រ + ឈ្មោះ);
+   .frz3 freezes the first 3 columns (ល.រ + លេខ ID + ឈ្មោះ). */
+.frz2, .frz3 {
+  max-height: 75vh;
+  overflow: auto;
+}
+.frz2 thead, .frz3 thead {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+/* Column 1 (ល.រ) */
+.frz2 thead tr:first-child th:nth-child(1),
+.frz3 thead tr:first-child th:nth-child(1) {
+  position: sticky;
+  left: 0;
+  z-index: 35;
+  background: #eef8f2;
+  width: 64px;
+  min-width: 64px;
+}
+.frz2 tbody tr td:nth-child(1),
+.frz3 tbody tr td:nth-child(1) {
+  position: sticky;
+  left: 0;
+  z-index: 20;
+  background: #fff;
+  width: 64px;
+  min-width: 64px;
+}
+/* Column 2 — Name (frz2) */
+.frz2 thead tr:first-child th:nth-child(2) {
+  position: sticky;
+  left: 64px;
+  z-index: 35;
+  background: #eef8f2;
+}
+.frz2 tbody tr td:nth-child(2) {
+  position: sticky;
+  left: 64px;
+  z-index: 20;
+  background: #fff;
+}
+/* Column 2 — ID (frz3, fixed width so Name offset is deterministic) */
+.frz3 thead tr:first-child th:nth-child(2),
+.frz3 tbody tr td:nth-child(2) {
+  position: sticky;
+  left: 64px;
+  z-index: 20;
+  width: 110px;
+  min-width: 110px;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.frz3 thead tr:first-child th:nth-child(2) {
+  z-index: 35;
+  background: #eef8f2;
+}
+.frz3 tbody tr td:nth-child(2) {
+  background: #fff;
+}
+/* Column 3 — Name (frz3) */
+.frz3 thead tr:first-child th:nth-child(3) {
+  position: sticky;
+  left: 174px;
+  z-index: 35;
+  background: #eef8f2;
+}
+.frz3 tbody tr td:nth-child(3) {
+  position: sticky;
+  left: 174px;
+  z-index: 20;
+  background: #fff;
+}
+
 @media print {
   .no-print, header, nav, footer, button, .tabs-container {
     display: none !important;
