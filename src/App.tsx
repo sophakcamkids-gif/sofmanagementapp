@@ -2830,6 +2830,9 @@ function Loans() {
   const [showLoanImport, setShowLoanImport] = useState(false);
   const [loanImportText, setLoanImportText] = useState('');
   const loanCodeOf = (r: any) => (typeof r.id === 'string' && r.id.includes(' ') ? r.id.split(' ').pop() : r.id);
+  // Column totals for the loan footer "សរុប" row.
+  const loanSum = (rows: any[], field: string) => rows.reduce((s, r) => s + num(r[field]), 0);
+  const ln2 = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const handlePasteLoanImport = () => {
     const isDeposit = activeTab === 'deposit_members';
     const data = isDeposit ? depositLoanData : loanData;
@@ -3017,6 +3020,16 @@ function Loans() {
                     </td>
                   </tr>
                 ))}
+                <tr className="bg-slate-50 text-slate-800 font-bold border-t-2 border-slate-800 h-12">
+                  <td colSpan={3} className="px-3 py-2 border-r border-slate-300 text-center">សរុប</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{ln2(loanSum(loanData, 'loanValue'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-400">—</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right text-indigo-700">{ln2(loanSum(loanData, 'interest'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right text-amber-700">{ln2(loanSum(loanData, 'repayment'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right text-[#0a6652] bg-[#fafdfa]">{ln2(loanSum(loanData, 'interestPaid'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right text-emerald-700">{ln2(loanSum(loanData, 'newLoan'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right bg-slate-100">{ln2(loanSum(loanData, 'remaining'))}</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -3091,6 +3104,16 @@ function Loans() {
                     </td>
                   </tr>
                 ))}
+                <tr className="bg-slate-50 text-slate-800 font-bold border-t-2 border-slate-800 h-12">
+                  <td colSpan={3} className="px-3 py-2 border-r border-slate-300 text-center">សរុប</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{ln2(loanSum(depositLoanData, 'loanValue'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-400">—</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right text-indigo-700">{ln2(loanSum(depositLoanData, 'interest'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right text-amber-700">{ln2(loanSum(depositLoanData, 'repayment'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right text-[#0a6652] bg-[#fafdfa]">{ln2(loanSum(depositLoanData, 'interestPaid'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right text-emerald-700">{ln2(loanSum(depositLoanData, 'newLoan'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right bg-slate-100">{ln2(loanSum(depositLoanData, 'remaining'))}</td>
+                </tr>
               </tbody>
             </table>
           </div>
