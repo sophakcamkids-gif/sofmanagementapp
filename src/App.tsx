@@ -2752,7 +2752,10 @@ function Loans() {
   const recalcLoanRow = (merged: any) => {
     const fmt = (v: number) => (v ? v.toFixed(2) : '-');
     const beginning = num(merged.loanValue);
-    const rate = num(merged.rate) > 0 ? num(merged.rate) / 100 : undefined;
+    // Use the row's entered rate as-is (including 0%). Only fall back to the default
+    // when no rate has been entered at all (blank field).
+    const hasRate = merged.rate !== undefined && merged.rate !== null && String(merged.rate).trim() !== '';
+    const rate = hasRate ? num(merged.rate) / 100 : undefined;
     // Interest due, rounded to cents so the displayed columns reconcile exactly:
     //   កម្ចីថ្មី (auto) = ការប្រាក់ត្រូវបង់ − ការប្រាក់បានបង់.
     const interestDue = Number(((rate ?? DEFAULT_RATES.loan) * beginning).toFixed(2));
