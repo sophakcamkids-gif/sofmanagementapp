@@ -57,6 +57,41 @@ const fmtMoney = (n: number): string =>
 
 const DEFAULT_PROFILE_DATA = [];
 
+// Fixed-term savings accounts (គណនីសន្សំមានកាលកំណត់) — a SEPARATE roster (F-codes),
+// not the active members. Roster + Jan–May 2026 figures imported from the financial
+// report (external-loan sheets). Each account earns 1%/month interest on its beginning
+// balance; interest is paid out (NOT compounded), so total = beginning + addSaving − withdraw.
+const FIXEDTERM_ROSTER = [
+  { id: 'F01', name: 'លីវ គា', gender: 'ប្រុស' },
+  { id: 'F02', name: 'លីវ រដ្ឋា', gender: 'ប្រុស' },
+  { id: 'F03', name: 'លីវ គង់', gender: 'ប្រុស' },
+  { id: 'F04', name: 'ឃ្លាំង សៃពក', gender: 'ស្រី' },
+  { id: 'F05', name: 'វី សុវណ្ណបញ្ញាវ័ន្ដ', gender: 'ប្រុស' },
+  { id: 'F06', name: 'ងីម សោភា', gender: 'ស្រី' },
+  { id: 'F07', name: 'លឹម ម៉េងឈុន', gender: 'ប្រុស' },
+  { id: 'F08', name: 'ចេះ ឈុនលាង', gender: 'ប្រុស' },
+];
+// [beginning, addSaving, withdraw, rate?] per F-code, per month (codes omitted = all zero).
+// rate defaults to 1%/month; F08 fully withdrew in Jan and earned 0% that month per the report.
+const FIXEDTERM_RAW: Record<string, Record<string, [number, number, number, number?]>> = {
+  'មករា 2026':  { F03: [1875, 0, 0],  F04: [3100, 0, 0],   F05: [3200, 300, 0], F06: [100, 0, 0], F08: [5000, 0, 5000, 0] },
+  'កុម្ភៈ 2026': { F03: [1875, 50, 0], F04: [3100, 0, 100], F05: [3500, 0, 150], F06: [100, 0, 100] },
+  'មីនា 2026':  { F03: [1925, 50, 0], F04: [3000, 0, 0],   F05: [3350, 0, 150] },
+  'មេសា 2026':  { F03: [1975, 50, 0], F04: [3000, 0, 0],   F05: [3200, 100, 0] },
+  'ឧសភា 2026':  { F03: [2025, 50, 0], F04: [3000, 0, 0],   F05: [3300, 0, 0] },
+};
+const FIXEDTERM_BY_MONTH: Record<string, any[]> = {};
+for (const m of Object.keys(FIXEDTERM_RAW)) {
+  FIXEDTERM_BY_MONTH[m] = FIXEDTERM_ROSTER.map((r) => {
+    const [b, a, w, rate] = FIXEDTERM_RAW[m][r.id] || [0, 0, 0];
+    return {
+      id: r.id, name: r.name, gender: r.gender, rate: rate != null ? rate : DEFAULT_RATES.fixedTerm,
+      startCapital: b.toFixed(2), addSaving: a ? a.toFixed(2) : '-',
+      withdraw: w ? w.toFixed(2) : '-', interest: '-', total: '0.00', checked: true,
+    };
+  });
+}
+
 const DEFAULT_DEPOSIT_PROFILE_DATA = [];
 
 const DEFAULT_MEMBER_LIST_DATA = [];
@@ -2348,6 +2383,42 @@ function Savings() {
     setUndoSavings(null);
   };
 
+  // ---- Fixed-term accounts (គណនីសន្សំមានកាលកំណត់) — earn 1%/month, carry forward ----
+  // Separate F-code roster (imported in FIXEDTERM_BY_MONTH), not the active members.
+  const ftRoster = () => FIXEDTERM_ROSTER.map((r) => ({
+    id: r.id, name: r.name, gender: r.gender, rate: DEFAULT_RATES.fixedTerm,
+    startCapital: '0.00', addSaving: '-', interest: '-', withdraw: '-', total: '0.00', checked: true,
+  }));
+  const [fixedTermData, setFixedTermData] = useState<any[]>(() => ftRoster());
+  // Interest (1%/month on the beginning balance) is paid out, not compounded —
+  // so the running total excludes it: total = beginning + addSaving − withdraw.
+  const recalcFixedTerm = (rows: any[]) => rows.map((r: any) => {
+    const b = num(r.startCapital);
+    const rate = r.rate != null ? Number(r.rate) : DEFAULT_RATES.fixedTerm;
+    const interest = rate * b;
+    const total = b + num(r.addSaving) - num(r.withdraw);
+    return { ...r, interest: interest ? interest.toFixed(2) : '-', total: total.toFixed(2) };
+  });
+  useEffect(() => {
+    const fBy = getStoredData('sof_fixedterm_by_month', FIXEDTERM_BY_MONTH) || {};
+    const mi = months.indexOf(selectedMonth);
+    const prev = mi > 0 ? months[mi - 1] : null;
+    let rows = (fBy[selectedMonth] && fBy[selectedMonth].length) ? fBy[selectedMonth] : ftRoster();
+    if (prev && fBy[prev]) {
+      const pt: Record<string, any> = {}; fBy[prev].forEach((r: any) => { pt[r.id] = r.total; });
+      rows = rows.map((r: any) => (pt[r.id] !== undefined ? { ...r, startCapital: String(pt[r.id]) } : r));
+    }
+    setFixedTermData(recalcFixedTerm(rows));
+  }, [selectedMonth]);
+  const editFixedTermRaw = (idx: number, field: string, value: string) => {
+    setFixedTermData(recalcFixedTerm(fixedTermData.map((r: any, i: number) => (i === idx ? { ...r, [field]: value } : r))));
+  };
+  const saveFixedTermMonth = () => {
+    const fBy = getStoredData('sof_fixedterm_by_month', FIXEDTERM_BY_MONTH) || {};
+    fBy[selectedMonth] = fixedTermData;
+    setStoredData('sof_fixedterm_by_month', fBy);
+  };
+
   const handleSaveAllSavings = async () => {
     alert('ទិន្នន័យត្រូវបានរក្សាទុកទៅ Supabase ដោយជោគជ័យ!');
   };
@@ -2358,7 +2429,7 @@ function Savings() {
       onUpload={handleFileImport}
       title={
       <div className="flex flex-col md:flex-row md:items-center gap-3">
-        <span>របាយការណ៍សន្សំប្រាក់{activeTab === 'group' ? 'ក្រុម' : activeTab === 'deposit' ? 'សមាជិកបញ្ញើសន្សំ' : 'សមាជិកសកម្ម'} - </span>
+        <span>របាយការណ៍សន្សំប្រាក់{activeTab === 'group' ? 'ក្រុម' : activeTab === 'deposit' ? 'សមាជិកបញ្ញើសន្សំ' : activeTab === 'fixedterm' ? 'គណនីមានកាលកំណត់' : 'សមាជិកសកម្ម'} - </span>
         <select 
           value={selectedMonth}
           onChange={(e) => setSelectedMonth(e.target.value)}
@@ -2384,11 +2455,17 @@ function Savings() {
         >
           សមាជិកបញ្ញើ
         </button>
-        <button 
+        <button
           onClick={() => setActiveTab('group')}
           className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'group' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
         >
           សមាជិកជាក្រុម
+        </button>
+        <button
+          onClick={() => setActiveTab('fixedterm')}
+          className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'fixedterm' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          គណនីមានកាលកំណត់
         </button>
       </div>
 
@@ -2640,6 +2717,61 @@ function Savings() {
                   <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(depositData, 'actualFee'))}</td>
                   <td className="px-3 py-2 border-r border-slate-300 text-right text-[#0a6652] bg-[#fafdfa]">{n2(sumOf(depositData, 'total'))}</td>
                   <td className="px-3 py-2"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'fixedterm' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
+          <div className="text-xs text-slate-500 mb-3">គណនីមានកាលកំណត់ — ទទួលការប្រាក់ <b>1%/ខែ</b> លើទុនចាប់ផ្តើម។ ទុនចាប់ផ្តើមខែបន្ទាប់ = សរុបខែមុន (អូតូ)។</div>
+          <div className="overflow-x-auto border border-slate-300 rounded-xl">
+            <table className="w-full text-left border-collapse text-sm min-w-[900px]">
+              <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
+                <tr>
+                  <th className="px-3 py-3 border-r border-slate-300">លេខ ID</th>
+                  <th className="px-3 py-3 border-r border-slate-300 min-w-[140px]">ឈ្មោះ</th>
+                  <th className="px-3 py-3 border-r border-slate-300">ភេទ</th>
+                  <th className="px-3 py-3 border-r border-slate-300">ទុនចាប់ផ្តើម</th>
+                  <th className="px-3 py-3 border-r border-slate-300">ការប្រាក់ (1%)</th>
+                  <th className="px-3 py-3 border-r border-slate-300">ទុនសន្សំបន្ថែម</th>
+                  <th className="px-3 py-3 border-r border-slate-300">ដកទុន</th>
+                  <th className="px-3 py-3 text-[#084f40] bg-[#f3faf6]">ប្រាក់សន្សំសរុប</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fixedTermData.map((row: any, idx: number) => (
+                  <tr key={`${row.id}-${idx}`} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      {isFirstMonth ? (
+                        <input value={row.startCapital} onChange={(e) => editFixedTermRaw(idx, 'startCapital', e.target.value)} onBlur={saveFixedTermMonth}
+                          className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                      ) : (<span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីសរុបខែមុន">{row.startCapital}</span>)}
+                    </td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-indigo-600">{row.interest}</td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={row.addSaving} onChange={(e) => editFixedTermRaw(idx, 'addSaving', e.target.value)} onBlur={saveFixedTermMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                    </td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={row.withdraw} onChange={(e) => editFixedTermRaw(idx, 'withdraw', e.target.value)} onBlur={saveFixedTermMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-amber-600 focus:bg-amber-50 outline-none font-medium text-amber-700" />
+                    </td>
+                    <td className="px-3 py-2 text-right font-bold text-[#0a6652] bg-[#fafdfa]">{row.total}</td>
+                  </tr>
+                ))}
+                <tr className="bg-slate-50 text-slate-800 font-bold border-t-2 border-slate-800 h-12">
+                  <td colSpan={3} className="px-3 py-2 border-r border-slate-300 text-center">សរុប</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{fmtMoney(fixedTermData.reduce((s: number, r: any) => s + num(r.startCapital), 0))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right text-indigo-700">{fmtMoney(fixedTermData.reduce((s: number, r: any) => s + num(r.interest), 0))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{fmtMoney(fixedTermData.reduce((s: number, r: any) => s + num(r.addSaving), 0))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right text-amber-700">{fmtMoney(fixedTermData.reduce((s: number, r: any) => s + num(r.withdraw), 0))}</td>
+                  <td className="px-3 py-2 text-right text-[#0a6652] bg-[#fafdfa]">{fmtMoney(fixedTermData.reduce((s: number, r: any) => s + num(r.total), 0))}</td>
                 </tr>
               </tbody>
             </table>
