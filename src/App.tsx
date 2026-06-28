@@ -84,10 +84,14 @@ const FIXEDTERM_BY_MONTH: Record<string, any[]> = {};
 for (const m of Object.keys(FIXEDTERM_RAW)) {
   FIXEDTERM_BY_MONTH[m] = FIXEDTERM_ROSTER.map((r) => {
     const [b, a, w, rate] = FIXEDTERM_RAW[m][r.id] || [0, 0, 0];
+    const rt = rate != null ? rate : DEFAULT_RATES.fixedTerm;
+    const interest = rt * b;            // 1%/month on beginning, paid out (not compounded)
+    const total = b + a - w;            // end-of-month total carries to next month's beginning
     return {
-      id: r.id, name: r.name, gender: r.gender, rate: rate != null ? rate : DEFAULT_RATES.fixedTerm,
+      id: r.id, name: r.name, gender: r.gender, rate: rt,
       startCapital: b.toFixed(2), addSaving: a ? a.toFixed(2) : '-',
-      withdraw: w ? w.toFixed(2) : '-', interest: '-', total: '0.00', checked: true,
+      withdraw: w ? w.toFixed(2) : '-',
+      interest: interest ? interest.toFixed(2) : '-', total: total.toFixed(2), checked: true,
     };
   });
 }
@@ -2405,7 +2409,11 @@ function Savings() {
     const prev = mi > 0 ? months[mi - 1] : null;
     let rows = (fBy[selectedMonth] && fBy[selectedMonth].length) ? fBy[selectedMonth] : ftRoster();
     if (prev && fBy[prev]) {
-      const pt: Record<string, any> = {}; fBy[prev].forEach((r: any) => { pt[r.id] = r.total; });
+      // Next month's beginning = previous month's end-of-month total.
+      // Recompute the previous month so the total is correct even if the stored
+      // rows still hold seed placeholders (only saved months persist live totals).
+      const pt: Record<string, any> = {};
+      recalcFixedTerm(fBy[prev]).forEach((r: any) => { pt[r.id] = r.total; });
       rows = rows.map((r: any) => (pt[r.id] !== undefined ? { ...r, startCapital: String(pt[r.id]) } : r));
     }
     setFixedTermData(recalcFixedTerm(rows));
