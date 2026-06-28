@@ -3068,29 +3068,57 @@ function Loans() {
   };
   const getRoster = (which: 'received' | 'provided') => getStoredData(EXT[which].roster, buildRoster(which));
   const defFinOf = (which: 'received' | 'provided') => { const m: any = {}; EXT[which].def.forEach((r: any) => { m[r.id] = r; }); return m; };
-  // Join the global roster with the selected month's financials (falling back to the
-  // seed figures for any month not yet edited).
-  const loadExt = (which: 'received' | 'provided', month: string) => {
-    const c = EXT[which];
-    const by = getStoredData(c.by, {}) || {};
-    const monthRows = Array.isArray(by[month]) ? by[month] : [];
-    const fin: any = {}; monthRows.forEach((r: any) => { fin[r.id] = r; });
-    const df = defFinOf(which);
-    return getRoster(which).map((rr: any) => {
-      const f = fin[rr.id] || df[rr.id] || {};
-      return {
-        id: rr.id, name: rr.name, gender: rr.gender,
-        received: f.received ?? '-', repayment: f.repayment ?? '-', interestRate: f.interestRate ?? c.rate,
-        duration: f.duration ?? '', newLoan: f.newLoan ?? '-', remaining: f.remaining ?? '-',
-        interest: f.interest ?? '-', totalToPay: f.totalToPay ?? '-', note: f.note ?? '',
-      };
-    });
+  // Auto-calc one external-loan row from its entered values:
+  //   កម្ចីនៅសល់ (remaining) = កម្ចីទទួលបាន + កម្ចីថ្មី − កម្ចីសងត្រឡប់
+  //   ការប្រាក់ (interest)  = អត្រា% × កម្ចីទទួលបាន
+  //   ប្រាក់ត្រូវបង់សរុប     = នៅសល់ + ការប្រាក់
+  const recalcExtRow = (row: any) => {
+    const received = num(row.received), newLoan = num(row.newLoan), repayment = num(row.repayment);
+    const rate = num(row.interestRate) / 100;
+    const remaining = received + newLoan - repayment;
+    const interest = rate * received;
+    const hasAny = received || newLoan || repayment;
+    return {
+      ...row,
+      remaining: hasAny ? fmtMoney(remaining) : '-',
+      interest: (rate && received) ? fmtMoney(interest) : '-',
+      totalToPay: hasAny ? fmtMoney(remaining + interest) : '-',
+    };
   };
-  const [extReceived, setExtReceived] = useState<any[]>(() => loadExt('received', 'មេសា 2026'));
-  const [extProvided, setExtProvided] = useState<any[]>(() => loadExt('provided', 'មេសា 2026'));
+  // Compute a tab's rows for `upto`, walking every month so each month's remaining
+  // (កម្ចីនៅសល់) carries into the next month's beginning (កម្ចីទទួលបាន). The first
+  // month's beginning is entered manually; later months inherit it.
+  const computeExtChain = (which: 'received' | 'provided', upto: string) => {
+    const c = EXT[which];
+    const roster = getRoster(which);
+    const by = getStoredData(c.by, {}) || {};
+    const df = defFinOf(which);
+    const idx = months.indexOf(upto);
+    let prevRemaining: Record<string, number> | null = null;
+    let result: any[] = [];
+    for (let i = 0; i <= idx; i++) {
+      const monthRows = Array.isArray(by[months[i]]) ? by[months[i]] : [];
+      const fin: any = {}; monthRows.forEach((r: any) => { fin[r.id] = r; });
+      result = roster.map((rr: any) => {
+        const f = fin[rr.id] || df[rr.id] || {};
+        const pr = prevRemaining ? (prevRemaining[rr.id] || 0) : 0;
+        const received = i === 0 ? (f.received ?? '-') : (pr ? fmtMoney(pr) : '-');
+        return recalcExtRow({
+          id: rr.id, name: rr.name, gender: rr.gender, received,
+          repayment: f.repayment ?? '-', newLoan: f.newLoan ?? '-',
+          interestRate: f.interestRate ?? c.rate, duration: f.duration ?? '', note: f.note ?? '',
+        });
+      });
+      prevRemaining = {};
+      result.forEach((r: any) => { prevRemaining![r.id] = num(r.remaining); });
+    }
+    return result;
+  };
+  const [extReceived, setExtReceived] = useState<any[]>(() => computeExtChain('received', 'មេសា 2026'));
+  const [extProvided, setExtProvided] = useState<any[]>(() => computeExtChain('provided', 'មេសា 2026'));
   useEffect(() => {
-    setExtReceived(loadExt('received', selectedMonth));
-    setExtProvided(loadExt('provided', selectedMonth));
+    setExtReceived(computeExtChain('received', selectedMonth));
+    setExtProvided(computeExtChain('provided', selectedMonth));
   }, [selectedMonth]);
   const extConf: any = {
     received: { ...EXT.received, data: extReceived, set: setExtReceived },
@@ -3103,7 +3131,12 @@ function Loans() {
     setStoredData(c.roster, rows.map((r: any) => ({ id: r.id, name: r.name, gender: r.gender })));
   };
   const editExt = (which: 'received' | 'provided', idx: number, field: string, value: string) => {
-    extConf[which].set(extConf[which].data.map((r: any, i: number) => (i === idx ? { ...r, [field]: value } : r)));
+    extConf[which].set(extConf[which].data.map((r: any, i: number) => {
+      if (i !== idx) return r;
+      const merged = { ...r, [field]: value };
+      // Recompute totals when an input that feeds them changes.
+      return ['received', 'repayment', 'newLoan', 'interestRate'].includes(field) ? recalcExtRow(merged) : merged;
+    }));
   };
   const saveExt = (which: 'received' | 'provided') => persistExt(which, extConf[which].data);
   const nextExtId = (prefix: string, rows: any[]) => {
@@ -3126,6 +3159,9 @@ function Loans() {
     const inp = (row: any, idx: number, field: string, align = 'text-right') =>
       <input value={showVal(row[field])} onChange={(e) => editExt(which, idx, field, e.target.value)} onBlur={() => saveExt(which)}
         className={`w-full min-w-[70px] bg-transparent ${align} px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium`} />;
+    // Read-only computed/carried cell.
+    const ro = (row: any, field: string, align = 'text-right') =>
+      <span className={`block w-full min-w-[70px] ${align} px-2 py-1 font-medium`}>{row[field]}</span>;
     return (
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
         <div className="flex justify-end mb-3">
@@ -3159,14 +3195,14 @@ function Loans() {
                   <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
                   <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'name', 'text-left')}</td>
                   <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'gender', 'text-center')}</td>
-                  <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'received')}</td>
+                  <td className="px-1 py-1 border-r border-slate-300">{isFirstMonth ? inp(row, idx, 'received') : ro(row, 'received')}</td>
                   <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'repayment', 'text-right text-amber-600')}</td>
                   <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'interestRate', 'text-center')}</td>
                   <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'duration', 'text-center')}</td>
                   <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'newLoan', 'text-right text-emerald-600')}</td>
-                  <td className="px-1 py-1 border-r border-slate-300 bg-slate-50">{inp(row, idx, 'remaining')}</td>
-                  <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'interest', 'text-right text-indigo-600')}</td>
-                  <td className="px-1 py-1 border-r border-slate-300 bg-[#fafdfa]">{inp(row, idx, 'totalToPay', 'text-right text-[#0a6652] font-bold')}</td>
+                  <td className="px-1 py-1 border-r border-slate-300 bg-slate-50">{ro(row, 'remaining')}</td>
+                  <td className="px-1 py-1 border-r border-slate-300 text-indigo-600">{ro(row, 'interest')}</td>
+                  <td className="px-1 py-1 border-r border-slate-300 bg-[#fafdfa] text-[#0a6652] font-bold">{ro(row, 'totalToPay')}</td>
                   <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'note', 'text-left')}</td>
                   <td className="px-2 py-2 text-center">
                     <button onClick={() => delExtRow(which, idx)} title="លុបជួរ" className="text-rose-400 hover:text-rose-600 cursor-pointer"><Trash2 size={15} /></button>
