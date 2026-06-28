@@ -3950,21 +3950,15 @@ function Reports() {
   const snapInc = (snap && snap.income) || null;
   const pickInc = (k: string, fb: number) => (snapInc && typeof snapInc[k] === 'number') ? snapInc[k] : fb;
   const valInc = (live: number | null, k: string, fb: number) => (live != null ? live : pickInc(k, fb));
-  // Loan interest earned = rate × beginning per row (prefer the row's computed interest).
-  const rowLoanInterest = (r: any) => {
-    const stored = num(r.interest);
-    if (stored) return stored;
-    const hasRate = r.rate != null && String(r.rate).trim() !== '';
-    return (hasRate ? num(r.rate) / 100 : DEFAULT_RATES.loan) * num(r.loanValue);
-  };
-  const sumLoanInterest = (key: string) => {
+  // Income = interest the members actually PAID (ការប្រាក់បានបង់) + interest from loans
+  // lent to outsiders (កម្ចីផ្តល់ទៅខាងក្រៅ). NOT interest merely due.
+  const sumInterestPaid = (key: string) => {
     const rows = (getStoredData(key, {}) || {})[selectedMonth];
-    return Array.isArray(rows) ? rows.reduce((s: number, r: any) => s + rowLoanInterest(r), 0) : null;
+    return Array.isArray(rows) ? rows.reduce((s: number, r: any) => s + num(r.interestPaid), 0) : null;
   };
-  // Total loan interest income = active + deposit member loans + loans lent to outsiders.
   const loanInterestLive = () => {
-    const a = sumLoanInterest('sof_loans_by_month');
-    const d = sumLoanInterest('sof_loans_deposit_by_month');
+    const a = sumInterestPaid('sof_loans_by_month');
+    const d = sumInterestPaid('sof_loans_deposit_by_month');
     const e = sumMonth('sof_external_provided_by_month', 'interest');
     return (a == null && d == null && e == null) ? null : (a || 0) + (d || 0) + (e || 0);
   };
