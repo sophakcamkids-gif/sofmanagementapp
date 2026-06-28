@@ -4577,9 +4577,10 @@ function SettingsPage() {
 function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const isInitiallyAdmin = location.search.includes('tab=admin');
-  
-  const [loginType, setLoginType] = useState<'member' | 'admin'>(isInitiallyAdmin ? 'admin' : 'member');
+  // This app is the ADMIN console; members use the personal report link sent to them.
+  const isInitiallyMember = location.search.includes('tab=member');
+
+  const [loginType, setLoginType] = useState<'member' | 'admin'>(isInitiallyMember ? 'member' : 'admin');
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [adminUsername, setAdminUsername] = useState('admin');
@@ -4619,37 +4620,15 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
     <PageView title="ច្រកចូលប្រព័ន្ធ (System Login)" hideUpload hideAdd hideBack hideDownload>
       <div className="max-w-md mx-auto bg-white p-5 sm:p-8 rounded-[24px] border border-slate-200 shadow-sm mt-4">
         
-        {/* Toggle Admin vs Member Tab */}
-        <div className="flex p-1 bg-slate-100 rounded-2xl mb-6">
-          <button 
+        {loginType === 'member' && (
+          <button
             type="button"
-            onClick={() => {
-              setLoginType('member');
-              navigate('/login?tab=member');
-            }}
-            className={`flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl font-black text-xs transition-all ${
-              loginType === 'member'
-                ? 'bg-white text-[#0a6652] shadow-sm'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
+            onClick={() => { setLoginType('admin'); navigate('/login?tab=admin'); }}
+            className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-800 mb-4"
           >
-            <UserCheck size={14} /> សមាជិក (Member)
+            <ChevronLeft size={14} /> ត្រឡប់ទៅគណៈកម្មការ (Admin)
           </button>
-          <button 
-            type="button"
-            onClick={() => {
-              setLoginType('admin');
-              navigate('/login?tab=admin');
-            }}
-            className={`flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl font-black text-xs transition-all ${
-              loginType === 'admin'
-                ? 'bg-white text-rose-600 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <ShieldCheck size={14} /> គណៈកម្មការ (Admin)
-          </button>
-        </div>
+        )}
 
         <div className="text-center mb-6">
           <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-sm ${
@@ -4662,8 +4641,8 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
           </h2>
           <p className="text-slate-500 mt-2 font-medium text-sm">
             {loginType === 'admin' 
-              ? 'បញ្ចូលគណនីគណៈកម្មការ ដើម្បីគ្រប់គ្រងទិន្នន័យ' 
-              : 'សូមបញ្ចូលលេខសម្គាល់គណនី និងពាក្យសម្ងាត់'
+              ? 'បញ្ចូលគណនីគណៈកម្មការ ដើម្បីគ្រប់គ្រងទិន្នន័យ'
+              : 'បញ្ចូលលេខ ID ដើម្បីបើករបាយការណ៍ផ្ទាល់ខ្លួន (ឬប្រើ link ដែលគណៈកម្មការផ្ញើជូន)'
             }
           </p>
         </div>
@@ -4750,6 +4729,19 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
             </>
           )}
         </form>
+
+        {loginType === 'admin' && (
+          <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+            <p className="text-xs font-medium text-slate-500 mb-2">តើអ្នកជាសមាជិក?</p>
+            <button
+              type="button"
+              onClick={() => { setLoginType('member'); navigate('/login?tab=member'); }}
+              className="inline-flex items-center gap-1.5 text-xs font-extrabold text-[#0a6652] hover:text-[#084f40]"
+            >
+              <UserCheck size={14} /> បើកច្រកសមាជិក (Member Portal) →
+            </button>
+          </div>
+        )}
       </div>
     </PageView>
   );
