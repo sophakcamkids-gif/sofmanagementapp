@@ -3038,15 +3038,105 @@ function Loans() {
     alert(`នាំចូល ${count} កម្ចី សម្រាប់ខែ ${selectedMonth} ដោយជោគជ័យ!`);
   };
 
-  const externalLoanData = [
+  // ---- External loans (borrowed from / lent to outside) — editable per month ----
+  // Default seed for any month with no saved rows yet.
+  const EXTERNAL_RECEIVED_DEFAULT = [
     { id: 'I01', name: 'កម្ចីទទួលបានពី LSG', gender: 'ក្រុម', received: '-', repayment: '-', interestRate: '1.20%', duration: '', newLoan: '-', remaining: '-', interest: '-', totalToPay: '-', note: '' }
   ];
-
-  const externalProvidedData = [
+  const EXTERNAL_PROVIDED_DEFAULT = [
     { id: 'O01', name: 'ដៃគូ SIG', gender: '-', received: '391.70', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '391.70', interest: '-', totalToPay: '-', note: '' },
     { id: 'O02', name: 'ដៃគូ ឃ្លាំង', gender: '-', received: '2,870.91', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '2,870.91', interest: '-', totalToPay: '-', note: '' },
     { id: 'O03', name: 'ដៃគូ SOF', gender: '-', received: '7,286.91', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '7,286.91', interest: '-', totalToPay: '-', note: '' }
   ];
+  const [extReceived, setExtReceived] = useState<any[]>(EXTERNAL_RECEIVED_DEFAULT);
+  const [extProvided, setExtProvided] = useState<any[]>(EXTERNAL_PROVIDED_DEFAULT);
+  useEffect(() => {
+    const byR = getStoredData('sof_external_received_by_month', {}) || {};
+    const byP = getStoredData('sof_external_provided_by_month', {}) || {};
+    setExtReceived(Array.isArray(byR[selectedMonth]) ? byR[selectedMonth] : EXTERNAL_RECEIVED_DEFAULT);
+    setExtProvided(Array.isArray(byP[selectedMonth]) ? byP[selectedMonth] : EXTERNAL_PROVIDED_DEFAULT);
+  }, [selectedMonth]);
+  // Both external tabs share the same shape, so route by a small config.
+  const extConf: any = {
+    received: { key: 'sof_external_received_by_month', data: extReceived, set: setExtReceived, prefix: 'I' },
+    provided: { key: 'sof_external_provided_by_month', data: extProvided, set: setExtProvided, prefix: 'O' },
+  };
+  const persistExt = (which: 'received' | 'provided', rows: any[]) => {
+    const by = getStoredData(extConf[which].key, {}) || {}; by[selectedMonth] = rows; setStoredData(extConf[which].key, by);
+  };
+  const editExt = (which: 'received' | 'provided', idx: number, field: string, value: string) => {
+    extConf[which].set(extConf[which].data.map((r: any, i: number) => (i === idx ? { ...r, [field]: value } : r)));
+  };
+  const saveExt = (which: 'received' | 'provided') => persistExt(which, extConf[which].data);
+  const addExtRow = (which: 'received' | 'provided') => {
+    const c = extConf[which];
+    const id = `${c.prefix}${String(c.data.length + 1).padStart(2, '0')}`;
+    const next = [...c.data, { id, name: '', gender: '-', received: '-', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '-', interest: '-', totalToPay: '-', note: '' }];
+    c.set(next); persistExt(which, next);
+  };
+  const delExtRow = (which: 'received' | 'provided', idx: number) => {
+    const next = extConf[which].data.filter((_: any, i: number) => i !== idx);
+    extConf[which].set(next); persistExt(which, next);
+  };
+  // Editable table shared by both external tabs.
+  const renderExtTable = (which: 'received' | 'provided') => {
+    const c = extConf[which];
+    const inp = (row: any, idx: number, field: string, align = 'text-right') =>
+      <input value={showVal(row[field])} onChange={(e) => editExt(which, idx, field, e.target.value)} onBlur={() => saveExt(which)}
+        className={`w-full min-w-[70px] bg-transparent ${align} px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium`} />;
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
+        <div className="flex justify-end mb-3">
+          <button onClick={() => addExtRow(which)}
+            className="flex items-center gap-1.5 bg-[#0a6652] hover:bg-[#084f40] text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm cursor-pointer active:scale-95">
+            <Plus size={15} /><span>បន្ថែមជួរ</span>
+          </button>
+        </div>
+        <div className="frz2 overflow-x-auto border border-slate-300 rounded-xl">
+          <table className="w-full text-left border-collapse text-sm min-w-[1280px]">
+            <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
+              <tr>
+                <th className="px-3 py-3 border-r border-slate-300 align-middle">លរ</th>
+                <th className="px-3 py-3 border-r border-slate-300 align-middle min-w-[200px]">ឈ្មោះ</th>
+                <th className="px-3 py-3 border-r border-slate-300 align-middle">ភេទ</th>
+                <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចី<br/>ទទួលបាន</th>
+                <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចី<br/>សងត្រឡប់</th>
+                <th className="px-3 py-3 border-r border-slate-300 align-middle text-center">អត្រាការប្រាក់</th>
+                <th className="px-3 py-3 border-r border-slate-300 align-middle text-center">រយៈពេល</th>
+                <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីថ្មី</th>
+                <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចី<br/>នៅសល់</th>
+                <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">ការប្រាក់</th>
+                <th className="px-3 py-3 border-r border-slate-300 align-middle text-right text-[#084f40] bg-[#f3faf6]">ប្រាក់ត្រូវបង់<br/>សរុប</th>
+                <th className="px-3 py-3 border-r border-slate-300 align-middle">សំគាល់</th>
+                <th className="px-3 py-3 align-middle"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {c.data.map((row: any, idx: number) => (
+                <tr key={`${row.id}-${idx}`} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
+                  <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
+                  <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'name', 'text-left')}</td>
+                  <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'gender', 'text-center')}</td>
+                  <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'received')}</td>
+                  <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'repayment', 'text-right text-amber-600')}</td>
+                  <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'interestRate', 'text-center')}</td>
+                  <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'duration', 'text-center')}</td>
+                  <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'newLoan', 'text-right text-emerald-600')}</td>
+                  <td className="px-1 py-1 border-r border-slate-300 bg-slate-50">{inp(row, idx, 'remaining')}</td>
+                  <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'interest', 'text-right text-indigo-600')}</td>
+                  <td className="px-1 py-1 border-r border-slate-300 bg-[#fafdfa]">{inp(row, idx, 'totalToPay', 'text-right text-[#0a6652] font-bold')}</td>
+                  <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'note', 'text-left')}</td>
+                  <td className="px-2 py-2 text-center">
+                    <button onClick={() => delExtRow(which, idx)} title="លុបជួរ" className="text-rose-400 hover:text-rose-600 cursor-pointer"><Trash2 size={15} /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
 
   const handleDeleteAllLoans = () => {
     if (window.confirm('តើអ្នកពិតជាចង់លុបទិន្នន័យនេះមែនទេ? (សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ)')) {
@@ -3056,12 +3146,17 @@ function Loans() {
       } else if (activeTab === 'deposit_members') {
         setDepositLoanData([]);
         setStoredData('sof_loans_deposit_data', []);
+      } else if (activeTab === 'group') {
+        setExtReceived([]); persistExt('received', []);
+      } else if (activeTab === 'external_provided') {
+        setExtProvided([]); persistExt('provided', []);
       }
-      // Note: external group and provided loans are hardcoded, so we don't clear them
     }
   };
 
   const handleSaveAllLoans = async () => {
+    if (activeTab === 'group') saveExt('received');
+    else if (activeTab === 'external_provided') saveExt('provided');
     alert('ទិន្នន័យត្រូវបានរក្សាទុកទៅ Supabase ដោយជោគជ័យ!');
   };
 
@@ -3298,97 +3393,9 @@ function Loans() {
         </div>
       )}
 
-      {activeTab === 'group' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
-          <div className="frz2 overflow-x-auto border border-slate-300 rounded-xl">
-            <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
-              <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
-                <tr>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle">លរ</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle min-w-[200px]">ឈ្មោះ</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle">ភេទ</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចី<br/>ទទួលបាន</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចី<br/>សងត្រឡប់</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-center">អត្រាការប្រាក់</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-center">រយៈពេល</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីថ្មី</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចី<br/>នៅសល់</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">ការប្រាក់</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right text-[#084f40] bg-[#f3faf6] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">ប្រាក់ត្រូវបង់<br/>សរុប</th>
-                  <th className="px-3 py-3 align-middle">សំគាល់</th>
-                </tr>
-              </thead>
-              <tbody>
-                {externalLoanData.map((row) => (
-                  <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.received}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-amber-600">{row.repayment}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium">{row.interestRate}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium">{row.duration}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-emerald-600">{row.newLoan}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium bg-slate-50">{row.remaining}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-indigo-600">{row.interest}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">
-                      <div className={`w-16 h-6 ml-auto ${row.id === 'I06' ? 'border border-green-500 rounded bg-green-50/50' : ''}`}>
-                        {row.totalToPay}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-center text-slate-500">{row.note}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {activeTab === 'group' && renderExtTable('received')}
 
-      {activeTab === 'external_provided' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
-          <div className="frz2 overflow-x-auto border border-slate-300 rounded-xl">
-            <table className="w-full text-left border-collapse text-sm min-w-[1200px]">
-              <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
-                <tr>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle">លរ</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle min-w-[200px]">ឈ្មោះ</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle">ភេទ</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចី<br/>ទទួលបាន</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចី<br/>សងត្រឡប់</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-center">អត្រាការប្រាក់</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-center">រយៈពេល</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចីថ្មី</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">កម្ចី<br/>នៅសល់</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right">ការប្រាក់</th>
-                  <th className="px-3 py-3 border-r border-slate-300 align-middle text-right text-[#084f40] bg-[#f3faf6] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">ប្រាក់ត្រូវបង់<br/>សរុប</th>
-                  <th className="px-3 py-3 align-middle">សំគាល់</th>
-                </tr>
-              </thead>
-              <tbody>
-                {externalProvidedData.map((row) => (
-                  <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.received}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-amber-600">{row.repayment}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium">{row.interestRate}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium">{row.duration}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-emerald-600">{row.newLoan}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium bg-slate-50">{row.remaining}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-indigo-600">{row.interest}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">
-                      {row.totalToPay}
-                    </td>
-                    <td className="px-3 py-2 text-center text-slate-500">{row.note}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {activeTab === 'external_provided' && renderExtTable('provided')}
 
       <div className="flex justify-end gap-3 mt-4">
         <button
