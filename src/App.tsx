@@ -3949,7 +3949,6 @@ function Reports() {
   // ---- Income statement, computed live per month ----
   const snapInc = (snap && snap.income) || null;
   const pickInc = (k: string, fb: number) => (snapInc && typeof snapInc[k] === 'number') ? snapInc[k] : fb;
-  const valInc = (live: number | null, k: string, fb: number) => (live != null ? live : pickInc(k, fb));
   // Income = interest the members actually PAID (ការប្រាក់បានបង់) + interest from loans
   // lent to outsiders (កម្ចីផ្តល់ទៅខាងក្រៅ). NOT interest merely due.
   const sumInterestPaid = (key: string) => {
@@ -3970,11 +3969,15 @@ function Reports() {
   const incInterestIncome = loanInterestLive() ?? pickInc('interestIncome', 0);
   const incOtherIncome = pickInc('otherIncome', 0);
   const incTotalIncome = incInterestIncome + incOtherIncome;
-  const incDepositInterest = valInc(depBeginSum == null ? null : DEFAULT_RATES.deposit * depBeginSum, 'depositInterestCost', 0);
-  const incExternalInterest = valInc(sumMonth('sof_external_received_by_month', 'interest'), 'externalLoanInterest', 0);
-  const incFixedTermInterest = valInc(sumMonth('sof_fixedterm_by_month', 'interest', FIXEDTERM_BY_MONTH), 'fixedTermInterest', 0);
+  // Cost lines are computed LIVE per month from this month's own data (no imported fallback):
+  //   deposit interest = 0.5% × deposit beginning; fixed-term = 1% × fixed-term balance;
+  //   external-loan interest = sum of that month's external-borrowing interest;
+  //   operating expense = sum of ALL expense items entered for the month.
+  const incDepositInterest = DEFAULT_RATES.deposit * (depBeginSum ?? 0);
+  const incExternalInterest = sumMonth('sof_external_received_by_month', 'interest') ?? 0;
+  const incFixedTermInterest = sumMonth('sof_fixedterm_by_month', 'interest', FIXEDTERM_BY_MONTH) ?? 0;
   const incGrossProfit = incTotalIncome - incDepositInterest - incExternalInterest - incFixedTermInterest;
-  const incOperatingExpense = valInc(sumMonth('sof_expenses_by_month', 'total', EXPENSE_BY_MONTH), 'operatingExpense', 0);
+  const incOperatingExpense = sumMonth('sof_expenses_by_month', 'total', EXPENSE_BY_MONTH) ?? 0;
   const incReserveAlloc = DEFAULT_RATES.reserve * incTotalIncome;   // 10% of total income
   const incSocialAlloc = DEFAULT_RATES.social * incTotalIncome;     // 0.5% of total income
   const incNetProfit = incGrossProfit - incOperatingExpense - incReserveAlloc - incSocialAlloc;
