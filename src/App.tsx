@@ -175,6 +175,30 @@ function monthlyIncome(month: string) {
   return { interestIncome, otherIncome, totalIncome, depositInterestCost, fixedTermInterest, externalLoanInterest, grossProfit, operatingExpense, reserveAlloc, socialAlloc, netProfit };
 }
 
+// ---- Member portal credentials -------------------------------------------------
+// Members log in with their ID (C001…/D001…) + a password. Everyone starts with a
+// single shared default password; each member can then change their own. Changed
+// passwords are stored per-member in sof_member_credentials (cloud-synced).
+const MEMBER_DEFAULT_PASSWORD = 'sof2026';
+const getMemberDefaultPassword = (): string =>
+  (typeof localStorage !== 'undefined' && localStorage.getItem('sof_member_default_password')) || MEMBER_DEFAULT_PASSWORD;
+const getMemberPassword = (code: string): string => {
+  const creds = getStoredData('sof_member_credentials', {}) || {};
+  return creds[code] || getMemberDefaultPassword();
+};
+const setMemberPassword = (code: string, pw: string) => {
+  const creds = { ...(getStoredData('sof_member_credentials', {}) || {}) };
+  creds[code] = pw;
+  setStoredData('sof_member_credentials', creds);
+};
+const memberExists = (code: string): boolean => {
+  const u = (code || '').toUpperCase();
+  if (!u) return false;
+  const list = getStoredData('sof_member_list_data', []) || [];
+  return list.some((m: any) =>
+    String(m.code || '').toUpperCase() === u || String(m.id || '').toUpperCase().endsWith(' ' + u));
+};
+
 function SidebarLink({ to, label }: { to: string, label: string }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -4598,12 +4622,20 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (loginType === 'member') {
-      if (loginId.trim()) {
-        localStorage.setItem('userRole', 'member');
-        localStorage.setItem('memberId', loginId);
-        onLogin('member', loginId);
-        navigate(`/member-report?id=${loginId}`);
+      const code = loginId.trim().toUpperCase();
+      if (!code) return;
+      if (!memberExists(code)) {
+        alert('រកមិនឃើញលេខ ID សមាជិកនេះទេ! សូមពិនិត្យ ID របស់អ្នកម្ដងទៀត។');
+        return;
       }
+      if (password !== getMemberPassword(code)) {
+        alert('ពាក្យសម្ងាត់មិនត្រឹមត្រូវទេ!');
+        return;
+      }
+      localStorage.setItem('userRole', 'member');
+      localStorage.setItem('memberId', code);
+      onLogin('member', code);
+      navigate(`/member-report?id=${code}`);
     } else {
       const storedAdminPassword = localStorage.getItem('adminPassword') || 'admin123';
       if (adminUsername.trim() === 'admin' && adminPassword === storedAdminPassword) {
@@ -4651,12 +4683,12 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
           {loginType === 'member' ? (
             <>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">លេខ ID សមាជិក ឬ លេខទូរស័ព្ទ</label>
-                <input 
-                  type="text" 
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">លេខ ID សមាជិក (Username)</label>
+                <input
+                  type="text"
                   value={loginId}
                   onChange={(e) => setLoginId(e.target.value)}
-                  placeholder="ឧទាហរណ៍: CM008 ឬ 012345678" 
+                  placeholder="ឧទាហរណ៍: C001"
                   className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0a6652] focus:border-transparent font-black text-xs sm:text-sm text-slate-800 placeholder:font-normal placeholder:text-slate-400"
                   required
                 />
@@ -4684,6 +4716,9 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
               <button type="submit" className="w-full h-11 bg-[#0a6652] text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-teal-900/20 hover:bg-[#084f40] transition-colors flex items-center justify-center gap-2 mt-2 text-xs sm:text-sm cursor-pointer">
                 <LogIn size={16} /> ចូលគណនីសមាជិក
               </button>
+              <p className="text-[10px] text-slate-400 text-center font-medium leading-normal mt-1">
+                ពាក្យសម្ងាត់ដើមរួម៖ <span className="font-extrabold text-[#0a6652]">sof2026</span> — សូមដូរវានៅពេលចូលលើកដំបូង (ប៊ូតុង «ដូរពាក្យសម្ងាត់» ក្នុងទំព័ររបាយការណ៍)។
+              </p>
             </>
           ) : (
             <>
@@ -4936,15 +4971,25 @@ function MemberReport() {
 
   const handleChangePassword = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword === confirmPassword) {
-      alert("បានផ្លាស់ប្តូរពាក្យសម្ងាត់ដោយជោគជ័យ!");
-      setShowChangePassword(false);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } else {
-      alert("ពាក្យសម្ងាត់ថ្មី និងផ្ទៀងផ្ទាត់មិនត្រូវគ្នាទេ!");
+    const code = (localStorage.getItem('memberId') || '').toUpperCase();
+    if (currentPassword !== getMemberPassword(code)) {
+      alert("ពាក្យសម្ងាត់បច្ចុប្បន្នមិនត្រឹមត្រូវទេ!");
+      return;
     }
+    if (!newPassword || newPassword.length < 4) {
+      alert("ពាក្យសម្ងាត់ថ្មីត្រូវមានយ៉ាងតិច ៤ តួអក្សរ!");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      alert("ពាក្យសម្ងាត់ថ្មី និងផ្ទៀងផ្ទាត់មិនត្រូវគ្នាទេ!");
+      return;
+    }
+    setMemberPassword(code, newPassword);
+    alert("បានផ្លាស់ប្តូរពាក្យសម្ងាត់ដោយជោគជ័យ!");
+    setShowChangePassword(false);
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
   };
 
   return (
