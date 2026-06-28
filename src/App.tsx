@@ -2406,17 +2406,23 @@ function Savings() {
   useEffect(() => {
     const fBy = getStoredData('sof_fixedterm_by_month', FIXEDTERM_BY_MONTH) || {};
     const mi = months.indexOf(selectedMonth);
-    const prev = mi > 0 ? months[mi - 1] : null;
-    let rows = (fBy[selectedMonth] && fBy[selectedMonth].length) ? fBy[selectedMonth] : ftRoster();
-    if (prev && fBy[prev]) {
-      // Next month's beginning = previous month's end-of-month total.
-      // Recompute the previous month so the total is correct even if the stored
-      // rows still hold seed placeholders (only saved months persist live totals).
-      const pt: Record<string, any> = {};
-      recalcFixedTerm(fBy[prev]).forEach((r: any) => { pt[r.id] = r.total; });
-      rows = rows.map((r: any) => (pt[r.id] !== undefined ? { ...r, startCapital: String(pt[r.id]) } : r));
+    // Roll forward from the first month: each month's end-of-month total becomes
+    // the next month's beginning. Months with no data (e.g. Jul–Dec) just carry the
+    // running balance forward, so the chain never resets to zero on empty months.
+    let prevTotals: Record<string, any> | null = null;
+    let computed: any[] = ftRoster();
+    for (let i = 0; i <= mi; i++) {
+      const m = months[i];
+      let rows = (fBy[m] && fBy[m].length) ? fBy[m] : ftRoster();
+      if (prevTotals) {
+        const pt = prevTotals;
+        rows = rows.map((r: any) => (pt[r.id] !== undefined ? { ...r, startCapital: String(pt[r.id]) } : r));
+      }
+      computed = recalcFixedTerm(rows);
+      prevTotals = {};
+      computed.forEach((r: any) => { prevTotals![r.id] = r.total; });
     }
-    setFixedTermData(recalcFixedTerm(rows));
+    setFixedTermData(computed);
   }, [selectedMonth]);
   const editFixedTermRaw = (idx: number, field: string, value: string) => {
     setFixedTermData(recalcFixedTerm(fixedTermData.map((r: any, i: number) => (i === idx ? { ...r, [field]: value } : r))));
