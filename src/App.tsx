@@ -3095,6 +3095,7 @@ function Loans() {
     const df = defFinOf(which);
     const idx = months.indexOf(upto);
     let prevRemaining: Record<string, number> | null = null;
+    let prevRate: Record<string, string> | null = null;
     let result: any[] = [];
     for (let i = 0; i <= idx; i++) {
       const monthRows = Array.isArray(by[months[i]]) ? by[months[i]] : [];
@@ -3103,14 +3104,18 @@ function Loans() {
         const f = fin[rr.id] || df[rr.id] || {};
         const pr = prevRemaining ? (prevRemaining[rr.id] || 0) : 0;
         const received = i === 0 ? (f.received ?? '-') : (pr ? fmtMoney(pr) : '-');
+        // Rate entered for this month wins; otherwise carry the previous month's rate.
+        const entered = fin[rr.id]?.interestRate;
+        const rate = (entered != null && entered !== '') ? entered
+          : (prevRate?.[rr.id] != null ? prevRate[rr.id] : ((df[rr.id]?.interestRate) ?? c.rate));
         return recalcExtRow({
           id: rr.id, name: rr.name, gender: rr.gender, received,
           repayment: f.repayment ?? '-', newLoan: f.newLoan ?? '-',
-          interestRate: f.interestRate ?? c.rate, duration: f.duration ?? '', note: f.note ?? '',
+          interestRate: rate, duration: f.duration ?? '', note: f.note ?? '',
         });
       });
-      prevRemaining = {};
-      result.forEach((r: any) => { prevRemaining![r.id] = num(r.remaining); });
+      prevRemaining = {}; prevRate = {};
+      result.forEach((r: any) => { prevRemaining![r.id] = num(r.remaining); prevRate![r.id] = r.interestRate; });
     }
     return result;
   };
@@ -3210,6 +3215,21 @@ function Loans() {
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="bg-slate-50 text-slate-800 font-bold border-t-2 border-slate-800 h-12">
+                <td colSpan={3} className="px-3 py-2 border-r border-slate-300 text-center">សរុប</td>
+                <td className="px-3 py-2 border-r border-slate-300 text-right">{fmtMoney(loanSum(c.data, 'received'))}</td>
+                <td className="px-3 py-2 border-r border-slate-300 text-right text-amber-700">{fmtMoney(loanSum(c.data, 'repayment'))}</td>
+                <td className="px-3 py-2 border-r border-slate-300"></td>
+                <td className="px-3 py-2 border-r border-slate-300"></td>
+                <td className="px-3 py-2 border-r border-slate-300 text-right text-emerald-700">{fmtMoney(loanSum(c.data, 'newLoan'))}</td>
+                <td className="px-3 py-2 border-r border-slate-300 text-right bg-slate-100">{fmtMoney(loanSum(c.data, 'remaining'))}</td>
+                <td className="px-3 py-2 border-r border-slate-300 text-right text-indigo-700">{fmtMoney(loanSum(c.data, 'interest'))}</td>
+                <td className="px-3 py-2 border-r border-slate-300 text-right text-[#0a6652] bg-[#f3faf6]">{fmtMoney(loanSum(c.data, 'totalToPay'))}</td>
+                <td className="px-3 py-2 border-r border-slate-300"></td>
+                <td className="px-3 py-2"></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>
