@@ -112,11 +112,40 @@ const DEFAULT_DEPOSIT_DATA: any[] = [];
 const DEFAULT_LOAN_DATA: any[] = [];
 const DEFAULT_DEPOSIT_LOAN_DATA: any[] = [];
 
-const DEFAULT_EXPENSE_DATA = [
-  { id: '1', date: '2026-04-15', supplier: 'SOF', description: 'ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់ លី រ៉ា', category: 'ចំណាយប្រតិបត្តិការ', qty: 1, price: 170.00, total: 170.00 },
-  { id: '2', date: '2026-04-15', supplier: 'SOF', description: 'ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់ ផាត សុភាព', category: 'ចំណាយប្រតិបត្តិការ', qty: 1, price: 30.00, total: 30.00 },
-  { id: '3', date: '2026-04-15', supplier: 'SOF', description: 'កាតទូរស័ព្ទប្រចាំខែសម្រាប់ លី រ៉ា', category: 'ចំណាយប្រតិបត្តិការ', qty: 2, price: 4.00, total: 8.00 }
-];
+// Per-month expenses imported from the expense workbook (Expense.xlsx). Jan–May 2026
+// have data; Jun–Dec are empty. Each month's totals reconcile to the report
+// (Jan/Mar/Apr/May 208; Feb 243). Applied once via the sof_expenses_import_v1 flag.
+const EXP_CAT = 'ចំណាយប្រតិបត្តិការ';
+const EXPENSE_BY_MONTH: Record<string, any[]> = {
+  'មករា 2026': [
+    { id: 'imp-01-1', date: '2026-01-15', supplier: 'SOF', description: 'ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់លឹវ វី', category: EXP_CAT, qty: 1, price: 170, total: 170 },
+    { id: 'imp-01-2', date: '2026-01-15', supplier: 'SOF', description: 'ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់ផន សុភាក់', category: EXP_CAT, qty: 1, price: 30, total: 30 },
+    { id: 'imp-01-3', date: '2026-01-15', supplier: 'SOF', description: 'កាតទូរស័ព្ទប្រចាំខែសម្រាប់លឹវ វី', category: EXP_CAT, qty: 2, price: 4, total: 8 },
+  ],
+  'កុម្ភៈ 2026': [
+    { id: 'imp-02-1', date: '2026-02-15', supplier: 'SOF', description: 'ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់លឹវ វី', category: EXP_CAT, qty: 1, price: 170, total: 170 },
+    { id: 'imp-02-2', date: '2026-02-15', supplier: 'SOF', description: 'ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់ផន សុភាក់', category: EXP_CAT, qty: 1, price: 30, total: 30 },
+    { id: 'imp-02-3', date: '2026-02-15', supplier: 'SOF', description: 'កាតទូរស័ព្ទប្រចាំខែសម្រាប់លឹវ វី', category: EXP_CAT, qty: 2, price: 4, total: 8 },
+    { id: 'imp-02-4', date: '2026-02-07', supplier: 'SOF', description: 'ថ្លៃជុសជុលកុំព្យួទ័រ', category: EXP_CAT, qty: 1, price: 35, total: 35 },
+  ],
+  'មីនា 2026': [
+    { id: 'imp-03-1', date: '2026-03-15', supplier: 'SOF', description: 'ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់លឹវ វី', category: EXP_CAT, qty: 1, price: 170, total: 170 },
+    { id: 'imp-03-2', date: '2026-03-15', supplier: 'SOF', description: 'ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់ផន សុភាក់', category: EXP_CAT, qty: 1, price: 30, total: 30 },
+    { id: 'imp-03-3', date: '2026-03-15', supplier: 'SOF', description: 'កាតទូរស័ព្ទប្រចាំខែសម្រាប់លឹវ វី', category: EXP_CAT, qty: 2, price: 4, total: 8 },
+  ],
+  'មេសា 2026': [
+    { id: 'imp-04-1', date: '2026-04-15', supplier: 'SOF', description: 'ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់លឹវ វី', category: EXP_CAT, qty: 1, price: 170, total: 170 },
+    { id: 'imp-04-2', date: '2026-04-15', supplier: 'SOF', description: 'ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់ផន សុភាក់', category: EXP_CAT, qty: 1, price: 30, total: 30 },
+    { id: 'imp-04-3', date: '2026-04-15', supplier: 'SOF', description: 'កាតទូរស័ព្ទប្រចាំខែសម្រាប់លឹវ វី', category: EXP_CAT, qty: 2, price: 4, total: 8 },
+  ],
+  'ឧសភា 2026': [
+    { id: 'imp-05-1', date: '2026-05-15', supplier: 'SOF', description: 'ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់លឹវ វី', category: EXP_CAT, qty: 1, price: 170, total: 170 },
+    { id: 'imp-05-2', date: '2026-05-15', supplier: 'SOF', description: 'ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់ផន សុភាក់', category: EXP_CAT, qty: 1, price: 30, total: 30 },
+    { id: 'imp-05-3', date: '2026-05-15', supplier: 'SOF', description: 'កាតទូរស័ព្ទប្រចាំខែសម្រាប់លឹវ វី', category: EXP_CAT, qty: 2, price: 4, total: 8 },
+  ],
+  'មិថុនា 2026': [], 'កក្កដា 2026': [], 'សីហា 2026': [], 'កញ្ញា 2026': [],
+  'តុលា 2026': [], 'វិច្ឆិកា 2026': [], 'ធ្នូ 2026': [],
+};
 
 function SidebarLink({ to, label }: { to: string, label: string }) {
   const navigate = useNavigate();
@@ -3386,23 +3415,9 @@ function Expenses() {
   const months = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
 
   // ---- Per-month expenses (each month keeps its own list) ----
-  // Map a YYYY-MM-DD date to its Khmer month key (year 2026).
-  const monthKeyFromDate = (date: string) => {
-    const idx = parseInt((date || '').slice(5, 7), 10) - 1;
-    return idx >= 0 && idx < months.length ? months[idx] : months[0];
-  };
   // Default new-expense date = the 15th of the month being viewed.
   const dateForMonth = (month: string) => `2026-${String(Math.max(0, months.indexOf(month)) + 1).padStart(2, '0')}-15`;
-  // First-time migration: bucket the legacy flat list into months by each row's date.
-  const migratedByMonth = (): Record<string, any[]> => {
-    const byMonth: Record<string, any[]> = {};
-    (getStoredData('sof_expenses_data', DEFAULT_EXPENSE_DATA) || []).forEach((exp: any) => {
-      const k = monthKeyFromDate(exp.date);
-      (byMonth[k] = byMonth[k] || []).push(exp);
-    });
-    return byMonth;
-  };
-  const loadByMonth = (): Record<string, any[]> => getStoredData('sof_expenses_by_month', migratedByMonth());
+  const loadByMonth = (): Record<string, any[]> => getStoredData('sof_expenses_by_month', EXPENSE_BY_MONTH);
   const saveMonth = (rows: any[]) => {
     const byMonth = loadByMonth();
     byMonth[selectedMonth] = rows;
@@ -3423,6 +3438,15 @@ function Expenses() {
   const [formQty, setFormQty] = useState(1);
   const [formPrice, setFormPrice] = useState(0);
   const [successMsg, setSuccessMsg] = useState('');
+
+  // One-time import of the per-month expense workbook (replaces any earlier data).
+  useEffect(() => {
+    if (!getStoredData('sof_expenses_import_v1', false)) {
+      setStoredData('sof_expenses_by_month', EXPENSE_BY_MONTH);
+      setStoredData('sof_expenses_import_v1', true);
+      setExpenses(EXPENSE_BY_MONTH[selectedMonth] || []);
+    }
+  }, []);
 
   // Load the selected month's expenses (and sync the form date) when the month changes.
   useEffect(() => {
