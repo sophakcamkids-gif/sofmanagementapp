@@ -3946,8 +3946,51 @@ function Reports() {
   const bsCashOnHand = bsTotalLiabilities + bsTotalEquity - bsLoansMembers - bsLoansExternal - bsBankBalance;
   const bsTotalAssets = bsCashOnHand + bsBankBalance + bsLoansMembers + bsLoansExternal;
 
-  // Income & cash-flow snapshots for their tabs (null when the month has no data).
-  const inc = (snap && snap.income) || null;
+  // ---- Income statement, computed live per month ----
+  const snapInc = (snap && snap.income) || null;
+  const pickInc = (k: string, fb: number) => (snapInc && typeof snapInc[k] === 'number') ? snapInc[k] : fb;
+  const valInc = (live: number | null, k: string, fb: number) => (live != null ? live : pickInc(k, fb));
+  // Loan interest earned = rate × beginning per row (prefer the row's computed interest).
+  const rowLoanInterest = (r: any) => {
+    const stored = num(r.interest);
+    if (stored) return stored;
+    const hasRate = r.rate != null && String(r.rate).trim() !== '';
+    return (hasRate ? num(r.rate) / 100 : DEFAULT_RATES.loan) * num(r.loanValue);
+  };
+  const sumLoanInterest = (key: string) => {
+    const rows = (getStoredData(key, {}) || {})[selectedMonth];
+    return Array.isArray(rows) ? rows.reduce((s: number, r: any) => s + rowLoanInterest(r), 0) : null;
+  };
+  // Total loan interest income = active + deposit member loans + loans lent to outsiders.
+  const loanInterestLive = () => {
+    const a = sumLoanInterest('sof_loans_by_month');
+    const d = sumLoanInterest('sof_loans_deposit_by_month');
+    const e = sumMonth('sof_external_provided_by_month', 'interest');
+    return (a == null && d == null && e == null) ? null : (a || 0) + (d || 0) + (e || 0);
+  };
+  const depBeginSum = sumMonth('sof_deposit_by_month', 'startCapital');
+
+  // Interest income keeps the verified imported figure for months that have one (it
+  // includes external-loan interest the app doesn't model yet); later months sum the
+  // entered loan interest. Everything else is computed from this month's live data.
+  const incInterestIncome = loanInterestLive() ?? pickInc('interestIncome', 0);
+  const incOtherIncome = pickInc('otherIncome', 0);
+  const incTotalIncome = incInterestIncome + incOtherIncome;
+  const incDepositInterest = valInc(depBeginSum == null ? null : DEFAULT_RATES.deposit * depBeginSum, 'depositInterestCost', 0);
+  const incExternalInterest = valInc(sumMonth('sof_external_received_by_month', 'interest'), 'externalLoanInterest', 0);
+  const incFixedTermInterest = valInc(sumMonth('sof_fixedterm_by_month', 'interest', FIXEDTERM_BY_MONTH), 'fixedTermInterest', 0);
+  const incGrossProfit = incTotalIncome - incDepositInterest - incExternalInterest - incFixedTermInterest;
+  const incOperatingExpense = valInc(sumMonth('sof_expenses_by_month', 'total', EXPENSE_BY_MONTH), 'operatingExpense', 0);
+  const incReserveAlloc = DEFAULT_RATES.reserve * incTotalIncome;   // 10% of total income
+  const incSocialAlloc = DEFAULT_RATES.social * incTotalIncome;     // 0.5% of total income
+  const incNetProfit = incGrossProfit - incOperatingExpense - incReserveAlloc - incSocialAlloc;
+  const inc: any = {
+    interestIncome: incInterestIncome, otherIncome: incOtherIncome, totalIncome: incTotalIncome,
+    depositInterestCost: incDepositInterest, externalLoanInterest: incExternalInterest, fixedTermInterest: incFixedTermInterest,
+    grossProfit: incGrossProfit, operatingExpense: incOperatingExpense,
+    reserveAlloc: incReserveAlloc, socialAlloc: incSocialAlloc, netProfit: incNetProfit,
+  };
+
   const cf = (snap && snap.cashflow) || null;
   const m2 = (v: number | undefined) => (typeof v === 'number' ? fmtMoney(v) : '-');
 
