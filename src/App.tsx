@@ -147,6 +147,34 @@ const EXPENSE_BY_MONTH: Record<string, any[]> = {
   'តុលា 2026': [], 'វិច្ឆិកា 2026': [], 'ធ្នូ 2026': [],
 };
 
+// Sum one numeric field across a per-month store's rows for the given month.
+const sumMonthOf = (key: string, month: string, field: string, def: any = {}): number => {
+  const rows = (getStoredData(key, def) || {})[month];
+  return Array.isArray(rows) ? rows.reduce((s: number, r: any) => s + num(r[field]), 0) : 0;
+};
+
+// Live monthly income statement — computed from this month's own data. Shared by the
+// Income report and the Savings page so the two always agree.
+function monthlyIncome(month: string) {
+  const snapIncome: any = ((getStoredData('sof_monthly_reports', {})[month] || {}).income) || {};
+  // Income = interest members actually PAID + interest from loans lent to outsiders.
+  const interestPaid = sumMonthOf('sof_loans_by_month', month, 'interestPaid')
+    + sumMonthOf('sof_loans_deposit_by_month', month, 'interestPaid')
+    + sumMonthOf('sof_external_provided_by_month', month, 'interest');
+  const interestIncome = interestPaid || num(snapIncome.interestIncome);
+  const otherIncome = num(snapIncome.otherIncome);
+  const totalIncome = interestIncome + otherIncome;
+  const depositInterestCost = DEFAULT_RATES.deposit * sumMonthOf('sof_deposit_by_month', month, 'startCapital');
+  const fixedTermInterest = DEFAULT_RATES.fixedTerm * sumMonthOf('sof_fixedterm_by_month', month, 'startCapital', FIXEDTERM_BY_MONTH);
+  const externalLoanInterest = sumMonthOf('sof_external_received_by_month', month, 'interest');
+  const grossProfit = totalIncome - depositInterestCost - fixedTermInterest - externalLoanInterest;
+  const operatingExpense = sumMonthOf('sof_expenses_by_month', month, 'total', EXPENSE_BY_MONTH);
+  const reserveAlloc = DEFAULT_RATES.reserve * totalIncome;   // 10% of total income → reserve fund
+  const socialAlloc = DEFAULT_RATES.social * totalIncome;     // 0.5% of total income → social fund
+  const netProfit = grossProfit - operatingExpense - reserveAlloc - socialAlloc;
+  return { interestIncome, otherIncome, totalIncome, depositInterestCost, fixedTermInterest, externalLoanInterest, grossProfit, operatingExpense, reserveAlloc, socialAlloc, netProfit };
+}
+
 function SidebarLink({ to, label }: { to: string, label: string }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -2226,7 +2254,16 @@ function Savings() {
       deposit = deposit.map((r: any) => (prevTotals.deposit[r.id] !== undefined ? { ...r, startCapital: String(prevTotals.deposit[r.id]) } : r));
     }
 
-    const net = num(((reports[month] || {}).income || {}).netProfit);
+    const incM = monthlyIncome(month);
+    const net = incM.netProfit;
+    // The reserve & social fund allocations from income auto-deposit (ទុនសន្សំបន្ថែម)
+    // into their own group savings accounts (ទុនបម្រុង / ទុនសង្គម).
+    group = group.map((r: any) => {
+      const nm = r.name || '';
+      if (nm.includes('បម្រុង')) return { ...r, addSaving: incM.reserveAlloc.toFixed(2) };
+      if (nm.includes('សង្គម')) return { ...r, addSaving: incM.socialAlloc.toFixed(2) };
+      return r;
+    });
     const pool = [...active, ...group].map((r: any) => ({
       id: r.id, beginning: num(r.startCapital), addSaving: num(r.addSaving),
       withdraw: num(r.withdraw), penalty: num(r.actualFee), deductFee: num(r.deductFee),
@@ -2263,8 +2300,7 @@ function Savings() {
 
   // Recompute the active + group profit distribution for the given rows (engine).
   const recomputeSavingsRows = (activeRows: any[], groupRows: any[]) => {
-    const reports = getStoredData('sof_monthly_reports', {});
-    const net = num(((reports[selectedMonth] || {}).income || {}).netProfit);
+    const net = monthlyIncome(selectedMonth).netProfit;
     const pool = [...activeRows, ...groupRows].map((r: any) => ({
       id: r.id, beginning: num(r.startCapital), addSaving: num(r.addSaving),
       withdraw: num(r.withdraw), penalty: num(r.actualFee), deductFee: num(r.deductFee),
@@ -3975,7 +4011,7 @@ function Reports() {
   //   operating expense = sum of ALL expense items entered for the month.
   const incDepositInterest = DEFAULT_RATES.deposit * (depBeginSum ?? 0);
   const incExternalInterest = sumMonth('sof_external_received_by_month', 'interest') ?? 0;
-  const incFixedTermInterest = sumMonth('sof_fixedterm_by_month', 'interest', FIXEDTERM_BY_MONTH) ?? 0;
+  const incFixedTermInterest = DEFAULT_RATES.fixedTerm * (sumMonth('sof_fixedterm_by_month', 'startCapital', FIXEDTERM_BY_MONTH) ?? 0);
   const incGrossProfit = incTotalIncome - incDepositInterest - incExternalInterest - incFixedTermInterest;
   const incOperatingExpense = sumMonth('sof_expenses_by_month', 'total', EXPENSE_BY_MONTH) ?? 0;
   const incReserveAlloc = DEFAULT_RATES.reserve * incTotalIncome;   // 10% of total income
