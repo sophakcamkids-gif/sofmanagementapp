@@ -3911,20 +3911,40 @@ function Reports() {
   const bal = (snap && snap.balance) || null;
   const pick = (k: string, fallback: number) => (bal && typeof bal[k] === 'number') ? bal[k] : fallback;
 
-  const bsMemberSavings = pick('memberSavings', sumField(rSavings, 'total'));
-  const bsDepositSavings = pick('depositSavings', sumField(rDeposit, 'total'));
-  const bsLoansMembers = pick('loansToMembers', outstanding(rLoans));
-  const bsLoansExternal = pick('loansExternal', outstanding(rLoansDep));
-  const bsCashOnHand = pick('cashOnHand', 0);
+  // Live per-month figures: sum the selected month's rows from each page's by-month
+  // store. Returns null when that month has no live data, so we can fall back to the
+  // imported snapshot (then to the flat roster).
+  const sumMonth = (key: string, field: string, def: any = {}) => {
+    const by = getStoredData(key, def) || {};
+    const rows = by[selectedMonth];
+    return Array.isArray(rows) ? rows.reduce((s: number, r: any) => s + num(r[field]), 0) : null;
+  };
+  const groupMonthTotal = (needle: string) => {
+    const by = getStoredData('sof_group_by_month', {}) || {};
+    const rows = by[selectedMonth];
+    if (!Array.isArray(rows)) return null;
+    const g = rows.find((r: any) => (r.name || '').includes(needle));
+    return g ? num(g.total) : null;
+  };
+  // live value if present, else the snapshot value, else the flat-roster fallback.
+  const val = (live: number | null, snapKey: string, flat: number) => (live != null ? live : pick(snapKey, flat));
+
+  const bsMemberSavings = val(sumMonth('sof_savings_by_month', 'total'), 'memberSavings', sumField(rSavings, 'total'));
+  const bsDepositSavings = val(sumMonth('sof_deposit_by_month', 'total'), 'depositSavings', sumField(rDeposit, 'total'));
+  const bsFixedTerm = val(sumMonth('sof_fixedterm_by_month', 'total', FIXEDTERM_BY_MONTH), 'fixedTerm', 0);
+  const bsLoansMembers = val(sumMonth('sof_loans_by_month', 'remaining'), 'loansToMembers', outstanding(rLoans));
+  const bsLoansExternal = val(sumMonth('sof_external_provided_by_month', 'remaining'), 'loansExternal', outstanding(rLoansDep));
+  const bsExternalBorrow = val(sumMonth('sof_external_received_by_month', 'remaining'), 'externalBorrow', 0);
+  const bsReserve = val(groupMonthTotal('បម្រុង'), 'reserve', rGroupBy('បម្រុង'));
+  const bsSocial = val(groupMonthTotal('សង្គម'), 'social', rGroupBy('សង្គម'));
+  const bsYes = val(groupMonthTotal('យេស'), 'yes', rGroupBy('យេស'));
   const bsBankBalance = pick('bankBalance', 0);
-  const bsExternalBorrow = pick('externalBorrow', 0);
-  const bsFixedTerm = pick('fixedTerm', 0);
-  const bsReserve = pick('reserve', rGroupBy('បម្រុង'));
-  const bsSocial = pick('social', rGroupBy('សង្គម'));
-  const bsYes = pick('yes', rGroupBy('យេស'));
-  const bsTotalAssets = bal ? bal.totalAssets : (bsCashOnHand + bsBankBalance + bsLoansMembers + bsLoansExternal);
-  const bsTotalLiabilities = bal ? bal.totalLiabilities : (bsMemberSavings + bsDepositSavings + bsExternalBorrow + bsFixedTerm);
-  const bsTotalEquity = bal ? bal.totalEquity : (bsReserve + bsSocial + bsYes);
+  // Liabilities + equity are the funds in; assets are loans out + the cash/bank that
+  // balances them. Cash on hand is the residual (matches the imported reports exactly).
+  const bsTotalLiabilities = bsMemberSavings + bsDepositSavings + bsExternalBorrow + bsFixedTerm;
+  const bsTotalEquity = bsReserve + bsSocial + bsYes;
+  const bsCashOnHand = bsTotalLiabilities + bsTotalEquity - bsLoansMembers - bsLoansExternal - bsBankBalance;
+  const bsTotalAssets = bsCashOnHand + bsBankBalance + bsLoansMembers + bsLoansExternal;
 
   // Income & cash-flow snapshots for their tabs (null when the month has no data).
   const inc = (snap && snap.income) || null;
