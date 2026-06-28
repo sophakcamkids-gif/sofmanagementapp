@@ -3385,22 +3385,50 @@ function Expenses() {
   const [selectedMonth, setSelectedMonth] = useState('មេសា 2026');
   const months = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
 
-  const [expenses, setExpenses] = useState<any[]>(() => 
-    getStoredData('sof_expenses_data', DEFAULT_EXPENSE_DATA)
-  );
+  // ---- Per-month expenses (each month keeps its own list) ----
+  // Map a YYYY-MM-DD date to its Khmer month key (year 2026).
+  const monthKeyFromDate = (date: string) => {
+    const idx = parseInt((date || '').slice(5, 7), 10) - 1;
+    return idx >= 0 && idx < months.length ? months[idx] : months[0];
+  };
+  // Default new-expense date = the 15th of the month being viewed.
+  const dateForMonth = (month: string) => `2026-${String(Math.max(0, months.indexOf(month)) + 1).padStart(2, '0')}-15`;
+  // First-time migration: bucket the legacy flat list into months by each row's date.
+  const migratedByMonth = (): Record<string, any[]> => {
+    const byMonth: Record<string, any[]> = {};
+    (getStoredData('sof_expenses_data', DEFAULT_EXPENSE_DATA) || []).forEach((exp: any) => {
+      const k = monthKeyFromDate(exp.date);
+      (byMonth[k] = byMonth[k] || []).push(exp);
+    });
+    return byMonth;
+  };
+  const loadByMonth = (): Record<string, any[]> => getStoredData('sof_expenses_by_month', migratedByMonth());
+  const saveMonth = (rows: any[]) => {
+    const byMonth = loadByMonth();
+    byMonth[selectedMonth] = rows;
+    setStoredData('sof_expenses_by_month', byMonth);
+  };
+
+  const [expenses, setExpenses] = useState<any[]>(() => loadByMonth()['មេសា 2026'] || []);
 
   const [isAdding, setIsAdding] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ទាំងអស់');
 
   // New expense form inputs
-  const [formDate, setFormDate] = useState('2026-04-15');
+  const [formDate, setFormDate] = useState(dateForMonth('មេសា 2026'));
   const [formSupplier, setFormSupplier] = useState('SOF');
   const [formDesc, setFormDesc] = useState('');
   const [formCategory, setFormCategory] = useState('ចំណាយប្រតិបត្តិការ');
   const [formQty, setFormQty] = useState(1);
   const [formPrice, setFormPrice] = useState(0);
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Load the selected month's expenses (and sync the form date) when the month changes.
+  useEffect(() => {
+    setExpenses(loadByMonth()[selectedMonth] || []);
+    setFormDate(dateForMonth(selectedMonth));
+  }, [selectedMonth]);
 
   const handleAddExpense = (e: React.FormEvent) => {
     e.preventDefault();
@@ -3422,7 +3450,7 @@ function Expenses() {
 
     const updated = [...expenses, newExpense];
     setExpenses(updated);
-    setStoredData('sof_expenses_data', updated);
+    saveMonth(updated);
 
     // Reset Form
     setFormDesc('');
@@ -3440,14 +3468,15 @@ function Expenses() {
   const handleDelete = (id: string) => {
     const updated = expenses.filter(exp => exp.id !== id);
     setExpenses(updated);
-    setStoredData('sof_expenses_data', updated);
+    saveMonth(updated);
     triggerSuccess("បានលុបទិន្នន័យការចំណាយរួចរាល់!");
   };
 
+  // Reset clears only the month currently being viewed.
   const handleResetDefaults = () => {
-    setExpenses(DEFAULT_EXPENSE_DATA);
-    setStoredData('sof_expenses_data', DEFAULT_EXPENSE_DATA);
-    triggerSuccess("បានកំណត់ទិន្នន័យការចំណាយទៅដើមវិញរួចរាល់!");
+    setExpenses([]);
+    saveMonth([]);
+    triggerSuccess(`បានសម្អាតការចំណាយខែ ${selectedMonth} រួចរាល់!`);
   };
 
   // Filter logic
@@ -3463,6 +3492,8 @@ function Expenses() {
   });
 
   const totalAmount = filteredExpenses.reduce((sum, exp) => sum + (Number(exp.total) || 0), 0);
+  // Count of expense records across every month (for the "all transactions" card).
+  const allMonthsCount = Object.values(loadByMonth()).reduce((s: number, rows: any) => s + (rows?.length || 0), 0);
 
   return (
     <PageView 
@@ -3510,7 +3541,7 @@ function Expenses() {
         </div>
         <div className="bg-amber-50/60 p-5 rounded-3xl border border-amber-100 shadow-sm flex flex-col justify-between">
           <div className="text-xs font-black text-slate-500 uppercase tracking-wide mb-1">ប្រតិបត្តិការសរុបទាំងអស់</div>
-          <div className="text-3xl font-black text-amber-700">{expenses.length}</div>
+          <div className="text-3xl font-black text-amber-700">{allMonthsCount}</div>
           <div className="text-[10px] text-slate-400 font-bold mt-1">កត់ត្រាក្នុងប្រព័ន្ធ</div>
         </div>
       </div>
