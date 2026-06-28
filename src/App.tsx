@@ -3048,30 +3048,72 @@ function Loans() {
     { id: 'O02', name: 'ដៃគូ ឃ្លាំង', gender: '-', received: '2,870.91', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '2,870.91', interest: '-', totalToPay: '-', note: '' },
     { id: 'O03', name: 'ដៃគូ SOF', gender: '-', received: '7,286.91', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '7,286.91', interest: '-', totalToPay: '-', note: '' }
   ];
-  const [extReceived, setExtReceived] = useState<any[]>(EXTERNAL_RECEIVED_DEFAULT);
-  const [extProvided, setExtProvided] = useState<any[]>(EXTERNAL_PROVIDED_DEFAULT);
-  useEffect(() => {
-    const byR = getStoredData('sof_external_received_by_month', {}) || {};
-    const byP = getStoredData('sof_external_provided_by_month', {}) || {};
-    setExtReceived(Array.isArray(byR[selectedMonth]) ? byR[selectedMonth] : EXTERNAL_RECEIVED_DEFAULT);
-    setExtProvided(Array.isArray(byP[selectedMonth]) ? byP[selectedMonth] : EXTERNAL_PROVIDED_DEFAULT);
-  }, [selectedMonth]);
-  // Both external tabs share the same shape, so route by a small config.
-  const extConf: any = {
-    received: { key: 'sof_external_received_by_month', data: extReceived, set: setExtReceived, prefix: 'I' },
-    provided: { key: 'sof_external_provided_by_month', data: extProvided, set: setExtProvided, prefix: 'O' },
+  // The roster (id/name/gender + which rows exist) is GLOBAL across months; only the
+  // financial columns are per month. Static config per tab:
+  const EXT: any = {
+    received: { by: 'sof_external_received_by_month', roster: 'sof_external_received_roster', prefix: 'I', def: EXTERNAL_RECEIVED_DEFAULT, rate: '1.20%' },
+    provided: { by: 'sof_external_provided_by_month', roster: 'sof_external_provided_roster', prefix: 'O', def: EXTERNAL_PROVIDED_DEFAULT, rate: '0.00%' },
   };
+  // Default roster = the seed rows ∪ any rows already saved in past months (migration,
+  // so rows added before this change aren't lost).
+  const buildRoster = (which: 'received' | 'provided') => {
+    const c = EXT[which];
+    const roster = c.def.map((r: any) => ({ id: r.id, name: r.name, gender: r.gender }));
+    const seen = new Set(roster.map((r: any) => r.id));
+    const by = getStoredData(c.by, {}) || {};
+    Object.values(by).forEach((rows: any) => Array.isArray(rows) && rows.forEach((r: any) => {
+      if (!seen.has(r.id)) { seen.add(r.id); roster.push({ id: r.id, name: r.name, gender: r.gender }); }
+    }));
+    return roster;
+  };
+  const getRoster = (which: 'received' | 'provided') => getStoredData(EXT[which].roster, buildRoster(which));
+  const defFinOf = (which: 'received' | 'provided') => { const m: any = {}; EXT[which].def.forEach((r: any) => { m[r.id] = r; }); return m; };
+  // Join the global roster with the selected month's financials (falling back to the
+  // seed figures for any month not yet edited).
+  const loadExt = (which: 'received' | 'provided', month: string) => {
+    const c = EXT[which];
+    const by = getStoredData(c.by, {}) || {};
+    const monthRows = Array.isArray(by[month]) ? by[month] : [];
+    const fin: any = {}; monthRows.forEach((r: any) => { fin[r.id] = r; });
+    const df = defFinOf(which);
+    return getRoster(which).map((rr: any) => {
+      const f = fin[rr.id] || df[rr.id] || {};
+      return {
+        id: rr.id, name: rr.name, gender: rr.gender,
+        received: f.received ?? '-', repayment: f.repayment ?? '-', interestRate: f.interestRate ?? c.rate,
+        duration: f.duration ?? '', newLoan: f.newLoan ?? '-', remaining: f.remaining ?? '-',
+        interest: f.interest ?? '-', totalToPay: f.totalToPay ?? '-', note: f.note ?? '',
+      };
+    });
+  };
+  const [extReceived, setExtReceived] = useState<any[]>(() => loadExt('received', 'មេសា 2026'));
+  const [extProvided, setExtProvided] = useState<any[]>(() => loadExt('provided', 'មេសា 2026'));
+  useEffect(() => {
+    setExtReceived(loadExt('received', selectedMonth));
+    setExtProvided(loadExt('provided', selectedMonth));
+  }, [selectedMonth]);
+  const extConf: any = {
+    received: { ...EXT.received, data: extReceived, set: setExtReceived },
+    provided: { ...EXT.provided, data: extProvided, set: setExtProvided },
+  };
+  // Persist both the month's financials AND the global roster (names/gender/order).
   const persistExt = (which: 'received' | 'provided', rows: any[]) => {
-    const by = getStoredData(extConf[which].key, {}) || {}; by[selectedMonth] = rows; setStoredData(extConf[which].key, by);
+    const c = EXT[which];
+    const by = getStoredData(c.by, {}) || {}; by[selectedMonth] = rows; setStoredData(c.by, by);
+    setStoredData(c.roster, rows.map((r: any) => ({ id: r.id, name: r.name, gender: r.gender })));
   };
   const editExt = (which: 'received' | 'provided', idx: number, field: string, value: string) => {
     extConf[which].set(extConf[which].data.map((r: any, i: number) => (i === idx ? { ...r, [field]: value } : r)));
   };
   const saveExt = (which: 'received' | 'provided') => persistExt(which, extConf[which].data);
+  const nextExtId = (prefix: string, rows: any[]) => {
+    let max = 0; rows.forEach((r) => { const m = /(\d+)$/.exec(String(r.id)); if (m) max = Math.max(max, parseInt(m[1], 10)); });
+    return `${prefix}${String(max + 1).padStart(2, '0')}`;
+  };
   const addExtRow = (which: 'received' | 'provided') => {
     const c = extConf[which];
-    const id = `${c.prefix}${String(c.data.length + 1).padStart(2, '0')}`;
-    const next = [...c.data, { id, name: '', gender: '-', received: '-', repayment: '-', interestRate: '0.00%', duration: '', newLoan: '-', remaining: '-', interest: '-', totalToPay: '-', note: '' }];
+    const id = nextExtId(c.prefix, c.data);
+    const next = [...c.data, { id, name: '', gender: '-', received: '-', repayment: '-', interestRate: c.rate, duration: '', newLoan: '-', remaining: '-', interest: '-', totalToPay: '-', note: '' }];
     c.set(next); persistExt(which, next);
   };
   const delExtRow = (which: 'received' | 'provided', idx: number) => {
