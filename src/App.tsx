@@ -3575,7 +3575,7 @@ function Loans() {
   );
 }
 
-function Expenses() {
+function Expenses({ embedded = false }: { embedded?: boolean } = {}) {
   const [selectedMonth, setSelectedMonth] = useState('មេសា 2026');
   const months = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
 
@@ -3685,10 +3685,11 @@ function Expenses() {
   const allMonthsCount = Object.values(loadByMonth()).reduce((s: number, rows: any) => s + (rows?.length || 0), 0);
 
   return (
-    <PageView 
-      hideUpload={true} 
-      hideDownload={true} 
+    <PageView
+      hideUpload={true}
+      hideDownload={true}
       hideAdd={true}
+      hideBack={embedded}
       title={
         <div className="flex flex-col md:flex-row md:items-center gap-3">
           <span>បញ្ជីការចំណាយ (Expenses) - </span>
@@ -4402,86 +4403,7 @@ function Reports() {
         </div>
       )}
 
-      {activeTab === 'expense' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-6 md:p-8">
-           <h3 className="font-bold text-slate-800 text-lg mb-6">ចំណាយប្រតិបត្តិការ</h3>
-           
-           <div className="overflow-x-auto mb-10 border border-slate-200 rounded-xl">
-             <table className="w-full text-left min-w-[700px] border-collapse">
-               <thead>
-                 <tr className="bg-slate-50 border-b border-slate-200 text-sm h-11 text-slate-700">
-                   <th className="px-4 py-2 border-r border-slate-200 font-bold whitespace-nowrap">ថ្ងៃទីខែឆ្នាំ</th>
-                   <th className="px-4 py-2 border-r border-slate-200 font-bold whitespace-nowrap">អ្នកផ្គត់ផ្គង់</th>
-                   <th className="px-4 py-2 border-r border-slate-200 font-bold whitespace-nowrap">អត្តសញ្ញាណ</th>
-                   <th className="px-4 py-2 border-r border-slate-200 font-bold min-w-[200px]">មុខចំណាយ</th>
-                   <th className="px-4 py-2 border-r border-slate-200 font-bold text-center whitespace-nowrap">ឯកតា</th>
-                   <th className="px-4 py-2 border-r border-slate-200 font-bold text-right whitespace-nowrap">តម្លៃ</th>
-                   <th className="px-4 py-2 font-bold text-right whitespace-nowrap">សរុប</th>
-                 </tr>
-               </thead>
-               <tbody className="text-sm">
-                 <tr className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                   <td className="px-4 py-3 border-r border-slate-200">15-Apr-26</td>
-                   <td className="px-4 py-3 border-r border-slate-200">SOF</td>
-                   <td className="px-4 py-3 border-r border-slate-200"></td>
-                   <td className="px-4 py-3 border-r border-slate-200">ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់ លី រ៉ា</td>
-                   <td className="px-4 py-3 border-r border-slate-200 text-center">1</td>
-                   <td className="px-4 py-3 border-r border-slate-200 text-right font-medium">$ 170.00</td>
-                   <td className="px-4 py-3 text-right font-bold text-[#0a6652]">$ 170.00</td>
-                 </tr>
-                 <tr className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                   <td className="px-4 py-3 border-r border-slate-200">15-Apr-26</td>
-                   <td className="px-4 py-3 border-r border-slate-200">SOF</td>
-                   <td className="px-4 py-3 border-r border-slate-200"></td>
-                   <td className="px-4 py-3 border-r border-slate-200">ប្រាក់ឧបត្ថម្ភប្រចាំខែសម្រាប់ ផាត សុភាព</td>
-                   <td className="px-4 py-3 border-r border-slate-200 text-center">1</td>
-                   <td className="px-4 py-3 border-r border-slate-200 text-right font-medium">$ 30.00</td>
-                   <td className="px-4 py-3 text-right font-bold text-[#0a6652]">$ 30.00</td>
-                 </tr>
-                 <tr className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                   <td className="px-4 py-3 border-r border-slate-200">15-Apr-26</td>
-                   <td className="px-4 py-3 border-r border-slate-200">SOF</td>
-                   <td className="px-4 py-3 border-r border-slate-200"></td>
-                   <td className="px-4 py-3 border-r border-slate-200">កាតទូរស័ព្ទប្រចាំខែសម្រាប់ លី រ៉ា</td>
-                   <td className="px-4 py-3 border-r border-slate-200 text-center">2</td>
-                   <td className="px-4 py-3 border-r border-slate-200 text-right font-medium">$ 4.00</td>
-                   <td className="px-4 py-3 text-right font-bold text-[#0a6652]">8.00</td>
-                 </tr>
-                 {[...Array(4)].map((_, idx) => (
-                   <tr key={idx} className="border-b border-slate-200 h-10">
-                     <td className="border-r border-slate-200 px-4"></td>
-                     <td className="border-r border-slate-200 px-4"></td>
-                     <td className="border-r border-slate-200 px-4"></td>
-                     <td className="border-r border-slate-200 px-4"></td>
-                     <td className="border-r border-slate-200 px-4"></td>
-                     <td className="border-r border-slate-200 px-4"></td>
-                     <td className="text-right text-slate-400 px-4">-</td>
-                   </tr>
-                 ))}
-                 <tr className="bg-slate-50 hover:bg-slate-100 transition-colors">
-                   <td colSpan={6} className="px-4 py-3 border-r border-slate-200 text-center font-bold text-slate-800">សរុប</td>
-                   <td className="px-4 py-3 text-right font-black text-slate-800">208.00</td>
-                 </tr>
-               </tbody>
-             </table>
-           </div>
-           
-           <div className="space-y-4 max-w-md pl-2 md:pl-4">
-              <div className="flex justify-between items-center text-sm font-medium text-slate-700">
-                <span>ការប្រាក់</span>
-                <span className="text-slate-400">-</span>
-              </div>
-              <div className="flex justify-between items-center text-sm font-medium text-slate-700">
-                <span>បំណុលអាក្រក់</span>
-                <span className="text-slate-400">-</span>
-              </div>
-              <div className="flex justify-between items-center text-sm font-medium text-slate-700">
-                <span>ចំណាយផ្សេងៗ</span>
-                <span className="text-slate-400">-</span>
-              </div>
-           </div>
-        </div>
-      )}
+      {activeTab === 'expense' && <Expenses embedded />}
     </PageView>
   );
 }
