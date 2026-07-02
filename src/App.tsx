@@ -154,6 +154,19 @@ const sumMonthOf = (key: string, month: string, field: string, def: any = {}): n
   return Array.isArray(rows) ? rows.reduce((s: number, r: any) => s + num(r[field]), 0) : 0;
 };
 
+// Fixed-term account balance for a month = Σ(startCapital + addSaving − withdraw).
+// Uses a stored `total` when present, but recomputes from the components when older/
+// partial rows left `total` blank — so the balance sheet/dashboard are never empty.
+// Falls back to the seeded Jan–May figures when a month has no stored rows.
+const fixedTermBalanceOf = (month: string): number => {
+  const stored = (getStoredData('sof_fixedterm_by_month', {}) || {})[month];
+  const rows = (Array.isArray(stored) && stored.length) ? stored : (FIXEDTERM_BY_MONTH[month] || []);
+  return rows.reduce((s: number, r: any) => {
+    const t = num(r.total);
+    return s + (t || (num(r.startCapital) + num(r.addSaving) - num(r.withdraw)));
+  }, 0);
+};
+
 // Live monthly income statement — computed from this month's own data. Shared by the
 // Income report and the Savings page so the two always agree.
 function monthlyIncome(month: string) {
@@ -1140,7 +1153,7 @@ function DashboardGeneral() {
         {[
           { label: 'ទុនសន្សំសមាជិកសកម្ម', value: '$' + fmtMoney(dashVal('memberSavings', sumField(dashSavings, 'total'))), color: 'text-[#0a6652]' },
           { label: 'ទុនសន្សំសមាជិកបញ្ញើ', value: '$' + fmtMoney(dashVal('depositSavings', sumField(dashDeposit, 'total'))), color: 'text-blue-600' },
-          { label: 'គណនីសន្សំមានកាលកំណត់', value: '$' + fmtMoney(dashVal('fixedTerm', 0)), color: 'text-amber-600' },
+          { label: 'គណនីសន្សំមានកាលកំណត់', value: '$' + fmtMoney(latestMonth ? fixedTermBalanceOf(latestMonth) : 0), color: 'text-amber-600' },
           { label: 'ទុនបម្រុង', value: '$' + fmtMoney(dashVal('reserve', groupTotalBy('បម្រុង'))), color: 'text-rose-500' },
           { label: 'ទុនសង្គម', value: '$' + fmtMoney(dashVal('social', groupTotalBy('សង្គម'))), color: 'text-violet-600' }
         ].map((stat, i) => (
@@ -4046,7 +4059,7 @@ function Reports() {
   // Balance-sheet lines — the selected month's live totals (0 when not yet entered).
   const bsMemberSavings = sumMonth('sof_savings_by_month', 'total') ?? 0;
   const bsDepositSavings = sumMonth('sof_deposit_by_month', 'total') ?? 0;
-  const bsFixedTerm = ftSum(selectedMonth, 'total');
+  const bsFixedTerm = fixedTermBalanceOf(selectedMonth);
   const bsLoansMembers = sumMonth('sof_loans_by_month', 'remaining') ?? 0;
   const bsLoansExternal = sumMonth('sof_external_provided_by_month', 'remaining') ?? 0;
   const bsExternalBorrow = sumMonth('sof_external_received_by_month', 'remaining') ?? 0;
