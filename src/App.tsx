@@ -4039,26 +4039,31 @@ function Reports() {
     const rows = (getStoredData(key, def) || {})[month];
     return Array.isArray(rows) ? rows.reduce((s: number, r: any) => s + num(r[field]), 0) : null;
   };
-  const groupOf = (needle: string, month: string) => {
-    const rows = (getStoredData('sof_group_by_month', {}) || {})[month];
-    if (!Array.isArray(rows)) return null;
-    const g = rows.find((r: any) => (r.name || '').includes(needle));
-    return g ? num(g.total) : null;
-  };
-  const groupMonth = (needle: string) => groupOf(needle, selectedMonth) ?? 0;
-
-  // Outstanding-balance lines (loans given/borrowed) carry forward: an outstanding loan
-  // stays on the books until it is repaid, so a month with no new entry keeps the most
-  // recent known balance instead of dropping to 0 (e.g. external loans from មិថុនា on).
-  const carrySum = (key: string, field: string) => {
-    const by = getStoredData(key, {}) || {};
+  // ---- Balance carry-forward -------------------------------------------------
+  // Every balance-sheet line is a RUNNING BALANCE: it persists until an entry changes it.
+  // So for a month with no new data, carry the most recent known figure forward instead of
+  // dropping to 0. carryRows walks back from the selected month to the last month that has
+  // rows in a store; the helpers below aggregate those rows. This makes the whole balance
+  // sheet (liabilities + equity) auto-fill every month with no manual re-entry.
+  const carryRows = (key: string, def: any = {}): any[] => {
+    const by = getStoredData(key, def) || {};
     const idx = months.indexOf(selectedMonth);
     for (let i = (idx < 0 ? months.length - 1 : idx); i >= 0; i--) {
       const rows = by[months[i]];
-      if (Array.isArray(rows) && rows.length) return rows.reduce((s: number, r: any) => s + num(r[field]), 0);
+      if (Array.isArray(rows) && rows.length) return rows;
     }
-    return 0;
+    return [];
   };
+  const carrySum = (key: string, field: string, def: any = {}) =>
+    carryRows(key, def).reduce((s: number, r: any) => s + num(r[field]), 0);
+  const carryGroup = (needle: string) => {
+    const g = carryRows('sof_group_by_month').find((r: any) => (r.name || '').includes(needle));
+    return g ? num(g.total) : 0;
+  };
+  const carryFixedTerm = () => carryRows('sof_fixedterm_by_month', FIXEDTERM_BY_MONTH).reduce((s: number, r: any) => {
+    const t = num(r.total);
+    return s + (t || (num(r.startCapital) + num(r.addSaving) - num(r.withdraw)));
+  }, 0);
 
   // Fixed-term accounts: use the stored month if present, else the code seed for that
   // month (the seed carries Jan–May, but the stored key may hold only the months that
@@ -4069,16 +4074,16 @@ function Reports() {
   };
   const ftSum = (month: string, field: string) => ftRowsFor(month).reduce((s: number, r: any) => s + num(r[field]), 0);
 
-  // Balance-sheet lines — the selected month's live totals (0 when not yet entered).
-  const bsMemberSavings = sumMonth('sof_savings_by_month', 'total') ?? 0;
-  const bsDepositSavings = sumMonth('sof_deposit_by_month', 'total') ?? 0;
-  const bsFixedTerm = fixedTermBalanceOf(selectedMonth);
+  // Balance-sheet lines — running balances that carry forward automatically each month.
+  const bsMemberSavings = carrySum('sof_savings_by_month', 'total');
+  const bsDepositSavings = carrySum('sof_deposit_by_month', 'total');
+  const bsFixedTerm = carryFixedTerm();
   const bsLoansMembers = carrySum('sof_loans_by_month', 'remaining');
   const bsLoansExternal = carrySum('sof_external_provided_by_month', 'remaining');
   const bsExternalBorrow = carrySum('sof_external_received_by_month', 'remaining');
-  const bsReserve = groupMonth('បម្រុង');
-  const bsSocial = groupMonth('សង្គម');
-  const bsYes = groupMonth('យេស');
+  const bsReserve = carryGroup('បម្រុង');
+  const bsSocial = carryGroup('សង្គម');
+  const bsYes = carryGroup('យេស');
   const bsBankBalance = 0;
   const bsTotalLiabilities = bsMemberSavings + bsDepositSavings + bsExternalBorrow + bsFixedTerm;
   // Cash on hand = cash-flow net; equity (incl. retained) + assets computed after the cash-flow block.
