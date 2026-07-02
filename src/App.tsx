@@ -4284,7 +4284,7 @@ function Reports() {
             </div>
             <div className="p-6 space-y-4 flex-1">
               {[
-                { label: 'សាច់ប្រាក់នៅក្នុងហ៊ីបប្រាក់', value: cf?.openingCash },
+                { label: 'សាច់ប្រាក់នៅសល់ក្នុងដៃ', value: cf?.openingCash },
                 { label: 'ប្រាក់ដាក់សន្សំសមាជិកម្ចាស់ភាគហ៊ុន', value: cf?.memberSavingsIn },
                 { label: 'ប្រាក់សន្សំសមាជិកបញ្ញើសន្សំ', value: cf?.depositSavingsIn },
                 { label: 'ប្រាក់បង់រំលស់កម្ចីសមាជិក', value: cf?.repayment },
