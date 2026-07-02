@@ -4164,15 +4164,18 @@ function Reports() {
     const withdrawDeposit = pk(wSum('sof_deposit_by_month'), 'withdrawDeposit');
     const withdrawGroup = pk(wSum('sof_group_by_month'), 'withdrawGroup');
     const withdrawFixedTerm = pk(sm('sof_fixedterm_by_month', 'withdraw', FIXEDTERM_BY_MONTH), 'withdrawFixedTerm');
-    // Interest paid out to fixed-term holders = 1% × their opening balance.
-    const fixedTermInterest = DEFAULT_RATES.fixedTerm * (sm('sof_fixedterm_by_month', 'startCapital', FIXEDTERM_BY_MONTH) || 0);
+    // Interest paid out to fixed-term holders = the per-row interest actually accrued
+    // (respects each account's own rate, e.g. a closed account at 0%), not 1% × balance.
+    const fixedTermInterest = pk(sm('sof_fixedterm_by_month', 'interest', FIXEDTERM_BY_MONTH), 'fixedTermInterestPaid');
     const externalBorrowInterest = pk(sm('sof_external_received_by_month', 'interest'), 'interestPaid');
+    // Principal repaid on money borrowed from outside — a real cash OUT.
+    const externalBorrowRepay = pk(sm('sof_external_received_by_month', 'repayment'), 'externalBorrowRepay');
     const operatingExpense = pk(sm('sof_expenses_by_month', 'total', EXPENSE_BY_MONTH), 'operatingExpense');
     const otherOutflow = (manual.otherOutflow != null && manual.otherOutflow !== '') ? num(manual.otherOutflow) : ((ms && typeof ms.otherOutflow === 'number') ? ms.otherOutflow : 0);
 
     const inflowExOpening = memberSavingsIn + depositSavingsIn + fixedTermIn + groupExtra + repayment + externalRepayment + externalLoanReceived + fines + interestReceived + otherIncome;
-    const totalOutflow = loanGiven + withdrawActive + withdrawDeposit + withdrawGroup + withdrawFixedTerm + fixedTermInterest + externalBorrowInterest + operatingExpense + otherOutflow;
-    return { memberSavingsIn, depositSavingsIn, fixedTermIn, groupExtra, repayment, externalRepayment, externalLoanReceived, fines, interestReceived, otherIncome, loanGiven, withdrawActive, withdrawDeposit, withdrawGroup, withdrawFixedTerm, fixedTermInterest, externalBorrowInterest, operatingExpense, otherOutflow, inflowExOpening, totalOutflow };
+    const totalOutflow = loanGiven + withdrawActive + withdrawDeposit + withdrawGroup + withdrawFixedTerm + fixedTermInterest + externalBorrowInterest + externalBorrowRepay + operatingExpense + otherOutflow;
+    return { memberSavingsIn, depositSavingsIn, fixedTermIn, groupExtra, repayment, externalRepayment, externalLoanReceived, fines, interestReceived, otherIncome, loanGiven, withdrawActive, withdrawDeposit, withdrawGroup, withdrawFixedTerm, fixedTermInterest, externalBorrowInterest, externalBorrowRepay, operatingExpense, otherOutflow, inflowExOpening, totalOutflow };
   };
 
   const cfIdx = months.indexOf(selectedMonth);
@@ -4192,6 +4195,7 @@ function Reports() {
     loanGiven: cfCur.loanGiven, withdrawActive: cfCur.withdrawActive, withdrawDeposit: cfCur.withdrawDeposit,
     withdrawGroup: cfCur.withdrawGroup, withdrawFixedTerm: cfCur.withdrawFixedTerm,
     fixedTermInterest: cfCur.fixedTermInterest, externalBorrowInterest: cfCur.externalBorrowInterest,
+    externalBorrowRepay: cfCur.externalBorrowRepay,
     operatingExpense: cfCur.operatingExpense, otherOutflow: cfCur.otherOutflow,
     totalInflow: cfOpening + cfCur.inflowExOpening,
     totalOutflow: cfCur.totalOutflow,
@@ -4211,11 +4215,15 @@ function Reports() {
   const bsIdx = months.indexOf(selectedMonth);
   const bsUnpaidInterest = months.slice(0, bsIdx + 1).reduce((s, m) => s + unpaidInterestFor(m), 0);
   const bsInterestReceivable = bsUnpaidInterest;             // asset side
-  const bsTotalEquity = bsReserve + bsSocial + bsYes + bsUnpaidInterest;  // equity side (R004)
-  // Cash on hand = balancing residual; the receivable/retained pair cancels, so it equals
-  // the cash-flow net. Assets = Liabilities + Equity always.
-  const bsCashOnHand = bsTotalLiabilities + bsTotalEquity - bsLoansMembers - bsLoansExternal - bsInterestReceivable - bsBankBalance;
+  const bsBaseEquity = bsReserve + bsSocial + bsYes + bsUnpaidInterest;   // reserve/social/YES + R004
+  // Cash on hand = the cash-flow statement's CLOSING balance (the real cash the group
+  // tracks month to month), so the balance sheet and cash flow always show the same cash.
+  // Retained earnings (accumulated surplus) is the balancing equity item — it is 0 when the
+  // cash flow ties to the residual, and otherwise shows the accrual/timing gap explicitly.
+  const bsCashOnHand = cf ? cf.netCash : (bsTotalLiabilities + bsBaseEquity - bsLoansMembers - bsLoansExternal - bsInterestReceivable - bsBankBalance);
   const bsTotalAssets = bsCashOnHand + bsBankBalance + bsLoansMembers + bsLoansExternal + bsInterestReceivable;
+  const bsRetainedEarnings = bsTotalAssets - bsTotalLiabilities - bsBaseEquity;
+  const bsTotalEquity = bsBaseEquity + bsRetainedEarnings;
 
   return (
     <PageView 
@@ -4370,6 +4378,12 @@ function Reports() {
                     <span>ការប្រាក់រក្សាទុក</span>
                     <span className={bsUnpaidInterest ? "font-bold" : "font-bold text-slate-400"}>{bsUnpaidInterest ? fmtMoney(bsUnpaidInterest) : '-'}</span>
                   </div>
+                  {Math.abs(bsRetainedEarnings) > 0.005 && (
+                    <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                      <span>ចំណេញរក្សាទុក (លម្អៀងបង្គរ)</span>
+                      <span className="font-bold">{fmtMoney(bsRetainedEarnings)}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="bg-indigo-50 px-6 py-4 border-t border-indigo-100 flex justify-between items-center">
                   <span className="font-bold text-indigo-700">សរុបដើមទុន</span>
@@ -4438,6 +4452,7 @@ function Reports() {
                 { label: 'គណនីមានកាលកំណត់ដកទុន', value: cf?.withdrawFixedTerm },
                 { label: 'ការប្រាក់គណនីមានកាលកំណត់', value: cf?.fixedTermInterest },
                 { label: 'ការប្រាក់កម្ចីទទួលពីក្រៅ', value: cf?.externalBorrowInterest },
+                { label: 'សងកម្ចីទៅខាងក្រៅ', value: cf?.externalBorrowRepay },
                 { label: 'ចំណាយប្រតិបត្តិការ', value: cf?.operatingExpense }
               ].map((item, i) => (
                 <div key={i} className="flex justify-between items-center text-sm font-medium text-slate-700">
@@ -4457,7 +4472,7 @@ function Reports() {
               <span className="font-black text-orange-700 text-lg">{m2(cf?.totalOutflow)}</span>
             </div>
             <div className="bg-slate-800 px-6 py-4 flex justify-between items-center text-white">
-              <span className="font-bold">តុល្យភាពលំហូរសុទ្ធ</span>
+              <span className="font-bold">សាច់ប្រាក់សល់ចុងខែ (= សល់ក្នុងដៃ)</span>
               <span className="font-black text-lg">{m2(cf?.netCash)}</span>
             </div>
           </div>
