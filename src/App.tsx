@@ -4005,19 +4005,12 @@ function Reports() {
     setStoredData('sof_cashflow_manual_by_month', all);
   };
 
-  // Prefer the imported monthly report snapshot (from the Excel financial report)
-  // for the selected month; fall back to live computation from per-member data
-  // when a month has no snapshot.
+  // ---- Live data only ----
+  // Every figure is summed from the per-month stores you enter on each page. There is NO
+  // imported-snapshot fallback: a month with no entries shows 0 until it is filled in.
+  // (The only exception is the very first month's opening cash, seeded from the starting
+  // balance below, since there is nowhere else to record the group's initial cash.)
   const monthlyReports = getStoredData('sof_monthly_reports', {});
-  const snap = monthlyReports[selectedMonth] || null;
-
-  const rSavings = getStoredData('sof_savings_data', DEFAULT_SAVING_DATA);
-  const rDeposit = getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA);
-  const rGroup = getStoredData('sof_savings_group_data', DEFAULT_GROUP_DATA);
-  const rLoans = getStoredData('sof_loans_data', DEFAULT_LOAN_DATA);
-  const rLoansDep = getStoredData('sof_loans_deposit_data', DEFAULT_DEPOSIT_LOAN_DATA);
-  const rGroupBy = (needle: string) => num((rGroup.find((g: any) => (g.name || '').includes(needle)) || {}).total);
-  const outstanding = (arr: any[]) => (arr || []).reduce((s: number, l: any) => s + (num(l.remaining) || num(l.loanValue)), 0);
 
 
   // Live per-month figures: sum the selected month's rows from each page's by-month
@@ -4039,37 +4032,23 @@ function Reports() {
     const g = rows.find((r: any) => (r.name || '').includes(needle));
     return g ? num(g.total) : null;
   };
-  // Auto per-month running balance from LIVE data: live if the month has data, else the
-  // previous month's carried value, else the imported snapshot, else the flat roster.
-  const bsChain = (liveFor: (m: string) => number | null, snapKey: string, flat: number) => {
-    const idx = months.indexOf(selectedMonth);
-    let prev: number | null = null;
-    for (let i = 0; i <= idx; i++) {
-      const m = months[i];
-      const live = liveFor(m);
-      const s = monthlyReports[m] && monthlyReports[m].balance;
-      const snapVal = (s && typeof s[snapKey] === 'number') ? s[snapKey] : null;
-      prev = live != null ? live : (prev != null ? prev : (snapVal != null ? snapVal : flat));
-    }
-    return prev != null ? prev : flat;
-  };
+  const groupMonth = (needle: string) => groupOf(needle, selectedMonth) ?? 0;
 
-  const bsMemberSavings = bsChain((m) => sumOf('sof_savings_by_month', 'total', m), 'memberSavings', sumField(rSavings, 'total'));
-  const bsDepositSavings = bsChain((m) => sumOf('sof_deposit_by_month', 'total', m), 'depositSavings', sumField(rDeposit, 'total'));
-  const bsFixedTerm = bsChain((m) => sumOf('sof_fixedterm_by_month', 'total', m, FIXEDTERM_BY_MONTH), 'fixedTerm', 0);
-  const bsLoansMembers = bsChain((m) => sumOf('sof_loans_by_month', 'remaining', m), 'loansToMembers', outstanding(rLoans));
-  const bsLoansExternal = bsChain((m) => sumOf('sof_external_provided_by_month', 'remaining', m), 'loansExternal', outstanding(rLoansDep));
-  const bsExternalBorrow = bsChain((m) => sumOf('sof_external_received_by_month', 'remaining', m), 'externalBorrow', 0);
-  const bsReserve = bsChain((m) => groupOf('បម្រុង', m), 'reserve', rGroupBy('បម្រុង'));
-  const bsSocial = bsChain((m) => groupOf('សង្គម', m), 'social', rGroupBy('សង្គម'));
-  const bsYes = bsChain((m) => groupOf('យេស', m), 'yes', rGroupBy('យេស'));
-  const bsBankBalance = bsChain(() => null, 'bankBalance', 0);
+  // Balance-sheet lines — the selected month's live totals (0 when not yet entered).
+  const bsMemberSavings = sumMonth('sof_savings_by_month', 'total') ?? 0;
+  const bsDepositSavings = sumMonth('sof_deposit_by_month', 'total') ?? 0;
+  const bsFixedTerm = sumMonth('sof_fixedterm_by_month', 'total', FIXEDTERM_BY_MONTH) ?? 0;
+  const bsLoansMembers = sumMonth('sof_loans_by_month', 'remaining') ?? 0;
+  const bsLoansExternal = sumMonth('sof_external_provided_by_month', 'remaining') ?? 0;
+  const bsExternalBorrow = sumMonth('sof_external_received_by_month', 'remaining') ?? 0;
+  const bsReserve = groupMonth('បម្រុង');
+  const bsSocial = groupMonth('សង្គម');
+  const bsYes = groupMonth('យេស');
+  const bsBankBalance = 0;
   const bsTotalLiabilities = bsMemberSavings + bsDepositSavings + bsExternalBorrow + bsFixedTerm;
   // Cash on hand = cash-flow net; equity (incl. retained) + assets computed after the cash-flow block.
 
   // ---- Income statement, computed live per month ----
-  const snapInc = (snap && snap.income) || null;
-  const pickInc = (k: string, fb: number) => (snapInc && typeof snapInc[k] === 'number') ? snapInc[k] : fb;
   // Income = interest the members actually PAID (ការប្រាក់បានបង់) + interest from loans
   // lent to outsiders (កម្ចីផ្តល់ទៅខាងក្រៅ). NOT interest merely due.
   const sumInterestPaid = (key: string) => {
@@ -4084,11 +4063,9 @@ function Reports() {
   };
   const depBeginSum = sumMonth('sof_deposit_by_month', 'startCapital');
 
-  // Interest income keeps the verified imported figure for months that have one (it
-  // includes external-loan interest the app doesn't model yet); later months sum the
-  // entered loan interest. Everything else is computed from this month's live data.
-  const incInterestIncome = loanInterestLive() ?? pickInc('interestIncome', 0);
-  const incOtherIncome = pickInc('otherIncome', 0);
+  // Interest income = interest members actually paid + interest on loans lent out (live).
+  const incInterestIncome = loanInterestLive() ?? 0;
+  const incOtherIncome = 0;
   const incTotalIncome = incInterestIncome + incOtherIncome;
   // Cost lines are computed LIVE per month from this month's own data (no imported fallback):
   //   deposit interest = 0.5% × deposit beginning; fixed-term = 1% × fixed-term balance;
@@ -4114,7 +4091,6 @@ function Reports() {
   // live rows for the month it falls back to the imported snapshot value. Opening cash
   // is chained forward: opening(month) = previous month's closing cash.
   const cfForMonth = (month: string) => {
-    const ms = (monthlyReports[month] || {}).cashflow || null;
     const sm = (key: string, field: string, def: any = {}) => {
       const rows = (getStoredData(key, def) || {})[month];
       return Array.isArray(rows) ? rows.reduce((s: number, r: any) => s + num(r[field]), 0) : null;
@@ -4131,7 +4107,7 @@ function Reports() {
       const a = sm('sof_loans_by_month', 'interestPaid'), d = sm('sof_loans_deposit_by_month', 'interestPaid'), e = sm('sof_external_provided_by_month', 'interest');
       return (a == null && d == null && e == null) ? null : (a || 0) + (d || 0) + (e || 0);
     })();
-    const pk = (live: number | null, k: string) => (live != null ? live : (ms && typeof ms[k] === 'number' ? ms[k] : 0));
+    const pk = (live: number | null, _k?: string) => (live != null ? live : 0);
 
     const memberSavingsIn = pk(sm('sof_savings_by_month', 'addSaving'), 'memberSavingsIn');
     const depositSavingsIn = pk(sm('sof_deposit_by_month', 'addSaving'), 'depositSavingsIn');
@@ -4147,7 +4123,7 @@ function Reports() {
     const fines = pk(savings('actualFee'), 'fines');
     const interestReceived = pk(interestRecvLive, 'interestReceived');
     const manual = (getStoredData('sof_cashflow_manual_by_month', {}) || {})[month] || {};
-    const otherIncome = (manual.otherIncome != null && manual.otherIncome !== '') ? num(manual.otherIncome) : ((ms && typeof ms.otherIncome === 'number') ? ms.otherIncome : 0);
+    const otherIncome = (manual.otherIncome != null && manual.otherIncome !== '') ? num(manual.otherIncome) : 0;
 
     // Loans given out = new loans to members + deposit members + external parties.
     const loanGiven = pk((() => {
@@ -4171,7 +4147,7 @@ function Reports() {
     // Principal repaid on money borrowed from outside — a real cash OUT.
     const externalBorrowRepay = pk(sm('sof_external_received_by_month', 'repayment'), 'externalBorrowRepay');
     const operatingExpense = pk(sm('sof_expenses_by_month', 'total', EXPENSE_BY_MONTH), 'operatingExpense');
-    const otherOutflow = (manual.otherOutflow != null && manual.otherOutflow !== '') ? num(manual.otherOutflow) : ((ms && typeof ms.otherOutflow === 'number') ? ms.otherOutflow : 0);
+    const otherOutflow = (manual.otherOutflow != null && manual.otherOutflow !== '') ? num(manual.otherOutflow) : 0;
 
     const inflowExOpening = memberSavingsIn + depositSavingsIn + fixedTermIn + groupExtra + repayment + externalRepayment + externalLoanReceived + fines + interestReceived + otherIncome;
     const totalOutflow = loanGiven + withdrawActive + withdrawDeposit + withdrawGroup + withdrawFixedTerm + fixedTermInterest + externalBorrowInterest + externalBorrowRepay + operatingExpense + otherOutflow;
