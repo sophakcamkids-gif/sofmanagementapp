@@ -3598,8 +3598,8 @@ function Loans() {
   );
 }
 
-function Expenses({ embedded = false }: { embedded?: boolean } = {}) {
-  const [selectedMonth, setSelectedMonth] = useState('មេសា 2026');
+function Expenses({ embedded = false, month }: { embedded?: boolean; month?: string } = {}) {
+  const [selectedMonth, setSelectedMonth] = useState(month || 'មេសា 2026');
   const months = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
 
   // ---- Per-month expenses (each month keeps its own list) ----
@@ -3635,6 +3635,9 @@ function Expenses({ embedded = false }: { embedded?: boolean } = {}) {
       setExpenses(EXPENSE_BY_MONTH[selectedMonth] || []);
     }
   }, []);
+
+  // When embedded, follow the parent report's month (the top selector controls this panel).
+  useEffect(() => { if (embedded && month) setSelectedMonth(month); }, [embedded, month]);
 
   // Load the selected month's expenses (and sync the form date) when the month changes.
   useEffect(() => {
@@ -3716,15 +3719,19 @@ function Expenses({ embedded = false }: { embedded?: boolean } = {}) {
       title={
         <div className="flex flex-col md:flex-row md:items-center gap-3">
           <span>បញ្ជីការចំណាយ (Expenses) - </span>
-          <select 
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="text-lg md:text-xl font-bold bg-[#eef8f2] border border-green-200 text-[#0a6652] px-3 py-1 rounded-lg outline-none cursor-pointer shadow-sm w-fit"
-          >
-            {months.map(m => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
+          {embedded ? (
+            <span className="text-lg md:text-xl font-bold text-[#0a6652]">{selectedMonth}</span>
+          ) : (
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="text-lg md:text-xl font-bold bg-[#eef8f2] border border-green-200 text-[#0a6652] px-3 py-1 rounded-lg outline-none cursor-pointer shadow-sm w-fit"
+            >
+              {months.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          )}
         </div>
       }
     >
@@ -4511,7 +4518,7 @@ function Reports() {
         </div>
       )}
 
-      {activeTab === 'expense' && <Expenses embedded />}
+      {activeTab === 'expense' && <Expenses embedded month={selectedMonth} />}
     </PageView>
   );
 }
