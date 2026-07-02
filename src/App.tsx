@@ -4090,14 +4090,24 @@ function Reports() {
     const interestReceived = pk(interestRecvLive, 'interestReceived');
     const otherIncome = (ms && typeof ms.otherIncome === 'number') ? ms.otherIncome : 0;
 
-    const withdrawals = pk(savings('withdraw'), 'withdrawals');
+    // Loans given out = new loans to members + deposit members + external parties.
+    const loanGiven = pk((() => {
+      const l = loans('newLoan'), e = sm('sof_external_provided_by_month', 'newLoan');
+      return (l == null && e == null) ? null : (l || 0) + (e || 0);
+    })(), 'loanGiven');
+    const withdrawActive = pk(sm('sof_savings_by_month', 'withdraw'), 'withdrawActive');
+    const withdrawDeposit = pk(sm('sof_deposit_by_month', 'withdraw'), 'withdrawDeposit');
+    const withdrawGroup = pk(sm('sof_group_by_month', 'withdraw'), 'withdrawGroup');
+    const withdrawFixedTerm = pk(sm('sof_fixedterm_by_month', 'withdraw', FIXEDTERM_BY_MONTH), 'withdrawFixedTerm');
+    // Interest paid out to fixed-term holders = 1% × their opening balance.
+    const fixedTermInterest = DEFAULT_RATES.fixedTerm * (sm('sof_fixedterm_by_month', 'startCapital', FIXEDTERM_BY_MONTH) || 0);
+    const externalBorrowInterest = pk(sm('sof_external_received_by_month', 'interest'), 'interestPaid');
     const operatingExpense = pk(sm('sof_expenses_by_month', 'total', EXPENSE_BY_MONTH), 'operatingExpense');
-    const interestPaid = pk(sm('sof_external_received_by_month', 'interest'), 'interestPaid');
-    const loanGiven = pk(loans('newLoan'), 'loanGiven');
+    const otherOutflow = (ms && typeof ms.otherOutflow === 'number') ? ms.otherOutflow : 0;
 
     const inflowExOpening = memberSavingsIn + depositSavingsIn + fixedTermIn + groupExtra + repayment + externalRepayment + externalLoanReceived + fines + interestReceived + otherIncome;
-    const totalOutflow = withdrawals + operatingExpense + interestPaid + loanGiven;
-    return { memberSavingsIn, depositSavingsIn, fixedTermIn, groupExtra, repayment, externalRepayment, externalLoanReceived, fines, interestReceived, otherIncome, withdrawals, operatingExpense, interestPaid, loanGiven, inflowExOpening, totalOutflow };
+    const totalOutflow = loanGiven + withdrawActive + withdrawDeposit + withdrawGroup + withdrawFixedTerm + fixedTermInterest + externalBorrowInterest + operatingExpense + otherOutflow;
+    return { memberSavingsIn, depositSavingsIn, fixedTermIn, groupExtra, repayment, externalRepayment, externalLoanReceived, fines, interestReceived, otherIncome, loanGiven, withdrawActive, withdrawDeposit, withdrawGroup, withdrawFixedTerm, fixedTermInterest, externalBorrowInterest, operatingExpense, otherOutflow, inflowExOpening, totalOutflow };
   };
 
   const cfIdx = months.indexOf(selectedMonth);
@@ -4114,7 +4124,10 @@ function Reports() {
     externalRepayment: cfCur.externalRepayment,
     groupExtra: cfCur.groupExtra, externalLoanReceived: cfCur.externalLoanReceived, fines: cfCur.fines,
     interestReceived: cfCur.interestReceived, otherIncome: cfCur.otherIncome,
-    withdrawals: cfCur.withdrawals, operatingExpense: cfCur.operatingExpense, interestPaid: cfCur.interestPaid, loanGiven: cfCur.loanGiven,
+    loanGiven: cfCur.loanGiven, withdrawActive: cfCur.withdrawActive, withdrawDeposit: cfCur.withdrawDeposit,
+    withdrawGroup: cfCur.withdrawGroup, withdrawFixedTerm: cfCur.withdrawFixedTerm,
+    fixedTermInterest: cfCur.fixedTermInterest, externalBorrowInterest: cfCur.externalBorrowInterest,
+    operatingExpense: cfCur.operatingExpense, otherOutflow: cfCur.otherOutflow,
     totalInflow: cfOpening + cfCur.inflowExOpening,
     totalOutflow: cfCur.totalOutflow,
     netCash: (cfOpening + cfCur.inflowExOpening) - cfCur.totalOutflow,
@@ -4322,10 +4335,15 @@ function Reports() {
             </div>
             <div className="p-6 space-y-4 flex-1">
               {[
-                { label: 'ប្រាក់ដកចេញ', value: cf?.withdrawals },
-                { label: 'ការចំណាយប្រតិបត្តិការ', value: cf?.operatingExpense },
-                { label: 'ការបង់ការប្រាក់កម្ចី', value: cf?.interestPaid },
-                { label: 'ការផ្តល់កម្ចី', value: cf?.loanGiven }
+                { label: 'ការផ្តល់កម្ចីសរុប', value: cf?.loanGiven },
+                { label: 'សមាជិកសកម្មដកទុន', value: cf?.withdrawActive },
+                { label: 'សមាជិកបញ្ញើរដកទុន', value: cf?.withdrawDeposit },
+                { label: 'គណនីក្រុមដកទុន', value: cf?.withdrawGroup },
+                { label: 'គណនីមានកាលកំណត់ដកទុន', value: cf?.withdrawFixedTerm },
+                { label: 'ការប្រាក់គណនីមានកាលកំណត់', value: cf?.fixedTermInterest },
+                { label: 'ការប្រាក់កម្ចីទទួលពីក្រៅ', value: cf?.externalBorrowInterest },
+                { label: 'ចំណាយប្រតិបត្តិការ', value: cf?.operatingExpense },
+                { label: 'ចំណាយផ្សេងៗ', value: cf?.otherOutflow }
               ].map((item, i) => (
                 <div key={i} className="flex justify-between items-center text-sm font-medium text-slate-700">
                   <span>{item.label}</span>
