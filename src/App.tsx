@@ -4106,9 +4106,15 @@ function Reports() {
       const l = loans('newLoan'), e = sm('sof_external_provided_by_month', 'newLoan');
       return (l == null && e == null) ? null : (l || 0) + (e || 0);
     })(), 'loanGiven');
-    const withdrawActive = pk(sm('sof_savings_by_month', 'withdraw'), 'withdrawActive');
-    const withdrawDeposit = pk(sm('sof_deposit_by_month', 'withdraw'), 'withdrawDeposit');
-    const withdrawGroup = pk(sm('sof_group_by_month', 'withdraw'), 'withdrawGroup');
+    // Withdrawals (cash OUT) = ដកទុន (withdraw) + កាត់ទុន (deductFee — membership
+    // deducted from the account), summed per savings table.
+    const wSum = (key: string) => {
+      const w = sm(key, 'withdraw'), d = sm(key, 'deductFee');
+      return (w == null && d == null) ? null : (w || 0) + (d || 0);
+    };
+    const withdrawActive = pk(wSum('sof_savings_by_month'), 'withdrawActive');
+    const withdrawDeposit = pk(wSum('sof_deposit_by_month'), 'withdrawDeposit');
+    const withdrawGroup = pk(wSum('sof_group_by_month'), 'withdrawGroup');
     const withdrawFixedTerm = pk(sm('sof_fixedterm_by_month', 'withdraw', FIXEDTERM_BY_MONTH), 'withdrawFixedTerm');
     // Interest paid out to fixed-term holders = 1% × their opening balance.
     const fixedTermInterest = DEFAULT_RATES.fixedTerm * (sm('sof_fixedterm_by_month', 'startCapital', FIXEDTERM_BY_MONTH) || 0);
