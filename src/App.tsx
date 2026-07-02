@@ -105,7 +105,8 @@ const DEFAULT_SAVING_DATA = [];
 const DEFAULT_GROUP_DATA = [
   { id: 'R001', name: 'ទុនបម្រុង', gender: 'ក្រុម', startCapital: '0.00', share: '0.00%', addSaving: '-', profit: '0', withdraw: '-', deductFee: '-', actualFee: '-', total: '0.00', checked: true },
   { id: 'R002', name: 'ទុនសង្គម', gender: 'ក្រុម', startCapital: '0.00', share: '0.00%', addSaving: '-', profit: '0', withdraw: '-', deductFee: '-', actualFee: '-', total: '0.00', checked: true },
-  { id: 'R003', name: 'ទុនក្រុមយេស (YES)', gender: 'ក្រុម', startCapital: '0.00', share: '0.00%', addSaving: '-', profit: '0', withdraw: '-', deductFee: '-', actualFee: '-', total: '0.00', checked: true }
+  { id: 'R003', name: 'ទុនក្រុមយេស (YES)', gender: 'ក្រុម', startCapital: '0.00', share: '0.00%', addSaving: '-', profit: '0', withdraw: '-', deductFee: '-', actualFee: '-', total: '0.00', checked: true },
+  { id: 'R004', name: 'ការប្រាក់មិនបានបង់', gender: 'ក្រុម', startCapital: '0.00', share: '0.00%', addSaving: '-', profit: '0', withdraw: '-', deductFee: '-', actualFee: '-', total: '0.00', checked: true }
 ];
 
 const DEFAULT_DEPOSIT_DATA: any[] = [];
@@ -2280,21 +2281,31 @@ function Savings() {
 
     const incM = monthlyIncome(month);
     const net = incM.netProfit;
+    // Unpaid loan interest this month (ការត្រូវបង់ − ការបានបង់) auto-deposits into R004.
+    const unpaidInt = Math.max(0,
+      (sumMonthOf('sof_loans_by_month', month, 'interest') + sumMonthOf('sof_loans_deposit_by_month', month, 'interest'))
+      - (sumMonthOf('sof_loans_by_month', month, 'interestPaid') + sumMonthOf('sof_loans_deposit_by_month', month, 'interestPaid')));
     // The reserve & social fund allocations from income auto-deposit (ទុនសន្សំបន្ថែម)
-    // into their own group savings accounts (ទុនបម្រុង / ទុនសង្គម).
+    // into their own group savings accounts (ទុនបម្រុង / ទុនសង្គម); R004 gets unpaid interest.
     group = group.map((r: any) => {
       const nm = r.name || '';
       if (nm.includes('បម្រុង')) return { ...r, addSaving: incM.reserveAlloc.toFixed(2) };
       if (nm.includes('សង្គម')) return { ...r, addSaving: incM.socialAlloc.toFixed(2) };
+      if (nm.includes('មិនបានបង់')) return { ...r, addSaving: unpaidInt.toFixed(2) };
       return r;
     });
-    const pool = [...active, ...group].map((r: any) => ({
+    // R004 is a receivable tracker, not a savings fund — keep it out of the profit pool.
+    const pool = [...active, ...group].filter((r: any) => !((r.name || '').includes('មិនបានបង់'))).map((r: any) => ({
       id: r.id, beginning: num(r.startCapital), addSaving: num(r.addSaving),
       withdraw: num(r.withdraw), penalty: num(r.actualFee), deductFee: num(r.deductFee),
     }));
     const byId: Record<string, any> = {};
     computeSavings(pool, net).forEach((x) => { byId[x.id] = x; });
     const apply = (rows: any[]) => rows.map((r: any) => {
+      if ((r.name || '').includes('មិនបានបង់')) {
+        const total = num(r.startCapital) + num(r.addSaving);
+        return { ...r, share: '0.00%', profit: '0.00', total: total.toFixed(2) };
+      }
       const c = byId[r.id];
       return c ? { ...r, share: (c.share * 100).toFixed(2) + '%', profit: c.profit.toFixed(2), total: c.total.toFixed(2) } : r;
     });
@@ -4003,8 +4014,8 @@ function Reports() {
     const g = rows.find((r: any) => (r.name || '').includes(needle));
     return g ? num(g.total) : null;
   };
-  // Auto per-month running balance: live if the month has data, else the imported
-  // snapshot, else the previous month's carried value, else the flat-roster fallback.
+  // Auto per-month running balance from LIVE data: live if the month has data, else the
+  // previous month's carried value, else the imported snapshot, else the flat roster.
   const bsChain = (liveFor: (m: string) => number | null, snapKey: string, flat: number) => {
     const idx = months.indexOf(selectedMonth);
     let prev: number | null = null;
@@ -4013,7 +4024,7 @@ function Reports() {
       const live = liveFor(m);
       const s = monthlyReports[m] && monthlyReports[m].balance;
       const snapVal = (s && typeof s[snapKey] === 'number') ? s[snapKey] : null;
-      prev = live != null ? live : (snapVal != null ? snapVal : (prev != null ? prev : flat));
+      prev = live != null ? live : (prev != null ? prev : (snapVal != null ? snapVal : flat));
     }
     return prev != null ? prev : flat;
   };
@@ -4161,14 +4172,20 @@ function Reports() {
   } : null;
   const m2 = (v: number | undefined) => (typeof v === 'number' ? fmtMoney(v) : '-');
 
-  // Cash on hand = the cash-flow net balance for the month (per requirement).
-  const bsCashOnHand = num(cf?.netCash);
+  // R004 ការប្រាក់មិនបានបង់ = interest due − interest paid, accumulated per month. It is
+  // capitalised into loans on the asset side, so the same amount belongs to equity here.
+  const unpaidInterestFor = (m: string) => {
+    const due = (sumOf('sof_loans_by_month', 'interest', m) || 0) + (sumOf('sof_loans_deposit_by_month', 'interest', m) || 0);
+    const paid = (sumOf('sof_loans_by_month', 'interestPaid', m) || 0) + (sumOf('sof_loans_deposit_by_month', 'interestPaid', m) || 0);
+    return Math.max(0, due - paid);
+  };
+  const bsIdx = months.indexOf(selectedMonth);
+  const bsUnpaidInterest = months.slice(0, bsIdx + 1).reduce((s, m) => s + unpaidInterestFor(m), 0);
+  const bsTotalEquity = bsReserve + bsSocial + bsYes + bsUnpaidInterest;
+  // Cash on hand is the balancing residual, which equals the cash-flow net once the unpaid
+  // interest (R004) is booked to equity — so Assets = Liabilities + Equity always.
+  const bsCashOnHand = bsTotalLiabilities + bsTotalEquity - bsLoansMembers - bsLoansExternal - bsBankBalance;
   const bsTotalAssets = bsCashOnHand + bsBankBalance + bsLoansMembers + bsLoansExternal;
-  // Retained/reconciliation equity keeps Assets = Liabilities + Equity while cash on hand
-  // comes from the cash flow. ≈ 0 → the books reconcile; a large value flags cash the App
-  // has not recorded for the month.
-  const bsRetained = bsTotalAssets - bsTotalLiabilities - (bsReserve + bsSocial + bsYes);
-  const bsTotalEquity = bsReserve + bsSocial + bsYes + bsRetained;
 
   return (
     <PageView 
@@ -4316,8 +4333,8 @@ function Reports() {
                     <span className="font-bold">{fmtMoney(bsYes)}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm font-medium text-slate-700">
-                    <span>ចំណេញរក្សាទុក/លម្អៀង</span>
-                    <span className={Math.abs(bsRetained) < 1 ? "font-bold text-slate-400" : "font-bold text-rose-600"}>{fmtMoney(bsRetained)}</span>
+                    <span>ការប្រាក់មិនបានបង់ (R004)</span>
+                    <span className={bsUnpaidInterest ? "font-bold" : "font-bold text-slate-400"}>{bsUnpaidInterest ? fmtMoney(bsUnpaidInterest) : '-'}</span>
                   </div>
                 </div>
                 <div className="bg-indigo-50 px-6 py-4 border-t border-indigo-100 flex justify-between items-center">
