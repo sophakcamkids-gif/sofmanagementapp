@@ -4080,7 +4080,13 @@ function Reports() {
     const repayment = pk(loans('repayment'), 'repayment');
     const externalRepayment = pk(sm('sof_external_provided_by_month', 'repayment'), 'externalRepayment');
     const externalLoanReceived = pk(sm('sof_external_received_by_month', 'newLoan'), 'externalLoanReceived');
-    const fines = pk(savings('actualFee'), 'fines');
+    // ប្រាក់ពិន័យ/សমាជិកភាព — taken from the savings tables' penalty columns
+    // (កាត់ទុន + ជាក់ស្តែង), summed across active/group/deposit for the month.
+    const savingsPenalty = (() => {
+      const a = savings('actualFee'), d = savings('deductFee');
+      return (a == null && d == null) ? null : (a || 0) + (d || 0);
+    })();
+    const fines = pk(savingsPenalty, 'fines');
     const interestReceived = pk(interestRecvLive, 'interestReceived');
     const otherIncome = (ms && typeof ms.otherIncome === 'number') ? ms.otherIncome : 0;
 
