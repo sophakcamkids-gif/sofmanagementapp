@@ -4041,10 +4041,11 @@ function Reports() {
   };
   // Auto per-month running balance from LIVE data: live if the month has data, else the
   // previous month's carried value, else the imported snapshot, else the flat roster.
-  const bsChain = (liveFor: (m: string) => number | null, snapKey: string, flat: number) => {
-    const idx = months.indexOf(selectedMonth);
+  // Running balance up to month index `uptoIdx`: live if that month has data, else the
+  // previous month's carried value, else the imported snapshot, else the flat roster.
+  const balAt = (liveFor: (m: string) => number | null, snapKey: string, flat: number, uptoIdx: number) => {
     let prev: number | null = null;
-    for (let i = 0; i <= idx; i++) {
+    for (let i = 0; i <= uptoIdx; i++) {
       const m = months[i];
       const live = liveFor(m);
       const s = monthlyReports[m] && monthlyReports[m].balance;
@@ -4053,6 +4054,8 @@ function Reports() {
     }
     return prev != null ? prev : flat;
   };
+  const bsChain = (liveFor: (m: string) => number | null, snapKey: string, flat: number) =>
+    balAt(liveFor, snapKey, flat, months.indexOf(selectedMonth));
 
   const bsMemberSavings = bsChain((m) => sumOf('sof_savings_by_month', 'total', m), 'memberSavings', sumField(rSavings, 'total'));
   const bsDepositSavings = bsChain((m) => sumOf('sof_deposit_by_month', 'total', m), 'depositSavings', sumField(rDeposit, 'total'));
@@ -4066,6 +4069,24 @@ function Reports() {
   const bsBankBalance = bsChain(() => null, 'bankBalance', 0);
   const bsTotalLiabilities = bsMemberSavings + bsDepositSavings + bsExternalBorrow + bsFixedTerm;
   // Cash on hand = cash-flow net; equity (incl. retained) + assets computed after the cash-flow block.
+
+  // Actual cash on hand at the end of a given month = the balance-sheet residual
+  // (funds in − funds lent out). The interest-receivable asset and its retained-equity
+  // counterpart cancel, so cash = liabilities + group equity − loans − bank. Used to
+  // anchor the cash-flow statement's opening/closing balances.
+  const residualCashFor = (idx: number) => {
+    const memberSav = balAt((m) => sumOf('sof_savings_by_month', 'total', m), 'memberSavings', sumField(rSavings, 'total'), idx);
+    const depositSav = balAt((m) => sumOf('sof_deposit_by_month', 'total', m), 'depositSavings', sumField(rDeposit, 'total'), idx);
+    const fixedTerm = balAt((m) => sumOf('sof_fixedterm_by_month', 'total', m, FIXEDTERM_BY_MONTH), 'fixedTerm', 0, idx);
+    const loansMembers = balAt((m) => sumOf('sof_loans_by_month', 'remaining', m), 'loansToMembers', outstanding(rLoans), idx);
+    const loansExternal = balAt((m) => sumOf('sof_external_provided_by_month', 'remaining', m), 'loansExternal', outstanding(rLoansDep), idx);
+    const externalBorrow = balAt((m) => sumOf('sof_external_received_by_month', 'remaining', m), 'externalBorrow', 0, idx);
+    const reserve = balAt((m) => groupOf('បម្រុង', m), 'reserve', rGroupBy('បម្រុង'), idx);
+    const social = balAt((m) => groupOf('សង្គម', m), 'social', rGroupBy('សង្គម'), idx);
+    const yes = balAt((m) => groupOf('យេស', m), 'yes', rGroupBy('យេស'), idx);
+    const bank = balAt(() => null, 'bankBalance', 0, idx);
+    return memberSav + depositSav + externalBorrow + fixedTerm + reserve + social + yes - loansMembers - loansExternal - bank;
+  };
 
   // ---- Income statement, computed live per month ----
   const snapInc = (snap && snap.income) || null;
@@ -4177,12 +4198,15 @@ function Reports() {
 
   const cfIdx = months.indexOf(selectedMonth);
   const cfFirstSnap = (monthlyReports[months[0]] || {}).cashflow;
-  let cfOpening = (cfFirstSnap && typeof cfFirstSnap.openingCash === 'number') ? cfFirstSnap.openingCash : 0;
-  let cfCur: any = null;
-  for (let i = 0; i <= cfIdx; i++) {
-    cfCur = cfForMonth(months[i]);
-    if (i < cfIdx) cfOpening = cfOpening + cfCur.inflowExOpening - cfCur.totalOutflow;
-  }
+  const firstOpening = (cfFirstSnap && typeof cfFirstSnap.openingCash === 'number') ? cfFirstSnap.openingCash : 0;
+  // Opening = previous month's actual cash on hand; closing = this month's cash on hand
+  // (the balance-sheet residual). The direct receipt/payment lines explain the change;
+  // any accrual / non-cash difference is surfaced as one auto reconciling line so the
+  // statement always ties out. Closing cash IS the balance-sheet "cash on hand".
+  const cfOpening = cfIdx > 0 ? residualCashFor(cfIdx - 1) : firstOpening;
+  const cfEnding = residualCashFor(cfIdx);
+  const cfCur: any = cfForMonth(selectedMonth);
+  const cfAdjust = (cfEnding - cfOpening) - (cfCur.inflowExOpening - cfCur.totalOutflow);
   const cf = cfCur ? {
     openingCash: cfOpening,
     memberSavingsIn: cfCur.memberSavingsIn, depositSavingsIn: cfCur.depositSavingsIn, fixedTermIn: cfCur.fixedTermIn, repayment: cfCur.repayment,
@@ -4195,7 +4219,8 @@ function Reports() {
     operatingExpense: cfCur.operatingExpense, otherOutflow: cfCur.otherOutflow,
     totalInflow: cfOpening + cfCur.inflowExOpening,
     totalOutflow: cfCur.totalOutflow,
-    netCash: (cfOpening + cfCur.inflowExOpening) - cfCur.totalOutflow,
+    adjust: cfAdjust,
+    netCash: cfEnding,
   } : null;
   const m2 = (v: number | undefined) => (typeof v === 'number' ? fmtMoney(v) : '-');
 
@@ -4456,8 +4481,14 @@ function Reports() {
               <span className="font-bold text-orange-700">សរុប</span>
               <span className="font-black text-orange-700 text-lg">{m2(cf?.totalOutflow)}</span>
             </div>
+            {cf && Math.abs(cf.adjust) > 0.005 && (
+              <div className="px-6 py-3 flex justify-between items-center text-xs text-slate-500 border-t border-slate-100">
+                <span>ការកែតម្រូវ (ការប្រាក់មិនទាន់ទទួល / មិនមែនសាច់ប្រាក់)</span>
+                <span className="font-bold">{fmtMoney(cf.adjust)}</span>
+              </div>
+            )}
             <div className="bg-slate-800 px-6 py-4 flex justify-between items-center text-white">
-              <span className="font-bold">តុល្យភាពលំហូរសុទ្ធ</span>
+              <span className="font-bold">សាច់ប្រាក់សល់ចុងខែ (សល់ក្នុងដៃ)</span>
               <span className="font-black text-lg">{m2(cf?.netCash)}</span>
             </div>
           </div>
