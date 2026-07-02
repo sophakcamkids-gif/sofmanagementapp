@@ -4028,12 +4028,10 @@ function Reports() {
   const bsSocial = bsChain((m) => groupOf('សង្គម', m), 'social', rGroupBy('សង្គម'));
   const bsYes = bsChain((m) => groupOf('យេស', m), 'yes', rGroupBy('យេស'));
   const bsBankBalance = bsChain(() => null, 'bankBalance', 0);
-  // Liabilities + equity are the funds in; assets are loans out + the cash/bank that
-  // balances them. Cash on hand is the residual (matches the imported reports exactly).
   const bsTotalLiabilities = bsMemberSavings + bsDepositSavings + bsExternalBorrow + bsFixedTerm;
   const bsTotalEquity = bsReserve + bsSocial + bsYes;
-  const bsCashOnHand = bsTotalLiabilities + bsTotalEquity - bsLoansMembers - bsLoansExternal - bsBankBalance;
-  const bsTotalAssets = bsCashOnHand + bsBankBalance + bsLoansMembers + bsLoansExternal;
+  // Cash on hand = the cash-flow net balance (តុល្យភាពលំហូរសុទ្ធ) — computed below,
+  // so bsCashOnHand / bsTotalAssets are defined after the cash-flow block.
 
   // ---- Income statement, computed live per month ----
   const snapInc = (snap && snap.income) || null;
@@ -4164,6 +4162,10 @@ function Reports() {
     netCash: (cfOpening + cfCur.inflowExOpening) - cfCur.totalOutflow,
   } : null;
   const m2 = (v: number | undefined) => (typeof v === 'number' ? fmtMoney(v) : '-');
+
+  // Balance-sheet cash on hand = the cash-flow net balance for the month.
+  const bsCashOnHand = num(cf?.netCash);
+  const bsTotalAssets = bsCashOnHand + bsBankBalance + bsLoansMembers + bsLoansExternal;
 
   return (
     <PageView 
