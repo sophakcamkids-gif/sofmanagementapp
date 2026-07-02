@@ -3955,6 +3955,20 @@ function Reports() {
   const [selectedMonth, setSelectedMonth] = useState('មេសា 2026');
   const months = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
 
+  // Manually-entered "ផ្សេងៗ" cash-flow amounts (per month).
+  const [cfOtherIncome, setCfOtherIncome] = useState('');
+  const [cfOtherOutflow, setCfOtherOutflow] = useState('');
+  useEffect(() => {
+    const m = (getStoredData('sof_cashflow_manual_by_month', {}) || {})[selectedMonth] || {};
+    setCfOtherIncome(m.otherIncome != null ? String(m.otherIncome) : '');
+    setCfOtherOutflow(m.otherOutflow != null ? String(m.otherOutflow) : '');
+  }, [selectedMonth]);
+  const saveCfManual = (income: string, outflow: string) => {
+    const all = getStoredData('sof_cashflow_manual_by_month', {}) || {};
+    all[selectedMonth] = { otherIncome: income, otherOutflow: outflow };
+    setStoredData('sof_cashflow_manual_by_month', all);
+  };
+
   // Prefer the imported monthly report snapshot (from the Excel financial report)
   // for the selected month; fall back to live computation from per-member data
   // when a month has no snapshot.
@@ -4088,7 +4102,8 @@ function Reports() {
     })();
     const fines = pk(savingsPenalty, 'fines');
     const interestReceived = pk(interestRecvLive, 'interestReceived');
-    const otherIncome = (ms && typeof ms.otherIncome === 'number') ? ms.otherIncome : 0;
+    const manual = (getStoredData('sof_cashflow_manual_by_month', {}) || {})[month] || {};
+    const otherIncome = (manual.otherIncome != null && manual.otherIncome !== '') ? num(manual.otherIncome) : ((ms && typeof ms.otherIncome === 'number') ? ms.otherIncome : 0);
 
     // Loans given out = new loans to members + deposit members + external parties.
     const loanGiven = pk((() => {
@@ -4103,7 +4118,7 @@ function Reports() {
     const fixedTermInterest = DEFAULT_RATES.fixedTerm * (sm('sof_fixedterm_by_month', 'startCapital', FIXEDTERM_BY_MONTH) || 0);
     const externalBorrowInterest = pk(sm('sof_external_received_by_month', 'interest'), 'interestPaid');
     const operatingExpense = pk(sm('sof_expenses_by_month', 'total', EXPENSE_BY_MONTH), 'operatingExpense');
-    const otherOutflow = (ms && typeof ms.otherOutflow === 'number') ? ms.otherOutflow : 0;
+    const otherOutflow = (manual.otherOutflow != null && manual.otherOutflow !== '') ? num(manual.otherOutflow) : ((ms && typeof ms.otherOutflow === 'number') ? ms.otherOutflow : 0);
 
     const inflowExOpening = memberSavingsIn + depositSavingsIn + fixedTermIn + groupExtra + repayment + externalRepayment + externalLoanReceived + fines + interestReceived + otherIncome;
     const totalOutflow = loanGiven + withdrawActive + withdrawDeposit + withdrawGroup + withdrawFixedTerm + fixedTermInterest + externalBorrowInterest + operatingExpense + otherOutflow;
@@ -4313,14 +4328,19 @@ function Reports() {
                 { label: 'ប្រាក់បង់រំលស់កម្ចីខាងក្រៅ', value: cf?.externalRepayment },
                 { label: 'ទទួលប្រាក់កម្ចីពីខាងក្រៅ', value: cf?.externalLoanReceived },
                 { label: 'ប្រាក់ពិន័យ/សមាជិកភាព', value: cf?.fines },
-                { label: 'ការប្រាក់ទទួលបាន', value: cf?.interestReceived },
-                { label: 'ចំណូលផ្សេងៗ', value: cf?.otherIncome }
+                { label: 'ការប្រាក់ទទួលបាន', value: cf?.interestReceived }
               ].map((item, i) => (
                 <div key={i} className="flex justify-between items-center text-sm font-medium text-slate-700">
                   <span>{item.label}</span>
                   <span className={item.value ? "font-bold" : "text-slate-400"}>{item.value ? fmtMoney(item.value) : '-'}</span>
                 </div>
               ))}
+              <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                <span>ចំណូលផ្សេងៗ</span>
+                <input value={cfOtherIncome} placeholder="0.00"
+                  onChange={(e) => { setCfOtherIncome(e.target.value); saveCfManual(e.target.value, cfOtherOutflow); }}
+                  className="w-28 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-bold" />
+              </div>
             </div>
             <div className="bg-[#eef8f2] px-6 py-4 border-t border-green-100 flex justify-between items-center">
               <span className="font-bold text-[#0a6652]">សរុប</span>
@@ -4342,14 +4362,19 @@ function Reports() {
                 { label: 'គណនីមានកាលកំណត់ដកទុន', value: cf?.withdrawFixedTerm },
                 { label: 'ការប្រាក់គណនីមានកាលកំណត់', value: cf?.fixedTermInterest },
                 { label: 'ការប្រាក់កម្ចីទទួលពីក្រៅ', value: cf?.externalBorrowInterest },
-                { label: 'ចំណាយប្រតិបត្តិការ', value: cf?.operatingExpense },
-                { label: 'ចំណាយផ្សេងៗ', value: cf?.otherOutflow }
+                { label: 'ចំណាយប្រតិបត្តិការ', value: cf?.operatingExpense }
               ].map((item, i) => (
                 <div key={i} className="flex justify-between items-center text-sm font-medium text-slate-700">
                   <span>{item.label}</span>
                   <span className={item.value ? "font-bold" : "text-slate-400"}>{item.value ? fmtMoney(item.value) : '-'}</span>
                 </div>
               ))}
+              <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                <span>ចំណាយផ្សេងៗ</span>
+                <input value={cfOtherOutflow} placeholder="0.00"
+                  onChange={(e) => { setCfOtherOutflow(e.target.value); saveCfManual(cfOtherIncome, e.target.value); }}
+                  className="w-28 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-orange-500 focus:bg-orange-50 outline-none font-bold" />
+              </div>
             </div>
             <div className="bg-orange-50 px-6 py-4 border-t border-orange-100 flex justify-between items-center">
               <span className="font-bold text-orange-700">សរុប</span>
