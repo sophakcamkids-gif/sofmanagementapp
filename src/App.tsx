@@ -4029,9 +4029,7 @@ function Reports() {
   const bsYes = bsChain((m) => groupOf('យេស', m), 'yes', rGroupBy('យេស'));
   const bsBankBalance = bsChain(() => null, 'bankBalance', 0);
   const bsTotalLiabilities = bsMemberSavings + bsDepositSavings + bsExternalBorrow + bsFixedTerm;
-  const bsTotalEquity = bsReserve + bsSocial + bsYes;
-  // Cash on hand = the cash-flow net balance (តុល្យភាពលំហូរសុទ្ធ) — computed below,
-  // so bsCashOnHand / bsTotalAssets are defined after the cash-flow block.
+  // Cash on hand = cash-flow net; equity (incl. retained) + assets computed after the cash-flow block.
 
   // ---- Income statement, computed live per month ----
   const snapInc = (snap && snap.income) || null;
@@ -4163,11 +4161,14 @@ function Reports() {
   } : null;
   const m2 = (v: number | undefined) => (typeof v === 'number' ? fmtMoney(v) : '-');
 
-  // Cash on hand is the residual that keeps the sheet balanced:
-  //   Assets (cash + bank + loans) ≡ Liabilities + Equity.
-  // (This equals the cash-flow net balance once transactions fully reconcile.)
-  const bsCashOnHand = bsTotalLiabilities + bsTotalEquity - bsLoansMembers - bsLoansExternal - bsBankBalance;
+  // Cash on hand = the cash-flow net balance for the month (per requirement).
+  const bsCashOnHand = num(cf?.netCash);
   const bsTotalAssets = bsCashOnHand + bsBankBalance + bsLoansMembers + bsLoansExternal;
+  // Retained/reconciliation equity keeps Assets = Liabilities + Equity while cash on hand
+  // comes from the cash flow. ≈ 0 → the books reconcile; a large value flags cash the App
+  // has not recorded for the month.
+  const bsRetained = bsTotalAssets - bsTotalLiabilities - (bsReserve + bsSocial + bsYes);
+  const bsTotalEquity = bsReserve + bsSocial + bsYes + bsRetained;
 
   return (
     <PageView 
@@ -4313,6 +4314,10 @@ function Reports() {
                   <div className="flex justify-between items-center text-sm font-medium text-slate-700">
                     <span>ទុនក្រុមយេស (YES)</span>
                     <span className="font-bold">{fmtMoney(bsYes)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                    <span>ចំណេញរក្សាទុក/លម្អៀង</span>
+                    <span className={Math.abs(bsRetained) < 1 ? "font-bold text-slate-400" : "font-bold text-rose-600"}>{fmtMoney(bsRetained)}</span>
                   </div>
                 </div>
                 <div className="bg-indigo-50 px-6 py-4 border-t border-indigo-100 flex justify-between items-center">
