@@ -2226,7 +2226,15 @@ function Savings() {
     return sd;
   });
 
-  const [groupData, setGroupData] = useState(() => getStoredData('sof_savings_group_data', DEFAULT_GROUP_DATA));
+  const [groupData, setGroupData] = useState(() => {
+    let gd = getStoredData('sof_savings_group_data', DEFAULT_GROUP_DATA) || [];
+    // Ensure R004 (ការប្រាក់មិនបានបង់) exists for rosters saved before it was added.
+    if (!gd.some((r: any) => (r.name || '').includes('មិនបានបង់'))) {
+      gd = [...gd, DEFAULT_GROUP_DATA.find((r) => r.id === 'R004')];
+      setStoredData('sof_savings_group_data', gd);
+    }
+    return gd;
+  });
 
   const [depositData, setDepositData] = useState(() => {
     let sd = getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA) || [];
@@ -2270,6 +2278,10 @@ function Savings() {
     const reports = getStoredData('sof_monthly_reports', {});
     let active = (sBy[month] && sBy[month].length) ? sBy[month] : getStoredData('sof_savings_data', DEFAULT_SAVING_DATA) || [];
     let group = (gBy[month] && gBy[month].length) ? gBy[month] : getStoredData('sof_savings_group_data', DEFAULT_GROUP_DATA) || [];
+    // Ensure R004 (ការប្រាក់មិនបានបង់) exists even in months saved before it was added.
+    if (!group.some((r: any) => (r.name || '').includes('មិនបានបង់'))) {
+      group = [...group, DEFAULT_GROUP_DATA.find((r) => r.id === 'R004')];
+    }
     let deposit = (dBy[month] && dBy[month].length) ? dBy[month] : getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA) || [];
 
     // Carry forward: this month's beginning = previous month's freshly recomputed total.
