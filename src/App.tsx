@@ -4199,8 +4199,10 @@ function Reports() {
   } : null;
   const m2 = (v: number | undefined) => (typeof v === 'number' ? fmtMoney(v) : '-');
 
-  // R004 ការប្រាក់រក្សាទុក (retained interest) = interest due − interest paid, accumulated per month. It is
-  // capitalised into loans on the asset side, so the same amount belongs to equity here.
+  // Unpaid loan interest (interest due − paid, accumulated per month). Standard treatment:
+  // it is booked on BOTH sides — as an ASSET (ការប្រាក់ត្រូវទទួល / interest receivable) and
+  // as EQUITY (ការប្រាក់រក្សាទុក / R004) — a self-balancing pair that does NOT touch cash or
+  // income. So cash on hand stays the true residual = the cash-flow net.
   const unpaidInterestFor = (m: string) => {
     const due = (sumOf('sof_loans_by_month', 'interest', m) || 0) + (sumOf('sof_loans_deposit_by_month', 'interest', m) || 0);
     const paid = (sumOf('sof_loans_by_month', 'interestPaid', m) || 0) + (sumOf('sof_loans_deposit_by_month', 'interestPaid', m) || 0);
@@ -4208,11 +4210,12 @@ function Reports() {
   };
   const bsIdx = months.indexOf(selectedMonth);
   const bsUnpaidInterest = months.slice(0, bsIdx + 1).reduce((s, m) => s + unpaidInterestFor(m), 0);
-  const bsTotalEquity = bsReserve + bsSocial + bsYes + bsUnpaidInterest;
-  // Cash on hand is the balancing residual, which equals the cash-flow net once the unpaid
-  // interest (R004) is booked to equity — so Assets = Liabilities + Equity always.
-  const bsCashOnHand = bsTotalLiabilities + bsTotalEquity - bsLoansMembers - bsLoansExternal - bsBankBalance;
-  const bsTotalAssets = bsCashOnHand + bsBankBalance + bsLoansMembers + bsLoansExternal;
+  const bsInterestReceivable = bsUnpaidInterest;             // asset side
+  const bsTotalEquity = bsReserve + bsSocial + bsYes + bsUnpaidInterest;  // equity side (R004)
+  // Cash on hand = balancing residual; the receivable/retained pair cancels, so it equals
+  // the cash-flow net. Assets = Liabilities + Equity always.
+  const bsCashOnHand = bsTotalLiabilities + bsTotalEquity - bsLoansMembers - bsLoansExternal - bsInterestReceivable - bsBankBalance;
+  const bsTotalAssets = bsCashOnHand + bsBankBalance + bsLoansMembers + bsLoansExternal + bsInterestReceivable;
 
   return (
     <PageView 
@@ -4302,6 +4305,10 @@ function Reports() {
                 <div className="flex justify-between items-center text-sm font-medium text-slate-700">
                   <span>ប្រាក់ផ្តល់កម្ចីទៅខាងក្រៅ</span>
                   <span className="font-bold">{fmtMoney(bsLoansExternal)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                  <span>ការប្រាក់ត្រូវទទួល</span>
+                  <span className={bsInterestReceivable ? "font-bold" : "font-bold text-slate-400"}>{bsInterestReceivable ? fmtMoney(bsInterestReceivable) : '-'}</span>
                 </div>
               </div>
               <div className="bg-[#eef8f2] px-6 py-4 border-t border-green-100 flex justify-between items-center">
