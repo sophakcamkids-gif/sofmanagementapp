@@ -4048,7 +4048,67 @@ function Reports() {
     reserveAlloc: incReserveAlloc, socialAlloc: incSocialAlloc, netProfit: incNetProfit,
   };
 
-  const cf = (snap && snap.cashflow) || null;
+  // ---- Cash flow, computed LIVE per month ----
+  // Each line = this month's live total from the by-month stores; when a source has no
+  // live rows for the month it falls back to the imported snapshot value. Opening cash
+  // is chained forward: opening(month) = previous month's closing cash.
+  const cfForMonth = (month: string) => {
+    const ms = (monthlyReports[month] || {}).cashflow || null;
+    const sm = (key: string, field: string, def: any = {}) => {
+      const rows = (getStoredData(key, def) || {})[month];
+      return Array.isArray(rows) ? rows.reduce((s: number, r: any) => s + num(r[field]), 0) : null;
+    };
+    const savings = (field: string) => {
+      const a = sm('sof_savings_by_month', field), g = sm('sof_group_by_month', field), d = sm('sof_deposit_by_month', field);
+      return (a == null && g == null && d == null) ? null : (a || 0) + (g || 0) + (d || 0);
+    };
+    const loans = (field: string) => {
+      const a = sm('sof_loans_by_month', field), d = sm('sof_loans_deposit_by_month', field);
+      return (a == null && d == null) ? null : (a || 0) + (d || 0);
+    };
+    const interestRecvLive = (() => {
+      const a = sm('sof_loans_by_month', 'interestPaid'), d = sm('sof_loans_deposit_by_month', 'interestPaid'), e = sm('sof_external_provided_by_month', 'interest');
+      return (a == null && d == null && e == null) ? null : (a || 0) + (d || 0) + (e || 0);
+    })();
+    const pk = (live: number | null, k: string) => (live != null ? live : (ms && typeof ms[k] === 'number' ? ms[k] : 0));
+
+    const memberSavingsIn = pk(sm('sof_savings_by_month', 'addSaving'), 'memberSavingsIn');
+    const depositSavingsIn = pk(sm('sof_deposit_by_month', 'addSaving'), 'depositSavingsIn');
+    const groupExtra = pk(sm('sof_group_by_month', 'addSaving'), 'groupExtra');
+    const repayment = pk(loans('repayment'), 'repayment');
+    const externalLoanReceived = pk(sm('sof_external_received_by_month', 'newLoan'), 'externalLoanReceived');
+    const fines = pk(savings('actualFee'), 'fines');
+    const interestReceived = pk(interestRecvLive, 'interestReceived');
+    const otherIncome = (ms && typeof ms.otherIncome === 'number') ? ms.otherIncome : 0;
+
+    const withdrawals = pk(savings('withdraw'), 'withdrawals');
+    const operatingExpense = pk(sm('sof_expenses_by_month', 'total', EXPENSE_BY_MONTH), 'operatingExpense');
+    const interestPaid = pk(sm('sof_external_received_by_month', 'interest'), 'interestPaid');
+    const loanGiven = pk(loans('newLoan'), 'loanGiven');
+
+    const inflowExOpening = memberSavingsIn + depositSavingsIn + groupExtra + repayment + externalLoanReceived + fines + interestReceived + otherIncome;
+    const totalOutflow = withdrawals + operatingExpense + interestPaid + loanGiven;
+    return { memberSavingsIn, depositSavingsIn, groupExtra, repayment, externalLoanReceived, fines, interestReceived, otherIncome, withdrawals, operatingExpense, interestPaid, loanGiven, inflowExOpening, totalOutflow };
+  };
+
+  const cfIdx = months.indexOf(selectedMonth);
+  const cfFirstSnap = (monthlyReports[months[0]] || {}).cashflow;
+  let cfOpening = (cfFirstSnap && typeof cfFirstSnap.openingCash === 'number') ? cfFirstSnap.openingCash : 0;
+  let cfCur: any = null;
+  for (let i = 0; i <= cfIdx; i++) {
+    cfCur = cfForMonth(months[i]);
+    if (i < cfIdx) cfOpening = cfOpening + cfCur.inflowExOpening - cfCur.totalOutflow;
+  }
+  const cf = cfCur ? {
+    openingCash: cfOpening,
+    memberSavingsIn: cfCur.memberSavingsIn, depositSavingsIn: cfCur.depositSavingsIn, repayment: cfCur.repayment,
+    groupExtra: cfCur.groupExtra, externalLoanReceived: cfCur.externalLoanReceived, fines: cfCur.fines,
+    interestReceived: cfCur.interestReceived, otherIncome: cfCur.otherIncome,
+    withdrawals: cfCur.withdrawals, operatingExpense: cfCur.operatingExpense, interestPaid: cfCur.interestPaid, loanGiven: cfCur.loanGiven,
+    totalInflow: cfOpening + cfCur.inflowExOpening,
+    totalOutflow: cfCur.totalOutflow,
+    netCash: (cfOpening + cfCur.inflowExOpening) - cfCur.totalOutflow,
+  } : null;
   const m2 = (v: number | undefined) => (typeof v === 'number' ? fmtMoney(v) : '-');
 
   return (
