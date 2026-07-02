@@ -4163,8 +4163,10 @@ function Reports() {
   } : null;
   const m2 = (v: number | undefined) => (typeof v === 'number' ? fmtMoney(v) : '-');
 
-  // Balance-sheet cash on hand = the cash-flow net balance for the month.
-  const bsCashOnHand = num(cf?.netCash);
+  // Cash on hand is the residual that keeps the sheet balanced:
+  //   Assets (cash + bank + loans) ≡ Liabilities + Equity.
+  // (This equals the cash-flow net balance once transactions fully reconcile.)
+  const bsCashOnHand = bsTotalLiabilities + bsTotalEquity - bsLoansMembers - bsLoansExternal - bsBankBalance;
   const bsTotalAssets = bsCashOnHand + bsBankBalance + bsLoansMembers + bsLoansExternal;
 
   return (
