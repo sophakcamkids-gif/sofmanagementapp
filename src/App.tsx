@@ -4034,10 +4034,19 @@ function Reports() {
   };
   const groupMonth = (needle: string) => groupOf(needle, selectedMonth) ?? 0;
 
+  // Fixed-term accounts: use the stored month if present, else the code seed for that
+  // month (the seed carries Jan–May, but the stored key may hold only the months that
+  // were opened on the Savings tab — so from March it would otherwise read empty).
+  const ftRowsFor = (month: string): any[] => {
+    const rows = (getStoredData('sof_fixedterm_by_month', {}) || {})[month];
+    return (Array.isArray(rows) && rows.length) ? rows : (FIXEDTERM_BY_MONTH[month] || []);
+  };
+  const ftSum = (month: string, field: string) => ftRowsFor(month).reduce((s: number, r: any) => s + num(r[field]), 0);
+
   // Balance-sheet lines — the selected month's live totals (0 when not yet entered).
   const bsMemberSavings = sumMonth('sof_savings_by_month', 'total') ?? 0;
   const bsDepositSavings = sumMonth('sof_deposit_by_month', 'total') ?? 0;
-  const bsFixedTerm = sumMonth('sof_fixedterm_by_month', 'total', FIXEDTERM_BY_MONTH) ?? 0;
+  const bsFixedTerm = ftSum(selectedMonth, 'total');
   const bsLoansMembers = sumMonth('sof_loans_by_month', 'remaining') ?? 0;
   const bsLoansExternal = sumMonth('sof_external_provided_by_month', 'remaining') ?? 0;
   const bsExternalBorrow = sumMonth('sof_external_received_by_month', 'remaining') ?? 0;
@@ -4073,7 +4082,7 @@ function Reports() {
   //   operating expense = sum of ALL expense items entered for the month.
   const incDepositInterest = DEFAULT_RATES.deposit * (depBeginSum ?? 0);
   const incExternalInterest = sumMonth('sof_external_received_by_month', 'interest') ?? 0;
-  const incFixedTermInterest = DEFAULT_RATES.fixedTerm * (sumMonth('sof_fixedterm_by_month', 'startCapital', FIXEDTERM_BY_MONTH) ?? 0);
+  const incFixedTermInterest = DEFAULT_RATES.fixedTerm * ftSum(selectedMonth, 'startCapital');
   const incGrossProfit = incTotalIncome - incDepositInterest - incExternalInterest - incFixedTermInterest;
   const incOperatingExpense = sumMonth('sof_expenses_by_month', 'total', EXPENSE_BY_MONTH) ?? 0;
   const incReserveAlloc = DEFAULT_RATES.reserve * incTotalIncome;   // 10% of total income
@@ -4114,7 +4123,7 @@ function Reports() {
     // Group cash inflow = manual deposits only (ទុនបន្ថែម); the auto addSaving on
     // reserve/social/R004 is a non-cash profit allocation, not real cash in.
     const groupExtra = pk(sm('sof_group_by_month', 'manualAdd'), 'groupExtra');
-    const fixedTermIn = pk(sm('sof_fixedterm_by_month', 'addSaving', FIXEDTERM_BY_MONTH), 'fixedTermIn');
+    const fixedTermIn = ftSum(month, 'addSaving');
     const repayment = pk(loans('repayment'), 'repayment');
     const externalRepayment = pk(sm('sof_external_provided_by_month', 'repayment'), 'externalRepayment');
     const externalLoanReceived = pk(sm('sof_external_received_by_month', 'newLoan'), 'externalLoanReceived');
@@ -4139,10 +4148,10 @@ function Reports() {
     const withdrawActive = pk(wSum('sof_savings_by_month'), 'withdrawActive');
     const withdrawDeposit = pk(wSum('sof_deposit_by_month'), 'withdrawDeposit');
     const withdrawGroup = pk(wSum('sof_group_by_month'), 'withdrawGroup');
-    const withdrawFixedTerm = pk(sm('sof_fixedterm_by_month', 'withdraw', FIXEDTERM_BY_MONTH), 'withdrawFixedTerm');
+    const withdrawFixedTerm = ftSum(month, 'withdraw');
     // Interest paid out to fixed-term holders = the per-row interest actually accrued
     // (respects each account's own rate, e.g. a closed account at 0%), not 1% × balance.
-    const fixedTermInterest = pk(sm('sof_fixedterm_by_month', 'interest', FIXEDTERM_BY_MONTH), 'fixedTermInterestPaid');
+    const fixedTermInterest = ftSum(month, 'interest');
     const externalBorrowInterest = pk(sm('sof_external_received_by_month', 'interest'), 'interestPaid');
     // Principal repaid on money borrowed from outside — a real cash OUT.
     const externalBorrowRepay = pk(sm('sof_external_received_by_month', 'repayment'), 'externalBorrowRepay');
