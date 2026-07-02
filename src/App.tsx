@@ -4047,6 +4047,19 @@ function Reports() {
   };
   const groupMonth = (needle: string) => groupOf(needle, selectedMonth) ?? 0;
 
+  // Outstanding-balance lines (loans given/borrowed) carry forward: an outstanding loan
+  // stays on the books until it is repaid, so a month with no new entry keeps the most
+  // recent known balance instead of dropping to 0 (e.g. external loans from មិថុនា on).
+  const carrySum = (key: string, field: string) => {
+    const by = getStoredData(key, {}) || {};
+    const idx = months.indexOf(selectedMonth);
+    for (let i = (idx < 0 ? months.length - 1 : idx); i >= 0; i--) {
+      const rows = by[months[i]];
+      if (Array.isArray(rows) && rows.length) return rows.reduce((s: number, r: any) => s + num(r[field]), 0);
+    }
+    return 0;
+  };
+
   // Fixed-term accounts: use the stored month if present, else the code seed for that
   // month (the seed carries Jan–May, but the stored key may hold only the months that
   // were opened on the Savings tab — so from March it would otherwise read empty).
@@ -4060,9 +4073,9 @@ function Reports() {
   const bsMemberSavings = sumMonth('sof_savings_by_month', 'total') ?? 0;
   const bsDepositSavings = sumMonth('sof_deposit_by_month', 'total') ?? 0;
   const bsFixedTerm = fixedTermBalanceOf(selectedMonth);
-  const bsLoansMembers = sumMonth('sof_loans_by_month', 'remaining') ?? 0;
-  const bsLoansExternal = sumMonth('sof_external_provided_by_month', 'remaining') ?? 0;
-  const bsExternalBorrow = sumMonth('sof_external_received_by_month', 'remaining') ?? 0;
+  const bsLoansMembers = carrySum('sof_loans_by_month', 'remaining');
+  const bsLoansExternal = carrySum('sof_external_provided_by_month', 'remaining');
+  const bsExternalBorrow = carrySum('sof_external_received_by_month', 'remaining');
   const bsReserve = groupMonth('បម្រុង');
   const bsSocial = groupMonth('សង្គម');
   const bsYes = groupMonth('យេស');
