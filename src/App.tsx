@@ -4077,6 +4077,7 @@ function Reports() {
     const depositSavingsIn = pk(sm('sof_deposit_by_month', 'addSaving'), 'depositSavingsIn');
     const groupExtra = pk(sm('sof_group_by_month', 'addSaving'), 'groupExtra');
     const repayment = pk(loans('repayment'), 'repayment');
+    const externalRepayment = pk(sm('sof_external_provided_by_month', 'repayment'), 'externalRepayment');
     const externalLoanReceived = pk(sm('sof_external_received_by_month', 'newLoan'), 'externalLoanReceived');
     const fines = pk(savings('actualFee'), 'fines');
     const interestReceived = pk(interestRecvLive, 'interestReceived');
@@ -4087,9 +4088,9 @@ function Reports() {
     const interestPaid = pk(sm('sof_external_received_by_month', 'interest'), 'interestPaid');
     const loanGiven = pk(loans('newLoan'), 'loanGiven');
 
-    const inflowExOpening = memberSavingsIn + depositSavingsIn + groupExtra + repayment + externalLoanReceived + fines + interestReceived + otherIncome;
+    const inflowExOpening = memberSavingsIn + depositSavingsIn + groupExtra + repayment + externalRepayment + externalLoanReceived + fines + interestReceived + otherIncome;
     const totalOutflow = withdrawals + operatingExpense + interestPaid + loanGiven;
-    return { memberSavingsIn, depositSavingsIn, groupExtra, repayment, externalLoanReceived, fines, interestReceived, otherIncome, withdrawals, operatingExpense, interestPaid, loanGiven, inflowExOpening, totalOutflow };
+    return { memberSavingsIn, depositSavingsIn, groupExtra, repayment, externalRepayment, externalLoanReceived, fines, interestReceived, otherIncome, withdrawals, operatingExpense, interestPaid, loanGiven, inflowExOpening, totalOutflow };
   };
 
   const cfIdx = months.indexOf(selectedMonth);
@@ -4103,6 +4104,7 @@ function Reports() {
   const cf = cfCur ? {
     openingCash: cfOpening,
     memberSavingsIn: cfCur.memberSavingsIn, depositSavingsIn: cfCur.depositSavingsIn, repayment: cfCur.repayment,
+    externalRepayment: cfCur.externalRepayment,
     groupExtra: cfCur.groupExtra, externalLoanReceived: cfCur.externalLoanReceived, fines: cfCur.fines,
     interestReceived: cfCur.interestReceived, otherIncome: cfCur.otherIncome,
     withdrawals: cfCur.withdrawals, operatingExpense: cfCur.operatingExpense, interestPaid: cfCur.interestPaid, loanGiven: cfCur.loanGiven,
@@ -4285,7 +4287,8 @@ function Reports() {
                 { label: 'សាច់ប្រាក់នៅក្នុងហ៊ីបប្រាក់', value: cf?.openingCash },
                 { label: 'ប្រាក់ដាក់សន្សំសមាជិកម្ចាស់ភាគហ៊ុន', value: cf?.memberSavingsIn },
                 { label: 'ប្រាក់សន្សំសមាជិកបញ្ញើសន្សំ', value: cf?.depositSavingsIn },
-                { label: 'ប្រាក់បង់រំលស់', value: cf?.repayment },
+                { label: 'ប្រាក់បង់រំលស់កម្ចីសមាជិក', value: cf?.repayment },
+                { label: 'ប្រាក់បង់រំលស់កម្ចីខាងក្រៅ', value: cf?.externalRepayment },
                 { label: 'ទុនសន្សំបន្ថែមក្រុម', value: cf?.groupExtra },
                 { label: 'ទទួលប្រាក់កម្ចីពីខាងក្រៅ', value: cf?.externalLoanReceived },
                 { label: 'ប្រាក់ពិន័យ/សមាជិកភាព', value: cf?.fines },
