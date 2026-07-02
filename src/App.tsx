@@ -106,7 +106,7 @@ const DEFAULT_GROUP_DATA = [
   { id: 'R001', name: 'ទុនបម្រុង', gender: 'ក្រុម', startCapital: '0.00', share: '0.00%', addSaving: '-', profit: '0', withdraw: '-', deductFee: '-', actualFee: '-', total: '0.00', checked: true },
   { id: 'R002', name: 'ទុនសង្គម', gender: 'ក្រុម', startCapital: '0.00', share: '0.00%', addSaving: '-', profit: '0', withdraw: '-', deductFee: '-', actualFee: '-', total: '0.00', checked: true },
   { id: 'R003', name: 'ទុនក្រុមយេស (YES)', gender: 'ក្រុម', startCapital: '0.00', share: '0.00%', addSaving: '-', profit: '0', withdraw: '-', deductFee: '-', actualFee: '-', total: '0.00', checked: true },
-  { id: 'R004', name: 'ការប្រាក់មិនបានបង់', gender: 'ក្រុម', startCapital: '0.00', share: '0.00%', addSaving: '-', profit: '0', withdraw: '-', deductFee: '-', actualFee: '-', total: '0.00', checked: true }
+  { id: 'R004', name: 'ការប្រាក់រក្សាទុក', gender: 'ក្រុម', startCapital: '0.00', share: '0.00%', addSaving: '-', profit: '0', withdraw: '-', deductFee: '-', actualFee: '-', total: '0.00', checked: true }
 ];
 
 const DEFAULT_DEPOSIT_DATA: any[] = [];
@@ -2228,8 +2228,8 @@ function Savings() {
 
   const [groupData, setGroupData] = useState(() => {
     let gd = getStoredData('sof_savings_group_data', DEFAULT_GROUP_DATA) || [];
-    // Ensure R004 (ការប្រាក់មិនបានបង់) exists for rosters saved before it was added.
-    if (!gd.some((r: any) => (r.name || '').includes('មិនបានបង់'))) {
+    // Ensure R004 (ការប្រាក់រក្សាទុក) exists for rosters saved before it was added.
+    if (!gd.some((r: any) => r.id === 'R004')) {
       gd = [...gd, DEFAULT_GROUP_DATA.find((r) => r.id === 'R004')];
       setStoredData('sof_savings_group_data', gd);
     }
@@ -2278,8 +2278,8 @@ function Savings() {
     const reports = getStoredData('sof_monthly_reports', {});
     let active = (sBy[month] && sBy[month].length) ? sBy[month] : getStoredData('sof_savings_data', DEFAULT_SAVING_DATA) || [];
     let group = (gBy[month] && gBy[month].length) ? gBy[month] : getStoredData('sof_savings_group_data', DEFAULT_GROUP_DATA) || [];
-    // Ensure R004 (ការប្រាក់មិនបានបង់) exists even in months saved before it was added.
-    if (!group.some((r: any) => (r.name || '').includes('មិនបានបង់'))) {
+    // Ensure R004 (ការប្រាក់រក្សាទុក) exists even in months saved before it was added.
+    if (!group.some((r: any) => r.id === 'R004')) {
       group = [...group, DEFAULT_GROUP_DATA.find((r) => r.id === 'R004')];
     }
     let deposit = (dBy[month] && dBy[month].length) ? dBy[month] : getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA) || [];
@@ -2303,18 +2303,18 @@ function Savings() {
       const nm = r.name || '';
       if (nm.includes('បម្រុង')) return { ...r, addSaving: incM.reserveAlloc.toFixed(2) };
       if (nm.includes('សង្គម')) return { ...r, addSaving: incM.socialAlloc.toFixed(2) };
-      if (nm.includes('មិនបានបង់')) return { ...r, addSaving: unpaidInt.toFixed(2) };
+      if (r.id === 'R004') return { ...r, name: 'ការប្រាក់រក្សាទុក', addSaving: unpaidInt.toFixed(2) };
       return r;
     });
     // R004 is a receivable tracker, not a savings fund — keep it out of the profit pool.
-    const pool = [...active, ...group].filter((r: any) => !((r.name || '').includes('មិនបានបង់'))).map((r: any) => ({
+    const pool = [...active, ...group].filter((r: any) => r.id !== 'R004').map((r: any) => ({
       id: r.id, beginning: num(r.startCapital), addSaving: num(r.addSaving),
       withdraw: num(r.withdraw), penalty: num(r.actualFee), deductFee: num(r.deductFee),
     }));
     const byId: Record<string, any> = {};
     computeSavings(pool, net).forEach((x) => { byId[x.id] = x; });
     const apply = (rows: any[]) => rows.map((r: any) => {
-      if ((r.name || '').includes('មិនបានបង់')) {
+      if (r.id === 'R004') {
         const total = num(r.startCapital) + num(r.addSaving);
         return { ...r, share: '0.00%', profit: '0.00', total: total.toFixed(2) };
       }
@@ -4184,7 +4184,7 @@ function Reports() {
   } : null;
   const m2 = (v: number | undefined) => (typeof v === 'number' ? fmtMoney(v) : '-');
 
-  // R004 ការប្រាក់មិនបានបង់ = interest due − interest paid, accumulated per month. It is
+  // R004 ការប្រាក់រក្សាទុក (retained interest) = interest due − interest paid, accumulated per month. It is
   // capitalised into loans on the asset side, so the same amount belongs to equity here.
   const unpaidInterestFor = (m: string) => {
     const due = (sumOf('sof_loans_by_month', 'interest', m) || 0) + (sumOf('sof_loans_deposit_by_month', 'interest', m) || 0);
@@ -4345,7 +4345,7 @@ function Reports() {
                     <span className="font-bold">{fmtMoney(bsYes)}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm font-medium text-slate-700">
-                    <span>ការប្រាក់មិនបានបង់ (R004)</span>
+                    <span>ការប្រាក់រក្សាទុក</span>
                     <span className={bsUnpaidInterest ? "font-bold" : "font-bold text-slate-400"}>{bsUnpaidInterest ? fmtMoney(bsUnpaidInterest) : '-'}</span>
                   </div>
                 </div>
