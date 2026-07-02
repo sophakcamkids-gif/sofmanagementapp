@@ -2308,7 +2308,7 @@ function Savings() {
     });
     // R004 is a receivable tracker, not a savings fund — keep it out of the profit pool.
     const pool = [...active, ...group].filter((r: any) => r.id !== 'R004').map((r: any) => ({
-      id: r.id, beginning: num(r.startCapital), addSaving: num(r.addSaving),
+      id: r.id, beginning: num(r.startCapital), addSaving: num(r.addSaving) + num(r.manualAdd),
       withdraw: num(r.withdraw), penalty: num(r.actualFee), deductFee: num(r.deductFee),
     }));
     const byId: Record<string, any> = {};
@@ -2349,7 +2349,7 @@ function Savings() {
   const recomputeSavingsRows = (activeRows: any[], groupRows: any[]) => {
     const net = monthlyIncome(selectedMonth).netProfit;
     const pool = [...activeRows, ...groupRows].map((r: any) => ({
-      id: r.id, beginning: num(r.startCapital), addSaving: num(r.addSaving),
+      id: r.id, beginning: num(r.startCapital), addSaving: num(r.addSaving) + num(r.manualAdd),
       withdraw: num(r.withdraw), penalty: num(r.actualFee), deductFee: num(r.deductFee),
     }));
     const byId: Record<string, any> = {};
@@ -2709,6 +2709,7 @@ function Savings() {
                   <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ទុនចាប់ផ្តើម</th>
                   <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ភាគហ៊ុនជា%</th>
                   <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ទុនសន្សំបន្ថែម</th>
+                  <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ទុនបន្ថែម (ដៃ)</th>
                   <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ប្រាក់ចំណេញ</th>
                   <th rowSpan={2} className="px-3 py-3 border-r border-slate-300 align-middle">ដកទុន</th>
                   <th colSpan={2} className="px-3 py-2 border-r border-b border-slate-300">ប្រាក់ពិន័យ</th>
@@ -2739,6 +2740,10 @@ function Savings() {
                       <input value={showVal(row.addSaving)} onChange={(e) => editGroupRaw(idx, 'addSaving', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-right">
+                      <input value={showVal(row.manualAdd)} onChange={(e) => editGroupRaw(idx, 'manualAdd', e.target.value)} onBlur={saveSavingsMonth}
+                        className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                    </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.profit}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
                       <input value={showVal(row.withdraw)} onChange={(e) => editGroupRaw(idx, 'withdraw', e.target.value)} onBlur={saveSavingsMonth}
@@ -2761,6 +2766,7 @@ function Savings() {
                   <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(groupData, 'startCapital'))}</td>
                   <td className="px-3 py-2 border-r border-slate-300 text-right text-xs">{sumOf(groupData, 'share').toFixed(2)}%</td>
                   <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(groupData, 'addSaving'))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(groupData, 'manualAdd'))}</td>
                   <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(groupData, 'profit'))}</td>
                   <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(groupData, 'withdraw'))}</td>
                   <td className="px-3 py-2 border-r border-slate-300 text-right">{n2(sumOf(groupData, 'deductFee'))}</td>
@@ -4129,7 +4135,9 @@ function Reports() {
 
     const memberSavingsIn = pk(sm('sof_savings_by_month', 'addSaving'), 'memberSavingsIn');
     const depositSavingsIn = pk(sm('sof_deposit_by_month', 'addSaving'), 'depositSavingsIn');
-    const groupExtra = pk(sm('sof_group_by_month', 'addSaving'), 'groupExtra');
+    // Group cash inflow = manual deposits only (ទុនបន្ថែម); the auto addSaving on
+    // reserve/social/R004 is a non-cash profit allocation, not real cash in.
+    const groupExtra = pk(sm('sof_group_by_month', 'manualAdd'), 'groupExtra');
     const fixedTermIn = pk(sm('sof_fixedterm_by_month', 'addSaving', FIXEDTERM_BY_MONTH), 'fixedTermIn');
     const repayment = pk(loans('repayment'), 'repayment');
     const externalRepayment = pk(sm('sof_external_provided_by_month', 'repayment'), 'externalRepayment');
