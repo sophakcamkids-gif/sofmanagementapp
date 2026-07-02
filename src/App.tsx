@@ -4285,7 +4285,7 @@ function Reports() {
                 { label: 'សាច់ប្រាក់នៅក្នុងហ៊ីបប្រាក់', value: cf?.openingCash },
                 { label: 'ប្រាក់ដាក់សន្សំសមាជិកម្ចាស់ភាគហ៊ុន', value: cf?.memberSavingsIn },
                 { label: 'ប្រាក់សន្សំសមាជិកបញ្ញើសន្សំ', value: cf?.depositSavingsIn },
-                { label: 'ប្រាក់បង់រំលោះ', value: cf?.repayment },
+                { label: 'ប្រាក់បង់រំលស់', value: cf?.repayment },
                 { label: 'ទុនសន្សំបន្ថែមក្រុម', value: cf?.groupExtra },
                 { label: 'ទទួលប្រាក់កម្ចីពីខាងក្រៅ', value: cf?.externalLoanReceived },
                 { label: 'ប្រាក់ពិន័យ/សមាជិកភាព', value: cf?.fines },
