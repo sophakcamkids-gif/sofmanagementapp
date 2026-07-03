@@ -5873,7 +5873,7 @@ function MemberReport() {
             <button
               type="button"
               onClick={() => { setSigImg(''); saveSig('', sigName); }}
-              className="no-print mt-1 text-[11px] font-bold text-rose-500 hover:text-rose-700 cursor-pointer"
+              className="no-print mt-1 text-[11px] font-bold text-white hover:text-rose-500 cursor-pointer"
             >
               លុបហត្ថលេខា
             </button>
