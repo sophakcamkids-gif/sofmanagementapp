@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+/* Modern Khmer UI font (loaded in index.html). Applied as the default sans family
+   so every `font-sans` element uses it, and bumped a little larger for readability. */
+@theme {
+  --font-sans: "Kantumruy Pro", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+html {
+  font-size: 17px;
+}
+body {
+  font-family: "Kantumruy Pro", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
 /* Savings tables: freeze the header row and the first two columns (No. + Name)
    so they stay visible while scrolling vertically/horizontally. */
 .sav-frz {
