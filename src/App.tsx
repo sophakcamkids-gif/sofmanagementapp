@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx';
+import { toPng } from 'html-to-image';
 import { db } from './lib/db';
 import { loadAllCloudState, saveCloudState } from './lib/cloudStore';
 import { computeSavings, computeLoan, DEFAULT_RATES } from './lib/calcEngine';
@@ -5443,6 +5444,26 @@ function MemberReport() {
   const summaryLastDay = summaryIdx >= 0 ? new Date(Number(selectedReportYear), summaryIdx + 1, 0).getDate() : '';
   const fm = (v: number) => (v ? fmtMoney(v) : '-');
 
+  // Download the on-screen report card as a PNG image.
+  const [savingImg, setSavingImg] = useState(false);
+  const handleDownloadImage = async () => {
+    const el = document.querySelector('.report-sheet') as HTMLElement | null;
+    if (!el) return;
+    setSavingImg(true);
+    try {
+      const dataUrl = await toPng(el, { cacheBust: true, pixelRatio: 2, backgroundColor: '#ffffff' });
+      const link = document.createElement('a');
+      link.download = `របាយការណ៍-${memberCode}-${summaryMonthName}-${selectedReportYear}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('Image export failed:', err);
+      alert('មិនអាចទាញយករូបភាពបានទេ។ សូមព្យាយាមម្តងទៀត។');
+    } finally {
+      setSavingImg(false);
+    }
+  };
+
   return (
     <PageView
       title={activeTab === 'dashboard' ? "ព័ត៌មានផ្ទាល់ខ្លួន" : activeTab}
@@ -5832,6 +5853,23 @@ function MemberReport() {
                   <option key={m} value={m}>{m} {selectedReportYear}</option>
                 ))}
               </select>
+            </div>
+            <div className="no-print flex items-center justify-center gap-2 mt-3">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] px-4 py-1.5 rounded-full cursor-pointer active:scale-95"
+              >
+                <Download size={13} strokeWidth={2.5} /> ទាញយក PDF
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadImage}
+                disabled={savingImg}
+                className="flex items-center gap-1.5 bg-[#0a6652] hover:bg-[#084f40] text-white font-bold text-[11px] px-4 py-1.5 rounded-full cursor-pointer active:scale-95 disabled:opacity-60"
+              >
+                <FileText size={13} strokeWidth={2.5} /> {savingImg ? 'កំពុងទាញយក...' : 'ទាញយក រូបភាព'}
+              </button>
             </div>
         </div>
 
