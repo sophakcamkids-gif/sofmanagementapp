@@ -1097,15 +1097,24 @@ function DashboardGeneral() {
     // Write the deposit into the SELECTED month's per-month store so the live engine
     // (Savings page, balance sheet, dashboard) picks it up for that exact month.
     const add = parseFloat(sAmount);
+    const newSavRow = (extra: any) => ({
+      id: sMemberId, name: selectedM.name, gender: selectedM.gender || 'ប្រុស',
+      startCapital: '0.00', share: '0.00%', addSaving: add.toFixed(2), profit: '0',
+      withdraw: '-', deductFee: '-', actualFee: '-', total: '0.00', checked: true, ...extra,
+    });
     if (selectedM.type === 'សកម្ម') {
       const sBy = getStoredData('sof_savings_by_month', {}) || {};
       const rows = (Array.isArray(sBy[sMonth]) && sBy[sMonth].length) ? sBy[sMonth] : (savingsLiveTotals(sMonth)?.active || []);
-      sBy[sMonth] = rows.map((r: any) => (r.id === sMemberId ? { ...r, addSaving: add.toFixed(2) } : r));
+      sBy[sMonth] = rows.some((r: any) => r.id === sMemberId)
+        ? rows.map((r: any) => (r.id === sMemberId ? { ...r, addSaving: add.toFixed(2) } : r))
+        : [...rows, newSavRow({})];
       setStoredData('sof_savings_by_month', sBy);
     } else {
       const dBy = getStoredData('sof_deposit_by_month', {}) || {};
       const rows = (Array.isArray(dBy[sMonth]) && dBy[sMonth].length) ? dBy[sMonth] : (savingsLiveTotals(sMonth)?.deposit || []);
-      dBy[sMonth] = rows.map((r: any) => (r.id === sMemberId ? { ...r, addSaving: add.toFixed(2) } : r));
+      dBy[sMonth] = rows.some((r: any) => r.id === sMemberId)
+        ? rows.map((r: any) => (r.id === sMemberId ? { ...r, addSaving: add.toFixed(2) } : r))
+        : [...rows, newSavRow({ village: '0' })];
       setStoredData('sof_deposit_by_month', dBy);
     }
 
@@ -1178,10 +1187,15 @@ function DashboardGeneral() {
 
     // Repayment (principal + interest paid) → the SELECTED month's loan store.
     const lBy = getStoredData('sof_loans_by_month', {}) || {};
-    const rows = loanMonthRows(lBy, rMonth);
-    lBy[rMonth] = rows.map((r: any) => (r.id === rMemberId
-      ? { ...r, repayment: pAmt > 0 ? pAmt.toFixed(2) : '-', interestPaid: iAmt > 0 ? iAmt.toFixed(2) : '-' }
-      : r));
+    let rows = loanMonthRows(lBy, rMonth);
+    const upd = { repayment: pAmt > 0 ? pAmt.toFixed(2) : '-', interestPaid: iAmt > 0 ? iAmt.toFixed(2) : '-' };
+    rows = rows.some((r: any) => r.id === rMemberId)
+      ? rows.map((r: any) => (r.id === rMemberId ? { ...r, ...upd } : r))
+      : [...rows, {
+          id: rMemberId, name: selectedM.name, gender: selectedM.gender || 'ប្រុស',
+          loanValue: '-', interest: '-', newLoan: '-', remaining: '-', checked: true, ...upd,
+        }];
+    lBy[rMonth] = rows;
     setStoredData('sof_loans_by_month', lBy);
 
     // Success log
