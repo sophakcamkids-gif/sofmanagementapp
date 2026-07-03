@@ -4665,14 +4665,17 @@ function SettingsPage() {
   const [interestRate, setInterestRate] = useState('1.5%');
   const [telegramNotification, setTelegramNotification] = useState(true);
 
+  const [newAdminUsername, setNewAdminUsername] = useState(localStorage.getItem('adminUsername') || 'admin');
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [passwordSuccessMsg, setPasswordSuccessMsg] = useState('');
 
   const handleChangePassword = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newAdminPassword.trim() !== '') {
-      localStorage.setItem('adminPassword', newAdminPassword);
-      setPasswordSuccessMsg('ប្តូរលេខសំងាត់បានជោគជ័យ! (Password changed)');
+    let changed = false;
+    if (newAdminUsername.trim() !== '') { localStorage.setItem('adminUsername', newAdminUsername.trim()); changed = true; }
+    if (newAdminPassword.trim() !== '') { localStorage.setItem('adminPassword', newAdminPassword); changed = true; }
+    if (changed) {
+      setPasswordSuccessMsg('ប្តូរគណនី/លេខសំងាត់បានជោគជ័យ! (Saved)');
       setTimeout(() => setPasswordSuccessMsg(''), 3000);
       setNewAdminPassword('');
     }
@@ -4757,21 +4760,30 @@ function SettingsPage() {
             </div>
           )}
           <div>
-            <label className="block text-[10px] font-bold text-slate-500 mb-1">លេខសំងាត់ថ្មី (New Admin Password)</label>
-            <input 
-              type="password" 
-              value={newAdminPassword} 
-              onChange={(e) => setNewAdminPassword(e.target.value)}
+            <label className="block text-[10px] font-bold text-slate-500 mb-1">ឈ្មោះគណនីអ្នកគ្រប់គ្រង (Admin Username)</label>
+            <input
+              type="text"
+              value={newAdminUsername}
+              onChange={(e) => setNewAdminUsername(e.target.value)}
               className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:border-rose-500 outline-none"
-              placeholder="វាយបញ្ចូលលេខសំងាត់ថ្មីនៅទីនេះ..."
-              required
+              placeholder="admin"
             />
           </div>
-          <button 
-            type="submit" 
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 mb-1">លេខសំងាត់ថ្មី (New Admin Password)</label>
+            <input
+              type="password"
+              value={newAdminPassword}
+              onChange={(e) => setNewAdminPassword(e.target.value)}
+              className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:border-rose-500 outline-none"
+              placeholder="ទុកទទេ បើមិនប្តូរលេខសំងាត់..."
+            />
+          </div>
+          <button
+            type="submit"
             className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] py-2.5 rounded-xl transition-colors cursor-pointer"
           >
-            ផ្លាស់ប្តូរលេខសំងាត់ (Change Password)
+            រក្សាទុកគណនី និងលេខសំងាត់ (Save)
           </button>
         </form>
       </div>
@@ -4870,12 +4882,13 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
       navigate(`/member-report?id=${code}`);
     } else {
       const storedAdminPassword = localStorage.getItem('adminPassword') || 'admin123';
-      if (adminUsername.trim() === 'admin' && adminPassword === storedAdminPassword) {
+      const storedAdminUsername = localStorage.getItem('adminUsername') || 'admin';
+      if (adminUsername.trim() === storedAdminUsername && adminPassword === storedAdminPassword) {
         localStorage.setItem('userRole', 'admin');
         onLogin('admin', '');
         navigate('/admin');
       } else {
-        alert(`គណនីអ្នកគ្រប់គ្រងមិនត្រឹមត្រូវទេ! (គណនីសាកល្បង៖ admin / ${storedAdminPassword})`);
+        alert(`គណនីអ្នកគ្រប់គ្រងមិនត្រឹមត្រូវទេ! (គណនីសាកល្បង៖ ${storedAdminUsername} / ${storedAdminPassword})`);
       }
     }
   };
@@ -4987,7 +5000,7 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
               </div>
               
               <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-[10px] font-bold text-slate-500 leading-normal">
-                💡 គណនីសាកល្បង៖ <span className="text-rose-600 font-extrabold">admin</span> / លេខកូដ៖ <span className="text-rose-600 font-extrabold">{localStorage.getItem('adminPassword') || 'admin123'}</span>
+                💡 គណនីសាកល្បង៖ <span className="text-rose-600 font-extrabold">{localStorage.getItem('adminUsername') || 'admin'}</span> / លេខកូដ៖ <span className="text-rose-600 font-extrabold">{localStorage.getItem('adminPassword') || 'admin123'}</span>
               </div>
 
               <button type="submit" className="w-full h-11 bg-rose-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-rose-950/20 hover:bg-rose-700 transition-colors flex items-center justify-center gap-2 mt-2 text-xs sm:text-sm cursor-pointer">
