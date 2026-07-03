@@ -335,6 +335,7 @@ export default function App() {
   const [userRole, setUserRole] = useState<string | null>(localStorage.getItem('userRole'));
   const [memberId, setMemberId] = useState<string | null>(localStorage.getItem('memberId'));
   const [hydrated, setHydrated] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);  // mobile nav drawer
 
   // Clean up bad import once based on user request
   useEffect(() => {
@@ -564,7 +565,7 @@ export default function App() {
               <MessageSquare className="w-5 h-5" strokeWidth={2.5} />
               <span className="text-[9px] font-bold">សារ</span>
            </div>
-           <div className="flex flex-col items-center gap-1 text-slate-400 hover:text-[#ff6b35] transition-colors cursor-pointer shrink-0">
+           <div onClick={() => setNavOpen(true)} className="flex flex-col items-center gap-1 text-slate-400 hover:text-[#ff6b35] transition-colors cursor-pointer shrink-0">
               <Menu className="w-5 h-5" strokeWidth={2.5} />
               <span className="text-[9px] font-bold">ម៉ឺនុយ</span>
            </div>
@@ -574,6 +575,54 @@ export default function App() {
               <Bot className="w-5 h-5 text-[#0a6652]" />
            </div>
         </nav>
+
+        {/* Mobile nav drawer (opened by the ម៉ឺនុយ button) */}
+        {navOpen && userRole && (
+          <div className="lg:hidden fixed inset-0 z-[60]" onClick={() => setNavOpen(false)}>
+            <div className="absolute inset-0 bg-black/40" />
+            <div className="absolute right-0 top-0 h-full w-72 max-w-[85%] bg-white shadow-2xl p-5 flex flex-col space-y-2 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center pb-3 mb-2 border-b border-slate-100">
+                <span className="text-xs font-black text-[#0a6652] truncate">
+                  {userRole === 'admin' ? '🛡️ ផ្នែកគ្រប់គ្រង (Admin)' : `👤 សមាជិក [${memberId}]`}
+                </span>
+                <button onClick={() => setNavOpen(false)} className="text-slate-400 hover:text-slate-700 shrink-0"><X size={18} /></button>
+              </div>
+              <div onClick={() => setNavOpen(false)} className="flex flex-col space-y-2">
+                {userRole === 'admin' ? (
+                  <>
+                    <SidebarLink to="/admin" label="📊 ផ្ទាំងគ្រប់គ្រង (Dashboard)" />
+                    <SidebarLink to="/members" label="👥 ពត៌មានសមាជិក (Members)" />
+                    <SidebarLink to="/savings" label="💰 ប្រាក់សន្សំ (Savings)" />
+                    <SidebarLink to="/loans" label="🤝 ប្រាក់កម្ចី (Loans)" />
+                    <SidebarLink to="/expenses" label="💸 ការចំណាយ (Expenses)" />
+                    <SidebarLink to="/reports" label="📈 របាយការណ៍បិទបញ្ជី (Reports)" />
+                    <SidebarLink to="/history" label="📜 ប្រវត្តិប្រតិបត្តិការ (Logs)" />
+                    <SidebarLink to="/settings" label="⚙️ ការកំណត់ប្រព័ន្ធ (Settings)" />
+                  </>
+                ) : (
+                  <>
+                    <SidebarLink to={`/member-report?id=${memberId}`} label="📋 របាយការណ៍ផ្ទាល់ខ្លួន" />
+                    <SidebarLink to="/settings" label="⚙️ ការកំណត់ប្រព័ន្ធ (Settings)" />
+                  </>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  localStorage.removeItem('userRole');
+                  localStorage.removeItem('memberId');
+                  setUserRole(null);
+                  setMemberId(null);
+                  setNavOpen(false);
+                  window.location.href = '/login';
+                }}
+                className="w-full mt-4 flex items-center gap-2 px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-xl text-left font-black text-xs transition-colors cursor-pointer"
+              >
+                <LogIn size={14} className="rotate-180" />
+                <span>ចាកចេញ (Logout)</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </Router>
   );
