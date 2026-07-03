@@ -5327,12 +5327,20 @@ function MemberReport() {
       const rd = (!ra && Array.isArray(d[m])) ? d[m].find((x: any) => codeOf(x) === memberCode) : null;
       const r = ra || rd;
       if (r && (num(r.loanValue) || num(r.remaining) || num(r.newLoan) || num(r.repayment) || num(r.interest))) {
-        out.push({ seq: String(i + 1).padStart(2, '0'), monthName: m.split(' ')[0], ...r });
+        out.push({ seq: String(i + 1).padStart(2, '0'), mi: i, monthName: m.split(' ')[0], ...r });
       }
     });
     return out;
   })();
   const memberLoanSum = (f: string) => memberLoanRows.reduce((s, r) => s + num(r[f]), 0);
+  // Loan-info-card figures. Start = first month the loan was disbursed (else first activity).
+  const loanStartRow = memberLoanRows.find((r) => num(r.newLoan) > 0) || memberLoanRows[0] || null;
+  const loanStartMonthName = loanStartRow ? loanStartRow.monthName : '-';
+  const loanLastIdx = memberLoanRows.length ? memberLoanRows[memberLoanRows.length - 1].mi : 0;
+  const loanTermMonths = loanStartRow ? (loanLastIdx - loanStartRow.mi + 1) : 0;   // months from loan start → now
+  const loanPrincipalRepaid = memberLoanSum('repayment');
+  const loanInterestPaid = memberLoanSum('interestPaid');
+  const loanTotalPaid = loanPrincipalRepaid + loanInterestPaid;
 
   return (
     <PageView
@@ -6003,27 +6011,27 @@ function MemberReport() {
                 </div>
                 <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
                   <span className="text-slate-500 font-semibold">រយៈពេលនៃកម្ចី</span>
-                  <span className="font-bold text-slate-700">{repLoanTerm} {repFreq === 'weekly' ? 'សប្តាហ៍' : 'ខែ'}</span>
+                  <span className="font-bold text-slate-700">{loanTermMonths} ខែ</span>
                 </div>
                 <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
                   <span className="text-slate-500 font-semibold">អត្រាការប្រាក់</span>
-                  <span className="font-bold text-slate-700">{repLoanRate}% / {repFreq === 'weekly' ? 'សប្តាហ៍' : 'ខែ'}</span>
+                  <span className="font-bold text-slate-700">{repLoanRate}% / ខែ</span>
                 </div>
                 <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
-                  <span className="text-slate-500 font-semibold">ទឹកប្រាក់សរុបត្រូវសង</span>
-                  <span className="font-bold text-slate-700">
-                    ${(calculateSchedule().reduce((s, row) => s + row.total, 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                  </span>
+                  <span className="text-slate-500 font-semibold">ទឹកប្រាក់បង់រំលស់សរុប</span>
+                  <span className="font-bold text-slate-700">${fmtMoney(loanPrincipalRepaid)}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
-                  <span className="text-slate-500 font-semibold">ការប្រាក់សរុប</span>
-                  <span className="font-bold text-[#0a6652]">
-                    ${(calculateSchedule().reduce((s, row) => s + row.interest, 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                  </span>
+                  <span className="text-slate-500 font-semibold">ការប្រាក់បានបង់</span>
+                  <span className="font-bold text-[#0a6652]">${fmtMoney(loanInterestPaid)}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <span className="text-slate-500 font-semibold">ទឹកប្រាក់បានបង់សរុប</span>
+                  <span className="font-black text-[#0a6652]">${fmtMoney(loanTotalPaid)}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 font-semibold">កាលបរិច្ឆេទខ្ចីប្រាក់</span>
-                  <span className="font-bold text-slate-700">ថ្ងៃទី 15 ខែមករា ឆ្នាំ 2026</span>
+                  <span className="text-slate-500 font-semibold">ខែទទួលកម្ចី</span>
+                  <span className="font-bold text-slate-700">{loanStartMonthName} 2026</span>
                 </div>
               </div>
 
