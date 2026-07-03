@@ -5786,7 +5786,7 @@ function MemberReport() {
             </div>
         </div>
 
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-6 text-sm md:text-base font-bold text-slate-800">
+        <div className="relative z-10 grid grid-cols-2 gap-x-3 md:gap-x-16 gap-y-3 md:gap-y-6 text-[11px] md:text-base font-bold text-slate-800">
           <div className="flex justify-between items-end border-b border-slate-100 pb-2">
             <span className="text-slate-500 font-medium">ឈ្មោះ:</span>
             <span className="text-lg">{memberName}</span>
