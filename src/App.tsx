@@ -5065,6 +5065,29 @@ function MemberReport() {
   const [contractNum, setContractNum] = useState('MFC-2026-008');
   const [selectedReportYear, setSelectedReportYear] = useState('2026');
   const [summaryMonth, setSummaryMonth] = useState('');  // '' = auto (latest month with data)
+  // Report signature (image + name), saved per member.
+  const [sigImg, setSigImg] = useState('');
+  const [sigName, setSigName] = useState('');
+  const sigFileRef = React.useRef<HTMLInputElement>(null);
+  React.useEffect(() => {
+    const code = (localStorage.getItem('memberId') || '').toUpperCase();
+    const s = (getStoredData('sof_member_signature', {}) || {})[code] || {};
+    setSigImg(s.img || '');
+    setSigName(s.name || '');
+  }, []);
+  const saveSig = (img: string, name: string) => {
+    const code = (localStorage.getItem('memberId') || '').toUpperCase();
+    const all = getStoredData('sof_member_signature', {}) || {};
+    all[code] = { img, name };
+    setStoredData('sof_member_signature', all);
+  };
+  const handleSigUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { const img = String(reader.result); setSigImg(img); saveSig(img, sigName); };
+    reader.readAsDataURL(file);
+  };
 
   // Payment states for 'ការដាក់សន្សំ និងបង់កម្ចី' tab
   const [paymentType, setPaymentType] = useState<'savings' | 'loan'>('savings');
@@ -5820,10 +5843,41 @@ function MemberReport() {
         </div>
 
         <div className="mt-20 flex flex-col items-center md:items-end text-sm text-slate-800 relative z-10 md:pr-10">
-          <p className="mb-3 font-medium text-slate-500">ធ្វើនៅថ្ងៃទី 31 ខែឧសភា ឆ្នាំ 2023</p>
-          <p className="mb-8 font-bold text-slate-700">ហត្ថលេខាអ្នកធ្វើរបាយការណ៍</p>
-          <div className="w-40 h-20 border-b-2 border-slate-200 border-dashed relative">
-            <div className="absolute inset-0 flex items-center justify-center pb-4 text-4xl text-blue-800 font-serif -rotate-12 italic opacity-60">Rv</div>
+          <p className="mb-3 font-medium text-slate-500">ធ្វើនៅ ខែ{summaryMonthName} ឆ្នាំ {selectedReportYear}</p>
+          <p className="mb-4 font-bold text-slate-700">ហត្ថលេខាអ្នកធ្វើរបាយការណ៍</p>
+          <div className="w-48 h-20 border-b-2 border-slate-200 border-dashed relative flex items-center justify-center">
+            {sigImg
+              ? <img src={sigImg} alt="signature" className="max-h-16 max-w-full object-contain" />
+              : <span className="text-slate-300 text-[11px] no-print">មិនទាន់មានហត្ថលេខា</span>}
+          </div>
+          {sigName && <p className="mt-2 font-bold text-slate-700">{sigName}</p>}
+
+          {/* Add-signature controls (hidden when printing) */}
+          <div className="no-print mt-4 flex flex-wrap items-center justify-center gap-2">
+            <input
+              type="text"
+              value={sigName}
+              onChange={(e) => { setSigName(e.target.value); saveSig(sigImg, e.target.value); }}
+              placeholder="ឈ្មោះអ្នកធ្វើរបាយការណ៍"
+              className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-[#0a6652] w-52"
+            />
+            <button
+              type="button"
+              onClick={() => sigFileRef.current?.click()}
+              className="flex items-center gap-1.5 bg-[#0a6652] hover:bg-[#084f40] text-white font-bold text-xs px-4 py-1.5 rounded-lg cursor-pointer active:scale-95"
+            >
+              <Plus size={14} /> បន្ថែមហត្ថលេខា
+            </button>
+            {sigImg && (
+              <button
+                type="button"
+                onClick={() => { setSigImg(''); saveSig('', sigName); }}
+                className="text-xs font-bold text-rose-500 hover:text-rose-700 px-2 py-1.5 cursor-pointer"
+              >
+                លុប
+              </button>
+            )}
+            <input type="file" ref={sigFileRef} accept="image/*" className="hidden" onChange={handleSigUpload} />
           </div>
         </div>
       </div>
