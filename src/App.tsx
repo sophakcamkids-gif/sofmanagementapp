@@ -167,6 +167,16 @@ const fixedTermBalanceOf = (month: string): number => {
   }, 0);
 };
 
+// Fixed-term interest for a month = Σ(each account's own rate × its beginning balance).
+// Uses the PER-ROW rate (e.g. a closed account at 0% earns 0), NOT a flat 1% × total — and
+// never the stored `interest` field, which some months left blank. The income statement and
+// the cash-flow payout must use this SAME figure or the balance sheet drifts.
+const fixedTermInterestOf = (month: string): number => {
+  const stored = (getStoredData('sof_fixedterm_by_month', {}) || {})[month];
+  const rows = (Array.isArray(stored) && stored.length) ? stored : (FIXEDTERM_BY_MONTH[month] || []);
+  return rows.reduce((s: number, r: any) => s + (r.rate != null ? num(r.rate) : DEFAULT_RATES.fixedTerm) * num(r.startCapital), 0);
+};
+
 // Live monthly income statement — computed from this month's own data. Shared by the
 // Income report and the Savings page so the two always agree.
 function monthlyIncome(month: string) {
@@ -179,7 +189,7 @@ function monthlyIncome(month: string) {
   const otherIncome = num(snapIncome.otherIncome);
   const totalIncome = interestIncome + otherIncome;
   const depositInterestCost = DEFAULT_RATES.deposit * sumMonthOf('sof_deposit_by_month', month, 'startCapital');
-  const fixedTermInterest = DEFAULT_RATES.fixedTerm * sumMonthOf('sof_fixedterm_by_month', month, 'startCapital', FIXEDTERM_BY_MONTH);
+  const fixedTermInterest = fixedTermInterestOf(month);
   const externalLoanInterest = sumMonthOf('sof_external_received_by_month', month, 'interest');
   const grossProfit = totalIncome - depositInterestCost - fixedTermInterest - externalLoanInterest;
   const operatingExpense = sumMonthOf('sof_expenses_by_month', month, 'total', EXPENSE_BY_MONTH);
@@ -4138,7 +4148,7 @@ function Reports() {
   //   operating expense = sum of ALL expense items entered for the month.
   const incDepositInterest = DEFAULT_RATES.deposit * (depBeginSum ?? 0);
   const incExternalInterest = sumMonth('sof_external_received_by_month', 'interest') ?? 0;
-  const incFixedTermInterest = DEFAULT_RATES.fixedTerm * ftSum(selectedMonth, 'startCapital');
+  const incFixedTermInterest = fixedTermInterestOf(selectedMonth);
   const incGrossProfit = incTotalIncome - incDepositInterest - incExternalInterest - incFixedTermInterest;
   const incOperatingExpense = sumMonth('sof_expenses_by_month', 'total', EXPENSE_BY_MONTH) ?? 0;
   const incReserveAlloc = DEFAULT_RATES.reserve * incTotalIncome;   // 10% of total income
@@ -4205,9 +4215,9 @@ function Reports() {
     const withdrawDeposit = pk(wSum('sof_deposit_by_month'), 'withdrawDeposit');
     const withdrawGroup = pk(wSum('sof_group_by_month'), 'withdrawGroup');
     const withdrawFixedTerm = ftSum(month, 'withdraw');
-    // Interest paid out to fixed-term holders = the per-row interest actually accrued
-    // (respects each account's own rate, e.g. a closed account at 0%), not 1% × balance.
-    const fixedTermInterest = ftSum(month, 'interest');
+    // Interest paid out to fixed-term holders = per-row rate × beginning (respects a closed
+    // account at 0%). Same figure as the income statement so cash flow and balance sheet tie.
+    const fixedTermInterest = fixedTermInterestOf(month);
     const externalBorrowInterest = pk(sm('sof_external_received_by_month', 'interest'), 'interestPaid');
     // Principal repaid on money borrowed from outside — a real cash OUT.
     const externalBorrowRepay = pk(sm('sof_external_received_by_month', 'repayment'), 'externalBorrowRepay');
