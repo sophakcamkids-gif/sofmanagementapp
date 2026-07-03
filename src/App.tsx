@@ -6107,7 +6107,7 @@ function MemberReport() {
                 </div>
                 <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
                   <span className="text-slate-500 font-semibold">អត្រាការប្រាក់</span>
-                  <span className="font-bold text-slate-700">{(loanRatePct || num(repLoanRate)).toFixed(2)}% / ខែ</span>
+                  <span className="font-bold text-slate-700">{(loanRatePct || DEFAULT_RATES.loan * 100).toFixed(2)}% / ខែ</span>
                 </div>
                 <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
                   <span className="text-slate-500 font-semibold">ទឹកប្រាក់បង់រំលស់សរុប</span>
