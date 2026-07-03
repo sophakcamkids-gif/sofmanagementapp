@@ -5349,6 +5349,15 @@ function MemberReport() {
     const withCalc = memberLoanRows.find((r) => num(r.loanValue) && num(r.interest));
     return withCalc ? num(withCalc.interest) / num(withCalc.loanValue) * 100 : 0;
   })();
+  // Monthly summary report = the member's latest month with savings/loan data.
+  const summaryIdx = Math.max(
+    memberSavingRows.length ? memberSavingRows[memberSavingRows.length - 1].mi : -1,
+    memberLoanRows.length ? memberLoanRows[memberLoanRows.length - 1].mi : -1,
+  );
+  const sumS: any = memberSavingRows.find((r) => r.mi === summaryIdx) || {};
+  const sumL: any = memberLoanRows.find((r) => r.mi === summaryIdx) || {};
+  const summaryMonthName = summaryIdx >= 0 ? memberMonths[summaryIdx].split(' ')[0] : '';
+  const fm = (v: number) => (v ? fmtMoney(v) : '-');
 
   return (
     <PageView
@@ -5726,72 +5735,72 @@ function MemberReport() {
 
         <div className="relative z-10 text-center mb-12">
             <h3 className="inline-block text-xl md:text-2xl font-black text-blue-600 border-b-4 border-blue-600 pb-2 px-2">
-            របាយការណ៍ប្រចាំខែ{selectedMonth}
+            របាយការណ៍ប្រចាំខែ{summaryMonthName} {selectedReportYear}
             </h3>
         </div>
 
         <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-6 text-sm md:text-base font-bold text-slate-800">
           <div className="flex justify-between items-end border-b border-slate-100 pb-2">
             <span className="text-slate-500 font-medium">ឈ្មោះ:</span>
-            <span className="text-lg">ជន សុភាក់</span>
+            <span className="text-lg">{memberName}</span>
           </div>
           <div className="flex justify-between items-end border-b border-slate-100 pb-2">
             <span className="text-slate-500 font-medium">លេខ ID:</span>
-            <span className="text-lg">CM008</span>
+            <span className="text-lg">{memberCode}</span>
           </div>
-          
+
           <div className="flex justify-between items-center py-1 mt-4">
             <span className="text-slate-500 font-medium">ដើមទុនខែមុន:</span>
-            <span className="text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg"><span className="text-emerald-600/50 mr-1">$</span> 1,794.42</span>
+            <span className="text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg"><span className="text-emerald-600/50 mr-1">$</span> {fm(num(sumS.startCapital))}</span>
           </div>
           <div className="flex justify-between items-center py-1 mt-4">
             <span className="text-slate-500 font-medium">កម្ចីដើមគ្រា:</span>
-            <span className="px-3 py-1"><span className="text-slate-300 mr-1">$</span> -</span>
+            <span className="px-3 py-1"><span className="text-slate-300 mr-1">$</span> {fm(num(sumL.loanValue))}</span>
           </div>
-          
+
           <div className="flex justify-between items-center py-1">
             <span className="text-slate-500 font-medium">សន្សំក្នុងខែ:</span>
-            <span className="text-blue-600 bg-blue-50 px-3 py-1 rounded-lg"><span className="text-blue-600/50 mr-1">$</span> 10.00</span>
+            <span className="text-blue-600 bg-blue-50 px-3 py-1 rounded-lg"><span className="text-blue-600/50 mr-1">$</span> {fm(num(sumS.addSaving))}</span>
           </div>
           <div className="flex justify-between items-center py-1">
             <span className="text-slate-500 font-medium">សងត្រលប់:</span>
-            <span className="text-amber-600 px-3 py-1"><span className="text-amber-600/50 mr-1">$</span> -</span>
+            <span className="text-amber-600 px-3 py-1"><span className="text-amber-600/50 mr-1">$</span> {fm(num(sumL.repayment))}</span>
           </div>
-          
+
           <div className="flex justify-between items-center py-1">
             <span className="text-slate-500 font-medium">ប្រាក់ចំណេញ:</span>
-            <span className="text-emerald-600 px-3 py-1"><span className="text-emerald-600/50 mr-1">$</span> 0.16</span>
+            <span className="text-emerald-600 px-3 py-1"><span className="text-emerald-600/50 mr-1">$</span> {fm(num(sumS.profit))}</span>
           </div>
           <div className="flex justify-between items-center py-1">
             <span className="text-slate-500 font-medium">ការប្រាក់កម្ចី:</span>
-            <span className="text-amber-600 px-3 py-1"><span className="text-amber-600/50 mr-1">$</span> -</span>
+            <span className="text-amber-600 px-3 py-1"><span className="text-amber-600/50 mr-1">$</span> {fm(num(sumL.interest))}</span>
           </div>
-          
+
           <div className="flex justify-between items-center py-1">
             <span className="text-slate-500 font-medium">ការដកដើមទុន:</span>
-            <span className="text-rose-600 px-3 py-1"><span className="text-rose-600/50 mr-1">$</span> -</span>
+            <span className="text-rose-600 px-3 py-1"><span className="text-rose-600/50 mr-1">$</span> {fm(num(sumS.withdraw))}</span>
           </div>
           <div className="flex justify-between items-center py-1">
             <span className="text-slate-500 font-medium">កម្ចីថ្មីក្នុងខែ:</span>
-            <span className="text-indigo-600 px-3 py-1"><span className="text-indigo-600/50 mr-1">$</span> -</span>
+            <span className="text-indigo-600 px-3 py-1"><span className="text-indigo-600/50 mr-1">$</span> {fm(num(sumL.newLoan))}</span>
           </div>
-          
+
           <div className="flex justify-between items-center py-1 pt-6 border-t border-slate-100 mt-2 text-lg">
             <span className="text-slate-600 font-medium">ដើមទុនចុងគ្រា:</span>
-            <span className="text-[#0a6652]"><span className="text-[#0a6652]/50 mr-1">$</span> 1,804.58</span>
+            <span className="text-[#0a6652]"><span className="text-[#0a6652]/50 mr-1">$</span> {fm(num(sumS.total))}</span>
           </div>
           <div className="flex justify-between items-center py-1 pt-6 border-t border-slate-100 mt-2">
             <span className="text-slate-600 font-medium">កម្ចីនៅសល់:</span>
-            <span className="text-slate-800"><span className="text-slate-400 mr-1">$</span> -</span>
+            <span className="text-slate-800"><span className="text-slate-400 mr-1">$</span> {fm(num(sumL.remaining))}</span>
           </div>
-          
+
           <div className="flex justify-between items-center py-1 bg-amber-50 rounded-xl px-4 mt-2">
             <span className="text-slate-600 font-bold">ប្រាក់បានបង់:</span>
-            <span className="text-amber-700 text-lg"><span className="text-amber-700/50 mr-1">$</span> 10.00</span>
+            <span className="text-amber-700 text-lg"><span className="text-amber-700/50 mr-1">$</span> {fm(num(sumS.addSaving) + num(sumL.repayment) + num(sumL.interestPaid))}</span>
           </div>
           <div className="flex justify-between items-center py-1 mt-2">
             <span className="text-slate-500 font-medium">សមាជិកភាព:</span>
-            <span className="px-3 py-1"><span className="text-slate-300 mr-1">$</span> -</span>
+            <span className="px-3 py-1"><span className="text-slate-300 mr-1">$</span> {fm(num(sumS.actualFee))}</span>
           </div>
         </div>
 
