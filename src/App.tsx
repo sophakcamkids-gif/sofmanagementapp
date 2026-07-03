@@ -5877,16 +5877,8 @@ function MemberReport() {
             <input type="file" ref={sigFileRef} accept="image/*" className="hidden" onChange={handleSigUpload} />
           </div>
 
-          {/* Name (printed) */}
+          {/* Preparer name (shown once, on screen and print) */}
           {sigName && <p className="mt-3 font-bold text-slate-700">{sigName}</p>}
-          {/* Name editor (hidden when printing) */}
-          <input
-            type="text"
-            value={sigName}
-            onChange={(e) => { setSigName(e.target.value); saveSig(sigImg, e.target.value); }}
-            placeholder="ឈ្មោះអ្នកធ្វើរបាយការណ៍"
-            className="no-print mt-1 text-xs text-center bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-[#0a6652] w-52"
-          />
         </div>
       </div>
       )}
