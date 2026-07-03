@@ -5271,6 +5271,21 @@ function MemberReport() {
   const memberSavingsTotal = memberLatest('sof_savings_by_month', 'total') + memberLatest('sof_deposit_by_month', 'total') + memberLatest('sof_fixedterm_by_month', 'total', FIXEDTERM_BY_MONTH);
   const memberLoanTotal = memberLatest('sof_loans_by_month', 'remaining') + memberLatest('sof_loans_deposit_by_month', 'remaining');
   const memberInitials = (memberName || '').trim().split(/\s+/).map((w: string) => w[0] || '').slice(0, 2).join('') || 'JS';
+  // Savings-report rows: this member's monthly savings for the year (active or deposit).
+  const memberSavingRows = (() => {
+    const active = getStoredData('sof_savings_by_month', {}) || {};
+    const deposit = getStoredData('sof_deposit_by_month', {}) || {};
+    const out: any[] = [];
+    memberMonths.forEach((m, i) => {
+      const a = Array.isArray(active[m]) ? active[m].find((x: any) => codeOf(x) === memberCode) : null;
+      const d = (!a && Array.isArray(deposit[m])) ? deposit[m].find((x: any) => codeOf(x) === memberCode) : null;
+      const r = a || d;
+      if (r) out.push({ seq: String(i + 1).padStart(2, '0'), monthName: m.split(' ')[0], ...r });
+    });
+    return out;
+  })();
+  const memberSavingSum = (f: string) => memberSavingRows.reduce((s, r) => s + num(r[f]), 0);
+  const memberSavingClosing = memberSavingRows.length ? num(memberSavingRows[memberSavingRows.length - 1].total) : 0;
 
   return (
     <PageView
@@ -6193,51 +6208,47 @@ function MemberReport() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-300 text-[11px]">
-                  {[
-                    { id: '01', monthName: 'មករា', startCapital: 945.69, share: '1.31%', addSaving: 30.00, profit: 5.938979617, withdraw: '-', deductFee: '-', actualFee: '-', total: 981.63, note: '✓' },
-                    { id: '02', monthName: 'កុម្ភៈ', startCapital: 145.85, share: '0.20%', addSaving: 0, profit: 0.915948925, withdraw: '-', deductFee: '-', actualFee: '-', total: 146.77, note: '✓' },
-                    { id: '03', monthName: 'មីនា', startCapital: 849.78, share: '1.18%', addSaving: 5.00, profit: 5.336650621, withdraw: '-', deductFee: '-', actualFee: '-', total: 860.12, note: '✓' },
-                    { id: '04', monthName: 'មេសា', startCapital: 550.63, share: '0.77%', addSaving: 0, profit: 3.457965883, withdraw: '-', deductFee: '-', actualFee: '-', total: 554.09, note: '✓' },
-                    { id: '05', monthName: 'ឧសភា', startCapital: 433.28, share: '0.60%', addSaving: 0, profit: 2.720984666, withdraw: '-', deductFee: '-', actualFee: '-', total: 436.00, note: '✓' },
-                    { id: '06', monthName: 'មិថុនា', startCapital: 1260.05, share: '1.75%', addSaving: 0, profit: 7.913150809, withdraw: '-', deductFee: '-', actualFee: '-', total: 1267.96, note: '✓' },
-                    { id: '07', monthName: 'កក្កដា', startCapital: 465.49, share: '0.65%', addSaving: 0, profit: 2.923260657, withdraw: '-', deductFee: '-', actualFee: '-', total: 468.41, note: '✓' },
-                    { id: '08', monthName: 'សីហា', startCapital: 492.60, share: '0.68%', addSaving: 5.00, profit: 3.093531719, withdraw: '-', deductFee: '-', actualFee: '-', total: 500.69, note: '✓' },
-                  ].map((row, idx) => (
+                  {memberSavingRows.map((row: any, idx: number) => (
                     <tr key={idx} className="hover:bg-slate-50/50 transition-colors h-10">
-                      <td className="py-2 px-2 text-center border-r border-slate-300 font-bold text-slate-400">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
+                      <td className="py-2 px-2 text-center border-r border-slate-300 font-bold text-slate-400">{row.seq}</td>
                       <td className="py-2 px-3 border-r border-slate-300 font-bold text-slate-800 text-center bg-slate-50/10">{row.monthName}</td>
-                      <td className="py-2 px-3 border-r border-slate-300 text-right font-medium">{row.startCapital.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                      <td className="py-2 px-2 border-r border-slate-300 text-center font-medium text-slate-500">{row.share}</td>
+                      <td className="py-2 px-3 border-r border-slate-300 text-right font-medium">{fmtMoney(num(row.startCapital))}</td>
+                      <td className="py-2 px-2 border-r border-slate-300 text-center font-medium text-slate-500">{row.share || '-'}</td>
                       <td className="py-2 px-3 border-r border-slate-300 text-right font-semibold text-slate-700">
-                        {row.addSaving > 0 ? row.addSaving.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : <span className="text-slate-300">-</span>}
+                        {num(row.addSaving) > 0 ? fmtMoney(num(row.addSaving)) : <span className="text-slate-300">-</span>}
                       </td>
                       <td className="py-2 px-3 border-r border-slate-300 text-right font-mono text-slate-600">
-                        {row.profit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 9})}
+                        {num(row.profit) ? fmtMoney(num(row.profit)) : <span className="text-slate-300">-</span>}
                       </td>
-                      <td className="py-2 px-2 border-r border-slate-300 text-center text-slate-300">{row.withdraw}</td>
-                      <td className="py-2 px-2 border-r border-slate-300 text-center text-slate-300">{row.deductFee}</td>
-                      <td className="py-2 px-2 border-r border-slate-300 text-center text-slate-300">{row.actualFee}</td>
+                      <td className="py-2 px-2 border-r border-slate-300 text-center text-slate-300">{num(row.withdraw) ? fmtMoney(num(row.withdraw)) : '-'}</td>
+                      <td className="py-2 px-2 border-r border-slate-300 text-center text-slate-300">{num(row.deductFee) ? fmtMoney(num(row.deductFee)) : '-'}</td>
+                      <td className="py-2 px-2 border-r border-slate-300 text-center text-slate-300">{num(row.actualFee) ? fmtMoney(num(row.actualFee)) : '-'}</td>
                       <td className="py-2 px-3 border-r border-slate-300 text-right font-black text-[#0a6652] bg-[#f8fdfb]">
-                        {row.total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        {fmtMoney(num(row.total))}
                       </td>
-                      <td className="py-2 px-2 text-center font-black text-emerald-600 text-xs">{row.note}</td>
+                      <td className="py-2 px-2 text-center font-black text-emerald-600 text-xs">✓</td>
                     </tr>
                   ))}
+                  {memberSavingRows.length === 0 && (
+                    <tr><td colSpan={11} className="py-6 text-center text-slate-400 font-medium">គ្មានទិន្នន័យសន្សំសម្រាប់ឆ្នាំ{selectedReportYear}</td></tr>
+                  )}
 
                   {/* Summary Totals Row */}
+                  {memberSavingRows.length > 0 && (
                   <tr className="bg-emerald-50/60 font-bold border-t-2 border-slate-300 text-slate-900 text-[11px] h-11">
                     <td className="py-2.5 px-3 text-center border-r border-slate-300 font-bold">-</td>
                     <td className="py-2.5 px-3 border-r border-slate-300 text-center font-extrabold text-[#0a6652]">សរុប</td>
-                    <td className="py-2.5 px-3 border-r border-slate-300 text-right font-black text-slate-800">5,143.37</td>
-                    <td className="py-2.5 px-2 border-r border-slate-300 text-center font-bold text-slate-600">7.14%</td>
-                    <td className="py-2.5 px-3 border-r border-slate-300 text-right font-bold text-slate-800">40.00</td>
-                    <td className="py-2.5 px-3 border-r border-slate-300 text-right font-mono font-bold text-slate-600">32.300472897</td>
-                    <td className="py-2.5 px-2 border-r border-slate-300 text-center text-slate-300">-</td>
-                    <td className="py-2.5 px-2 border-r border-slate-300 text-center text-slate-300">-</td>
-                    <td className="py-2.5 px-2 border-r border-slate-300 text-center text-slate-300">-</td>
-                    <td className="py-2.5 px-3 border-r border-slate-300 text-right font-black text-[#0a6652] bg-emerald-50">5,215.67</td>
+                    <td className="py-2.5 px-3 border-r border-slate-300 text-right font-black text-slate-800">{fmtMoney(memberSavingSum('startCapital'))}</td>
+                    <td className="py-2.5 px-2 border-r border-slate-300 text-center font-bold text-slate-600">-</td>
+                    <td className="py-2.5 px-3 border-r border-slate-300 text-right font-bold text-slate-800">{fmtMoney(memberSavingSum('addSaving'))}</td>
+                    <td className="py-2.5 px-3 border-r border-slate-300 text-right font-mono font-bold text-slate-600">{fmtMoney(memberSavingSum('profit'))}</td>
+                    <td className="py-2.5 px-2 border-r border-slate-300 text-center text-slate-300">{memberSavingSum('withdraw') ? fmtMoney(memberSavingSum('withdraw')) : '-'}</td>
+                    <td className="py-2.5 px-2 border-r border-slate-300 text-center text-slate-300">{memberSavingSum('deductFee') ? fmtMoney(memberSavingSum('deductFee')) : '-'}</td>
+                    <td className="py-2.5 px-2 border-r border-slate-300 text-center text-slate-300">{memberSavingSum('actualFee') ? fmtMoney(memberSavingSum('actualFee')) : '-'}</td>
+                    <td className="py-2.5 px-3 border-r border-slate-300 text-right font-black text-[#0a6652] bg-emerald-50">{fmtMoney(memberSavingClosing)}</td>
                     <td className="py-2.5 px-2 text-center text-slate-300">-</td>
                   </tr>
+                  )}
                 </tbody>
               </table>
             </div>
