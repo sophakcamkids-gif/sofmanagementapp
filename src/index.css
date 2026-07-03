@@ -159,24 +159,25 @@ body {
     box-shadow: none !important;
   }
 
-  /* Fit the member report onto ONE A4 page: strip the card chrome and shrink the
-     large vertical spacing so the signature stays on page 1. */
-  @page { size: A4; margin: 9mm; }
+  /* Fit the member report onto ONE A4 page: strip the card chrome, shrink the large
+     vertical spacing, and zoom the whole sheet down proportionally (WebKit/iOS). */
+  @page { size: A4; margin: 8mm; }
   .report-sheet {
+    zoom: 0.62;
     padding: 0 !important;
     box-shadow: none !important;
     border: none !important;
     border-radius: 0 !important;
     max-width: 100% !important;
   }
-  .report-sheet .mt-20 { margin-top: 1.25rem !important; }
-  .report-sheet .mt-12 { margin-top: 0.6rem !important; }
-  .report-sheet .mb-12 { margin-bottom: 0.6rem !important; }
-  .report-sheet .mb-10 { margin-bottom: 0.5rem !important; }
-  .report-sheet .mb-8  { margin-bottom: 0.4rem !important; }
-  .report-sheet .pb-8  { padding-bottom: 0.4rem !important; }
-  .report-sheet .pt-6  { padding-top: 0.35rem !important; }
-  .report-sheet .gap-y-6 { row-gap: 0.45rem !important; }
+  .report-sheet .mt-20 { margin-top: 1rem !important; }
+  .report-sheet .mt-12 { margin-top: 0.5rem !important; }
+  .report-sheet .mb-12 { margin-bottom: 0.5rem !important; }
+  .report-sheet .mb-10 { margin-bottom: 0.4rem !important; }
+  .report-sheet .mb-8  { margin-bottom: 0.35rem !important; }
+  .report-sheet .pb-8  { padding-bottom: 0.35rem !important; }
+  .report-sheet .pt-6  { padding-top: 0.3rem !important; }
+  .report-sheet .gap-y-6 { row-gap: 0.4rem !important; }
   .report-sheet .py-1 { padding-top: 0.1rem !important; padding-bottom: 0.1rem !important; }
   .report-sheet .w-24 { width: 4rem !important; }
   .report-sheet .h-24 { height: 4rem !important; }
