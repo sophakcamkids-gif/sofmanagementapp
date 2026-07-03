@@ -5057,10 +5057,10 @@ function MemberReport() {
   const [repBorrower, setRepBorrower] = useState('ជន សុភាក់');
   const [repBorrowerId, setRepBorrowerId] = useState('CM008');
   const [repPhone, setRepPhone] = useState('012 345 678');
-  const [repGuarantor1, setRepGuarantor1] = useState('ណុល សុខា');
-  const [repGuarantor1Id, setRepGuarantor1Id] = useState('CM012');
-  const [repGuarantor2, setRepGuarantor2] = useState('សឿន សំបូរ');
-  const [repGuarantor2Id, setRepGuarantor2Id] = useState('CM024');
+  const [repGuarantor1, setRepGuarantor1] = useState('');
+  const [repGuarantor1Id, setRepGuarantor1Id] = useState('');
+  const [repGuarantor2, setRepGuarantor2] = useState('');
+  const [repGuarantor2Id, setRepGuarantor2Id] = useState('');
   const [repFreq, setRepFreq] = useState<'monthly' | 'weekly'>('weekly'); // they say 'អាទិត្យ' in sheet, so let's support both but default 'weekly'!
   const [contractNum, setContractNum] = useState('MFC-2026-008');
   const [selectedReportYear, setSelectedReportYear] = useState('2026');
@@ -5097,6 +5097,31 @@ function MemberReport() {
       proofImg: 'https://i.ibb.co/xtBGLWX7/708852725-868075986313154-5636381465848274787-n.jpg'
     }
   ]);
+
+  // Pre-fill the loan report with the logged-in member's live borrower + loan details.
+  React.useEffect(() => {
+    const code = (localStorage.getItem('memberId') || '').toUpperCase();
+    if (!code) return;
+    const cOf = (r: any) => { const s = String(r?.id ?? r?.code ?? ''); return (s.includes(' ') ? s.split(' ').pop() : s || '').toUpperCase(); };
+    const lists = [getStoredData('sof_member_list_data', []) || [], getStoredData('sof_profile_data', DEFAULT_PROFILE_DATA) || [], getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA) || []];
+    let name = '';
+    for (const list of lists) { const m = list.find((x: any) => cOf(x) === code); if (m) { name = m.name || ''; break; } }
+    const mths = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
+    let loanAmt = 0, loanRate = 0;
+    for (const key of ['sof_loans_by_month', 'sof_loans_deposit_by_month']) {
+      const by = getStoredData(key, {}) || {};
+      for (let i = mths.length - 1; i >= 0; i--) {
+        const rows = by[mths[i]];
+        if (Array.isArray(rows)) { const r = rows.find((x: any) => cOf(x) === code); if (r) { loanAmt = num(r.remaining) || num(r.loanValue); loanRate = num(r.rate); break; } }
+      }
+      if (loanAmt) break;
+    }
+    if (name) setRepBorrower(name);
+    setRepBorrowerId(code);
+    setRepLoanAmt(loanAmt.toFixed(2));
+    if (loanRate) setRepLoanRate(loanRate);
+    setContractNum(`SOF-2026-${code}`);
+  }, []);
 
   const calculateSchedule = () => {
     const amt = parseFloat(repLoanAmt) || 0;
