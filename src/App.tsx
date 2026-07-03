@@ -5313,7 +5313,7 @@ function MemberReport() {
       const a = Array.isArray(active[m]) ? active[m].find((x: any) => codeOf(x) === memberCode) : null;
       const d = (!a && Array.isArray(deposit[m])) ? deposit[m].find((x: any) => codeOf(x) === memberCode) : null;
       const r = a || d;
-      if (r) out.push({ seq: String(i + 1).padStart(2, '0'), monthName: m.split(' ')[0], ...r });
+      if (r) out.push({ seq: String(i + 1).padStart(2, '0'), mi: i, monthName: m.split(' ')[0], ...r });
     });
     return out;
   })();
