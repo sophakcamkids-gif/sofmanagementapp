@@ -5341,6 +5341,13 @@ function MemberReport() {
   const loanPrincipalRepaid = memberLoanSum('repayment');
   const loanInterestPaid = memberLoanSum('interestPaid');
   const loanTotalPaid = loanPrincipalRepaid + loanInterestPaid;
+  // Rate for the info card = same as the table (entered rate, else interest ÷ beginning).
+  const loanRatePct = (() => {
+    const withRate = memberLoanRows.find((r) => num(r.rate));
+    if (withRate) return num(withRate.rate);
+    const withCalc = memberLoanRows.find((r) => num(r.loanValue) && num(r.interest));
+    return withCalc ? num(withCalc.interest) / num(withCalc.loanValue) * 100 : 0;
+  })();
 
   return (
     <PageView
@@ -6032,7 +6039,7 @@ function MemberReport() {
                 </div>
                 <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
                   <span className="text-slate-500 font-semibold">អត្រាការប្រាក់</span>
-                  <span className="font-bold text-slate-700">{repLoanRate}% / ខែ</span>
+                  <span className="font-bold text-slate-700">{(loanRatePct || num(repLoanRate)).toFixed(2)}% / ខែ</span>
                 </div>
                 <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
                   <span className="text-slate-500 font-semibold">ទឹកប្រាក់បង់រំលស់សរុប</span>
