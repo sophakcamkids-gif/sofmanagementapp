@@ -5064,6 +5064,7 @@ function MemberReport() {
   const [repFreq, setRepFreq] = useState<'monthly' | 'weekly'>('weekly'); // they say 'អាទិត្យ' in sheet, so let's support both but default 'weekly'!
   const [contractNum, setContractNum] = useState('MFC-2026-008');
   const [selectedReportYear, setSelectedReportYear] = useState('2026');
+  const [summaryMonth, setSummaryMonth] = useState('');  // '' = auto (latest month with data)
 
   // Payment states for 'ការដាក់សន្សំ និងបង់កម្ចី' tab
   const [paymentType, setPaymentType] = useState<'savings' | 'loan'>('savings');
@@ -5349,14 +5350,16 @@ function MemberReport() {
     const withCalc = memberLoanRows.find((r) => num(r.loanValue) && num(r.interest));
     return withCalc ? num(withCalc.interest) / num(withCalc.loanValue) * 100 : 0;
   })();
-  // Monthly summary report = the member's latest month with savings/loan data.
-  const summaryIdx = Math.max(
+  // Monthly summary report = the chosen month, or the latest month with savings/loan data.
+  const KHMER_MONTHS = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
+  const summaryIdxAuto = Math.max(
     memberSavingRows.length ? memberSavingRows[memberSavingRows.length - 1].mi : -1,
     memberLoanRows.length ? memberLoanRows[memberLoanRows.length - 1].mi : -1,
   );
+  const summaryIdx = summaryMonth ? KHMER_MONTHS.indexOf(summaryMonth) : summaryIdxAuto;
   const sumS: any = memberSavingRows.find((r) => r.mi === summaryIdx) || {};
   const sumL: any = memberLoanRows.find((r) => r.mi === summaryIdx) || {};
-  const summaryMonthName = summaryIdx >= 0 ? memberMonths[summaryIdx].split(' ')[0] : '';
+  const summaryMonthName = summaryIdx >= 0 ? KHMER_MONTHS[summaryIdx] : '';
   const fm = (v: number) => (v ? fmtMoney(v) : '-');
 
   return (
@@ -5737,6 +5740,18 @@ function MemberReport() {
             <h3 className="inline-block text-xl md:text-2xl font-black text-blue-600 border-b-4 border-blue-600 pb-2 px-2">
             របាយការណ៍ប្រចាំខែ{summaryMonthName} {selectedReportYear}
             </h3>
+            <div className="no-print flex items-center justify-center gap-1.5 mt-4">
+              <span className="text-[10px] font-bold text-slate-400">ជ្រើសរើសខែ៖</span>
+              <select
+                value={summaryMonthName}
+                onChange={(e) => setSummaryMonth(e.target.value)}
+                className="text-[11px] font-extrabold bg-slate-50 border border-slate-200 rounded-full px-3 py-1 text-slate-700 outline-none cursor-pointer shadow-sm"
+              >
+                {KHMER_MONTHS.map((m) => (
+                  <option key={m} value={m}>{m} {selectedReportYear}</option>
+                ))}
+              </select>
+            </div>
         </div>
 
         <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-6 text-sm md:text-base font-bold text-slate-800">
