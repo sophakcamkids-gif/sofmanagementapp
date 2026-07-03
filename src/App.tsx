@@ -159,12 +159,19 @@ const sumMonthOf = (key: string, month: string, field: string, def: any = {}): n
 // partial rows left `total` blank — so the balance sheet/dashboard are never empty.
 // Falls back to the seeded Jan–May figures when a month has no stored rows.
 const fixedTermBalanceOf = (month: string): number => {
-  const stored = (getStoredData('sof_fixedterm_by_month', {}) || {})[month];
-  const rows = (Array.isArray(stored) && stored.length) ? stored : (FIXEDTERM_BY_MONTH[month] || []);
-  return rows.reduce((s: number, r: any) => {
+  const by = getStoredData('sof_fixedterm_by_month', {}) || {};
+  const sumRows = (rows: any[]) => rows.reduce((s: number, r: any) => {
     const t = num(r.total);
     return s + (t || (num(r.startCapital) + num(r.addSaving) - num(r.withdraw)));
   }, 0);
+  // Carry forward: the target month's rows, else the most recent earlier month with data.
+  const idx = MONTHS_2026.indexOf(month);
+  for (let i = (idx < 0 ? MONTHS_2026.length - 1 : idx); i >= 0; i--) {
+    const m = MONTHS_2026[i];
+    if (Array.isArray(by[m]) && by[m].length) return sumRows(by[m]);
+    if (Array.isArray(FIXEDTERM_BY_MONTH[m]) && FIXEDTERM_BY_MONTH[m].length) return sumRows(FIXEDTERM_BY_MONTH[m]);
+  }
+  return 0;
 };
 
 // Fixed-term interest for a month = Σ(each account's own rate × its beginning balance).
