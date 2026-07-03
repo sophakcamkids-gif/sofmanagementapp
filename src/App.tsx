@@ -5765,7 +5765,7 @@ function MemberReport() {
           </div>
 
           <div className="flex justify-between items-center py-1 mt-4">
-            <span className="text-slate-500 font-medium">ដើមទុនខែមុន:</span>
+            <span className="text-slate-500 font-medium">ទុនសន្សំសរុបដើមគ្រា:</span>
             <span className="text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg"><span className="text-emerald-600/50 mr-1">$</span> {fm(num(sumS.startCapital))}</span>
           </div>
           <div className="flex justify-between items-center py-1 mt-4">
