@@ -4083,6 +4083,22 @@ function Reports() {
   };
   const carrySum = (key: string, field: string, def: any = {}) =>
     carryRows(key, def).reduce((s: number, r: any) => s + num(r[field]), 0);
+  // Outstanding loan balance = the first funded month's `remaining` + Σ(newLoan − repayment)
+  // for every later month, up to the selected one. This DERIVES the balance from the same
+  // flows the cash-flow statement uses, so the two always tie — even when a stored
+  // `remaining` cell went stale (e.g. a later month not recomputed after an earlier edit).
+  const carryChain = (key: string) => {
+    const by = getStoredData(key, {}) || {};
+    const idx = months.indexOf(selectedMonth);
+    let bal = 0; let started = false;
+    for (let i = 0; i <= idx; i++) {
+      const rows = by[months[i]];
+      if (!Array.isArray(rows) || !rows.length) continue;
+      if (!started) { bal = rows.reduce((s: number, r: any) => s + num(r.remaining), 0); started = true; }
+      else { bal += rows.reduce((s: number, r: any) => s + num(r.newLoan) - num(r.repayment), 0); }
+    }
+    return bal;
+  };
   const carryGroup = (needle: string) => {
     const g = carryRows('sof_group_by_month').find((r: any) => (r.name || '').includes(needle));
     return g ? num(g.total) : 0;
@@ -4113,9 +4129,9 @@ function Reports() {
   const bsMemberSavings = liveSav ? sumTotal(liveSav.active) : carrySum('sof_savings_by_month', 'total');
   const bsDepositSavings = liveSav ? sumTotal(liveSav.deposit) : carrySum('sof_deposit_by_month', 'total');
   const bsFixedTerm = carryFixedTerm();
-  const bsLoansMembers = carrySum('sof_loans_by_month', 'remaining');
-  const bsLoansExternal = carrySum('sof_external_provided_by_month', 'remaining');
-  const bsExternalBorrow = carrySum('sof_external_received_by_month', 'remaining');
+  const bsLoansMembers = carryChain('sof_loans_by_month');
+  const bsLoansExternal = carryChain('sof_external_provided_by_month');
+  const bsExternalBorrow = carryChain('sof_external_received_by_month');
   const bsReserve = liveSav ? liveGroupTotal('បម្រុង') : carryGroup('បម្រុង');
   const bsSocial = liveSav ? liveGroupTotal('សង្គម') : carryGroup('សង្គម');
   const bsYes = liveSav ? liveGroupTotal('យេស') : carryGroup('យេស');
