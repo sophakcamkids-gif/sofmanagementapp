@@ -5239,6 +5239,39 @@ function MemberReport() {
     setConfirmPassword('');
   };
 
+  // ---- Live data for the logged-in member ----
+  const memberCode = (localStorage.getItem('memberId') || '').toUpperCase();
+  const codeOf = (r: any) => { const s = String(r?.id ?? r?.code ?? ''); return (s.includes(' ') ? s.split(' ').pop() : s || '').toUpperCase(); };
+  const memberMonths = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
+  const memberProfile = (() => {
+    const lists = [
+      getStoredData('sof_member_list_data', []) || [],
+      getStoredData('sof_profile_data', DEFAULT_PROFILE_DATA) || [],
+      getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA) || [],
+    ];
+    for (const list of lists) {
+      const m = list.find((x: any) => codeOf(x) === memberCode || String(x.code || '').toUpperCase() === memberCode);
+      if (m) return m;
+    }
+    return null;
+  })();
+  const memberName = (memberProfile && memberProfile.name) || repBorrower;
+  // Latest month in which this member has a row in the given by-month store.
+  const memberLatest = (key: string, field: string, seed?: any) => {
+    const by = getStoredData(key, seed || {}) || {};
+    for (let i = memberMonths.length - 1; i >= 0; i--) {
+      const rows = by[memberMonths[i]];
+      if (Array.isArray(rows)) {
+        const r = rows.find((x: any) => codeOf(x) === memberCode);
+        if (r) return num(r[field]);
+      }
+    }
+    return 0;
+  };
+  const memberSavingsTotal = memberLatest('sof_savings_by_month', 'total') + memberLatest('sof_deposit_by_month', 'total') + memberLatest('sof_fixedterm_by_month', 'total', FIXEDTERM_BY_MONTH);
+  const memberLoanTotal = memberLatest('sof_loans_by_month', 'remaining') + memberLatest('sof_loans_deposit_by_month', 'remaining');
+  const memberInitials = (memberName || '').trim().split(/\s+/).map((w: string) => w[0] || '').slice(0, 2).join('') || 'JS';
+
   return (
     <PageView
       title={activeTab === 'dashboard' ? "ព័ត៌មានផ្ទាល់ខ្លួន" : activeTab}
@@ -5258,30 +5291,30 @@ function MemberReport() {
             
             <div className="relative z-10 flex items-center gap-3">
               <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center font-black text-base border border-white/30 shadow-sm shrink-0">
-                JS
+                {memberInitials}
               </div>
               <div>
                 <p className="text-[9px] text-emerald-200 font-extrabold tracking-wider uppercase leading-none mb-1">ស្វាគមន៍សមាជិក</p>
-                <h3 className="text-base font-bold tracking-tight leading-none mb-1.5">ជន សុភាក់</h3>
+                <h3 className="text-base font-bold tracking-tight leading-none mb-1.5">{memberName}</h3>
                 <div className="flex flex-wrap gap-1">
-                  <span className="bg-white/15 px-1.5 py-0.5 rounded-full text-[8px] font-bold">ID: CM008</span>
+                  <span className="bg-white/15 px-1.5 py-0.5 rounded-full text-[8px] font-bold">ID: {memberCode}</span>
                   <span className="bg-emerald-900/40 px-1.5 py-0.5 rounded-full text-[8px] font-bold">សកម្មភាពជានិច្ច</span>
                 </div>
               </div>
             </div>
-            
+
             <div className="relative z-10 mt-5 pt-4 border-t border-white/10 grid grid-cols-3 gap-1 divide-x divide-white/10 text-center">
               <div className="px-1 text-left">
                 <span className="text-[9px] text-emerald-200/90 font-bold block leading-tight">ប្រាក់សន្សំសរុប</span>
-                <p className="text-sm font-black mt-1 tracking-tight">$ 1,804.58</p>
+                <p className="text-sm font-black mt-1 tracking-tight">$ {fmtMoney(memberSavingsTotal)}</p>
               </div>
               <div className="px-1 text-left pl-2">
                 <span className="text-[9px] text-emerald-200/90 font-bold block leading-tight">កម្ចីសរុប</span>
-                <p className="text-sm font-black mt-1 tracking-tight">$ 0.00</p>
+                <p className="text-sm font-black mt-1 tracking-tight">$ {fmtMoney(memberLoanTotal)}</p>
               </div>
               <div className="px-1 text-left pl-2">
                 <span className="text-[9px] text-emerald-200/90 font-bold block leading-tight">តុល្យការដើមទុន</span>
-                <p className="text-sm font-black mt-1 tracking-tight">$ 1,804.58</p>
+                <p className="text-sm font-black mt-1 tracking-tight">$ {fmtMoney(memberSavingsTotal - memberLoanTotal)}</p>
               </div>
             </div>
           </div>
