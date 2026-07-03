@@ -5851,21 +5851,21 @@ function MemberReport() {
           </div>
         </div>
 
-        <div className="mt-20 flex flex-col items-center md:items-end text-sm text-slate-800 relative z-10 md:pr-10">
+        <div className="mt-20 flex flex-col items-center text-center text-sm text-slate-800 relative z-10">
           <p className="mb-3 font-medium text-slate-500">ធ្វើនៅ​ភ្នំពេញ ថ្ងៃទី {toKhmerNum(summaryLastDay)} ខែ{summaryMonthName} ឆ្នាំ {toKhmerNum(selectedReportYear)}</p>
-          <p className="mb-2 font-bold text-slate-700">ហត្ថលេខាអ្នកធ្វើរបាយការណ៍</p>
+          <p className="mb-1 font-bold text-slate-700">ហត្ថលេខាអ្នកធ្វើរបាយការណ៍</p>
           {/* Signature — click the area to add/replace it on screen (no button). */}
           <div
             onClick={() => sigFileRef.current?.click()}
             title="ចុចដើម្បីបញ្ចូល/ប្តូរហត្ថលេខា"
-            className="w-48 h-20 flex items-center justify-center cursor-pointer"
+            className="w-48 h-16 flex items-end justify-center cursor-pointer"
           >
             {sigImg
               ? <img src={sigImg} alt="signature" className="max-h-16 max-w-full object-contain" />
               : <span className="text-slate-300 text-[11px] no-print">ចុចដើម្បីបញ្ចូលហត្ថលេខា</span>}
           </div>
 
-          {/* Preparer name — directly below the signature */}
+          {/* Preparer name — tight under the signature */}
           {sigName && <p className="font-bold text-slate-700">{sigName}</p>}
 
           {/* Small remove link (screen only, when a signature exists) */}
