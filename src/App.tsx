@@ -5107,14 +5107,20 @@ function MemberReport() {
     let name = '';
     for (const list of lists) { const m = list.find((x: any) => cOf(x) === code); if (m) { name = m.name || ''; break; } }
     const mths = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
+    // Scan every month and take the member's peak recorded loan (a loan that was
+    // outstanding in an earlier month still shows, even if the latest month is 0).
     let loanAmt = 0, loanRate = 0;
     for (const key of ['sof_loans_by_month', 'sof_loans_deposit_by_month']) {
       const by = getStoredData(key, {}) || {};
-      for (let i = mths.length - 1; i >= 0; i--) {
-        const rows = by[mths[i]];
-        if (Array.isArray(rows)) { const r = rows.find((x: any) => cOf(x) === code); if (r) { loanAmt = num(r.remaining) || num(r.loanValue); loanRate = num(r.rate); break; } }
+      for (const m of mths) {
+        const rows = by[m];
+        if (!Array.isArray(rows)) continue;
+        const r = rows.find((x: any) => cOf(x) === code);
+        if (!r) continue;
+        const val = Math.max(num(r.remaining), num(r.loanValue), num(r.newLoan));
+        if (val > loanAmt) loanAmt = val;
+        if (num(r.rate)) loanRate = num(r.rate);
       }
-      if (loanAmt) break;
     }
     if (name) setRepBorrower(name);
     setRepBorrowerId(code);
@@ -5311,6 +5317,22 @@ function MemberReport() {
   })();
   const memberSavingSum = (f: string) => memberSavingRows.reduce((s, r) => s + num(r[f]), 0);
   const memberSavingClosing = memberSavingRows.length ? num(memberSavingRows[memberSavingRows.length - 1].total) : 0;
+  // Loan-report rows: this member's monthly loan progression (active or deposit-member loans).
+  const memberLoanRows = (() => {
+    const a = getStoredData('sof_loans_by_month', {}) || {};
+    const d = getStoredData('sof_loans_deposit_by_month', {}) || {};
+    const out: any[] = [];
+    memberMonths.forEach((m, i) => {
+      const ra = Array.isArray(a[m]) ? a[m].find((x: any) => codeOf(x) === memberCode) : null;
+      const rd = (!ra && Array.isArray(d[m])) ? d[m].find((x: any) => codeOf(x) === memberCode) : null;
+      const r = ra || rd;
+      if (r && (num(r.loanValue) || num(r.remaining) || num(r.newLoan) || num(r.repayment) || num(r.interest))) {
+        out.push({ seq: String(i + 1).padStart(2, '0'), monthName: m.split(' ')[0], ...r });
+      }
+    });
+    return out;
+  })();
+  const memberLoanSum = (f: string) => memberLoanRows.reduce((s, r) => s + num(r[f]), 0);
 
   return (
     <PageView
@@ -6085,64 +6107,48 @@ function MemberReport() {
               <table className="w-full text-xs text-left text-slate-700 border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                    <th className="py-2.5 px-3 text-center border-r border-slate-200 w-12 text-center">ល.រ</th>
-                    <th className="py-2.5 px-3 border-r border-slate-200 w-28">ខែ</th>
-                    <th className="py-2.5 px-3 border-r border-slate-200">កាលបរិច្ឆេទ</th>
-                    <th className="py-2.5 px-3 border-r border-slate-200 text-right">ទឹកប្រាក់បានបង់សរុប</th>
+                    <th className="py-2.5 px-3 text-center border-r border-slate-200 w-12">ល.រ</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200 w-20">ខែ</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200 text-right">កម្ចីដើមគ្រា</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200 text-center">អត្រាការប្រាក់</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200 text-right">ការប្រាក់ត្រូវបង់</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200 text-right">បង់រំលស់ដើម</th>
                     <th className="py-2.5 px-3 border-r border-slate-200 text-right">ការប្រាក់បានបង់</th>
-                    <th className="py-2.5 px-3 border-r border-slate-200 text-right">កម្ចីបានរំលស់</th>
-                    <th className="py-2.5 px-3 text-right">តុល្យការកម្ចី</th>
+                    <th className="py-2.5 px-3 border-r border-slate-200 text-right">កម្ចីថ្មី</th>
+                    <th className="py-2.5 px-3 text-right">កម្ចីនៅសល់</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 divide-dashed">
-                  {/* Totals helper display Row at zero status before calculations */}
-                  <tr className="bg-slate-50/50 text-[11px] font-bold text-slate-500">
-                    <td colSpan={6} className="py-2 px-3 text-right border-r border-slate-200">
-                      សរុបដើមទុន
-                    </td>
-                    <td className="py-2 px-3 text-right font-black text-rose-600">
-                      ${(parseFloat(repLoanAmt) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                    </td>
-                  </tr>
-
-                  {calculateSchedule().map((row, idx) => (
+                  {memberLoanRows.map((row: any, idx: number) => (
                     <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="py-2.5 px-3 text-center border-r border-slate-100 font-bold text-slate-400">{row.num}</td>
-                      <td className="py-2.5 px-3 border-r border-slate-100 font-bold text-[#0a6652]/90">
-                        {row.monthName}
-                      </td>
-                      <td className="py-2.5 px-3 border-r border-slate-100 font-semibold">{row.dueDate}</td>
-                      <td className="py-2.5 px-3 border-r border-slate-100 text-right font-black text-[#0a6652]">
-                        ${row.total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                      </td>
-                      <td className="py-2.5 px-3 border-r border-slate-100 text-right font-bold text-amber-600">
-                        ${row.interest.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                      </td>
-                      <td className="py-2.5 px-3 border-r border-slate-100 text-right font-bold text-slate-600">
-                        ${row.principal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-bold text-slate-500">
-                        ${row.balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                      </td>
+                      <td className="py-2.5 px-3 text-center border-r border-slate-100 font-bold text-slate-400">{row.seq}</td>
+                      <td className="py-2.5 px-3 border-r border-slate-100 font-bold text-[#0a6652]/90">{row.monthName}</td>
+                      <td className="py-2.5 px-3 border-r border-slate-100 text-right font-semibold">${fmtMoney(num(row.loanValue))}</td>
+                      <td className="py-2.5 px-3 border-r border-slate-100 text-center text-slate-500">{num(row.rate) ? `${num(row.rate)}%` : '-'}</td>
+                      <td className="py-2.5 px-3 border-r border-slate-100 text-right font-bold text-amber-600">{num(row.interest) ? '$' + fmtMoney(num(row.interest)) : '-'}</td>
+                      <td className="py-2.5 px-3 border-r border-slate-100 text-right font-bold text-slate-600">{num(row.repayment) ? '$' + fmtMoney(num(row.repayment)) : '-'}</td>
+                      <td className="py-2.5 px-3 border-r border-slate-100 text-right font-bold text-emerald-600">{num(row.interestPaid) ? '$' + fmtMoney(num(row.interestPaid)) : '-'}</td>
+                      <td className="py-2.5 px-3 border-r border-slate-100 text-right font-bold text-indigo-600">{num(row.newLoan) ? '$' + fmtMoney(num(row.newLoan)) : '-'}</td>
+                      <td className="py-2.5 px-3 text-right font-black text-[#0a6652]">${fmtMoney(num(row.remaining))}</td>
                     </tr>
                   ))}
+                  {memberLoanRows.length === 0 && (
+                    <tr><td colSpan={9} className="py-6 text-center text-slate-400 font-medium">គ្មានទិន្នន័យកម្ចីសម្រាប់សមាជិកនេះ</td></tr>
+                  )}
 
-                  {/* Summary Totals Row */}
+                  {memberLoanRows.length > 0 && (
                   <tr className="bg-slate-50 font-bold border-t border-slate-200 text-slate-800">
                     <td className="py-3 px-3 text-center border-r border-slate-200">-</td>
-                    <td className="py-3 px-3 border-r border-slate-200">សរុបសង</td>
-                    <td className="py-3 px-3 border-r border-slate-200">-</td>
-                    <td className="py-3 px-3 border-r border-slate-200 text-right font-black text-[#0a6652]">
-                      ${calculateSchedule().reduce((s, row) => s + row.total, 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                    </td>
-                    <td className="py-3 px-3 border-r border-slate-200 text-right font-extrabold text-amber-600">
-                      ${calculateSchedule().reduce((s, row) => s + row.interest, 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                    </td>
-                    <td className="py-3 px-3 border-r border-slate-200 text-right font-extrabold text-slate-700">
-                      ${calculateSchedule().reduce((s, row) => s + row.principal, 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                    </td>
-                    <td className="py-3 px-3 text-right font-black text-slate-400">$0.00</td>
+                    <td className="py-3 px-3 border-r border-slate-200 font-extrabold text-[#0a6652]">សរុប</td>
+                    <td className="py-3 px-3 border-r border-slate-200 text-right">-</td>
+                    <td className="py-3 px-3 border-r border-slate-200 text-center">-</td>
+                    <td className="py-3 px-3 border-r border-slate-200 text-right font-extrabold text-amber-600">${fmtMoney(memberLoanSum('interest'))}</td>
+                    <td className="py-3 px-3 border-r border-slate-200 text-right font-extrabold text-slate-700">${fmtMoney(memberLoanSum('repayment'))}</td>
+                    <td className="py-3 px-3 border-r border-slate-200 text-right font-extrabold text-emerald-700">${fmtMoney(memberLoanSum('interestPaid'))}</td>
+                    <td className="py-3 px-3 border-r border-slate-200 text-right font-extrabold text-indigo-700">${fmtMoney(memberLoanSum('newLoan'))}</td>
+                    <td className="py-3 px-3 text-right font-black text-[#0a6652]">${fmtMoney(memberLoanRows.length ? num(memberLoanRows[memberLoanRows.length - 1].remaining) : 0)}</td>
                   </tr>
+                  )}
                 </tbody>
               </table>
             </div>
