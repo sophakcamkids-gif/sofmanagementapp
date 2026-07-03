@@ -4819,6 +4819,14 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
   const [adminPassword, setAdminPassword] = useState('admin123');
   const [showPassword, setShowPassword] = useState(false);
 
+  // Already signed in? Skip the login form and go straight to the right home page
+  // (prevents the confusing "logged-in sidebar + login form" state).
+  React.useEffect(() => {
+    const role = localStorage.getItem('userRole');
+    if (role === 'admin') navigate('/admin', { replace: true });
+    else if (role === 'member') navigate(`/member-report?id=${localStorage.getItem('memberId') || ''}`, { replace: true });
+  }, [navigate]);
+
   React.useEffect(() => {
     if (location.search.includes('tab=admin')) {
       setLoginType('admin');
