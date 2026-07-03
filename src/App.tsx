@@ -5838,11 +5838,11 @@ function MemberReport() {
         <div className="relative z-10 grid grid-cols-2 gap-x-3 md:gap-x-16 gap-y-3 md:gap-y-6 text-[11px] md:text-base font-bold text-slate-800">
           <div className="flex justify-between items-end border-b border-slate-100 pb-2">
             <span className="text-slate-500 font-medium">ឈ្មោះ:</span>
-            <span className="text-lg">{memberName}</span>
+            <span className="md:text-lg">{memberName}</span>
           </div>
           <div className="flex justify-between items-end border-b border-slate-100 pb-2">
             <span className="text-slate-500 font-medium">លេខ ID:</span>
-            <span className="text-lg">{memberCode}</span>
+            <span className="md:text-lg">{memberCode}</span>
           </div>
 
           <div className="flex justify-between items-center py-1 mt-4">
@@ -5881,7 +5881,7 @@ function MemberReport() {
             <span className="text-indigo-600 px-3 py-1"><span className="text-indigo-600/50 mr-1">$</span> {fm(num(sumL.newLoan))}</span>
           </div>
 
-          <div className="flex justify-between items-center py-1 pt-6 border-t border-slate-100 mt-2 text-lg">
+          <div className="flex justify-between items-center py-1 pt-6 border-t border-slate-100 mt-2 md:text-lg">
             <span className="text-slate-600 font-medium">ដើមទុនចុងគ្រា:</span>
             <span className="text-[#0a6652]"><span className="text-[#0a6652]/50 mr-1">$</span> {fm(num(sumS.total))}</span>
           </div>
@@ -5892,7 +5892,7 @@ function MemberReport() {
 
           <div className="flex justify-between items-center py-1 bg-amber-50 rounded-xl px-4 mt-2">
             <span className="text-slate-600 font-bold">ប្រាក់បានបង់:</span>
-            <span className="text-amber-700 text-lg"><span className="text-amber-700/50 mr-1">$</span> {fm(num(sumS.addSaving) + num(sumL.repayment) + num(sumL.interestPaid))}</span>
+            <span className="text-amber-700 md:text-lg"><span className="text-amber-700/50 mr-1">$</span> {fm(num(sumS.addSaving) + num(sumL.repayment) + num(sumL.interestPaid))}</span>
           </div>
           <div className="flex justify-between items-center py-1 mt-2">
             <span className="text-slate-500 font-medium">សមាជិកភាព:</span>
