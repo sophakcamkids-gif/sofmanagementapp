@@ -5070,16 +5070,19 @@ function MemberReport() {
   const [sigName, setSigName] = useState('លឹវ វី');
   const sigFileRef = React.useRef<HTMLInputElement>(null);
   React.useEffect(() => {
-    const code = (localStorage.getItem('memberId') || '').toUpperCase();
-    const s = (getStoredData('sof_member_signature', {}) || {})[code] || {};
+    // ONE global report-preparer signature, cloud-synced → shown on every report.
+    let s = getStoredData('sof_report_signature', {}) || {};
+    if (!s.img) {
+      // Migrate an older per-member signature (any member) so it isn't lost.
+      const old = getStoredData('sof_member_signature', {}) || {};
+      const found = Object.values(old).find((x: any) => x && x.img) as any;
+      if (found) s = found;
+    }
     setSigImg(s.img || '');
     setSigName(s.name || 'លឹវ វី');
   }, []);
   const saveSig = (img: string, name: string) => {
-    const code = (localStorage.getItem('memberId') || '').toUpperCase();
-    const all = getStoredData('sof_member_signature', {}) || {};
-    all[code] = { img, name };
-    setStoredData('sof_member_signature', all);
+    setStoredData('sof_report_signature', { img, name });  // synced to Supabase, one for all
   };
   const handleSigUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
