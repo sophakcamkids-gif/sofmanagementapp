@@ -1094,40 +1094,19 @@ function DashboardGeneral() {
     const selectedM = allMembersForSelect.find(member => member.code === sMemberId);
     if (!selectedM) return;
 
+    // Write the deposit into the SELECTED month's per-month store so the live engine
+    // (Savings page, balance sheet, dashboard) picks it up for that exact month.
+    const add = parseFloat(sAmount);
     if (selectedM.type === 'សកម្ម') {
-      const savings = getStoredData('sof_savings_data', DEFAULT_SAVING_DATA);
-      const updated = savings.map((s: any) => {
-        if (s.id === sMemberId) {
-          const cap = parseFloat(s.startCapital?.replace(/,/g, '')) || 0;
-          const add = parseFloat(sAmount);
-          const prof = parseFloat(s.profit) || 0;
-          const totalVal = cap + add + prof;
-          return {
-            ...s,
-            addSaving: add.toFixed(2),
-            total: totalVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-          };
-        }
-        return s;
-      });
-      setStoredData('sof_savings_data', updated);
+      const sBy = getStoredData('sof_savings_by_month', {}) || {};
+      const rows = (Array.isArray(sBy[sMonth]) && sBy[sMonth].length) ? sBy[sMonth] : (savingsLiveTotals(sMonth)?.active || []);
+      sBy[sMonth] = rows.map((r: any) => (r.id === sMemberId ? { ...r, addSaving: add.toFixed(2) } : r));
+      setStoredData('sof_savings_by_month', sBy);
     } else {
-      const savings = getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA);
-      const updated = savings.map((s: any) => {
-        if (s.id === sMemberId) {
-          const cap = parseFloat(s.startCapital?.replace(/,/g, '')) || 0;
-          const add = parseFloat(sAmount);
-          const prof = parseFloat(s.profit) || 0;
-          const totalVal = cap + add + prof;
-          return {
-            ...s,
-            addSaving: add.toFixed(2),
-            total: totalVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-          };
-        }
-        return s;
-      });
-      setStoredData('sof_savings_deposit_data', updated);
+      const dBy = getStoredData('sof_deposit_by_month', {}) || {};
+      const rows = (Array.isArray(dBy[sMonth]) && dBy[sMonth].length) ? dBy[sMonth] : (savingsLiveTotals(sMonth)?.deposit || []);
+      dBy[sMonth] = rows.map((r: any) => (r.id === sMemberId ? { ...r, addSaving: add.toFixed(2) } : r));
+      setStoredData('sof_deposit_by_month', dBy);
     }
 
     // Success log
@@ -1140,6 +1119,18 @@ function DashboardGeneral() {
     setTimeout(() => setSuccessMsg(''), 4500);
   };
 
+  // A month's loan rows: the stored month, else carried forward from the most recent
+  // month with data (flow fields cleared) so new entries land in the chosen month.
+  const loanMonthRows = (by: any, month: string): any[] => {
+    if (Array.isArray(by[month]) && by[month].length) return by[month];
+    const idx = MONTHS_2026.indexOf(month);
+    for (let i = idx - 1; i >= 0; i--) {
+      const prev = by[MONTHS_2026[i]];
+      if (Array.isArray(prev) && prev.length) return prev.map((r: any) => ({ ...r, newLoan: '-', repayment: '-', interestPaid: '-' }));
+    }
+    return [];
+  };
+
   const handleAddLoan = (e: React.FormEvent) => {
     e.preventDefault();
     if (!lAmount || isNaN(parseFloat(lAmount))) return;
@@ -1147,24 +1138,13 @@ function DashboardGeneral() {
     const selectedM = allMembersForSelect.find(member => member.code === lMemberId);
     if (!selectedM) return;
 
-    const loans = getStoredData('sof_loans_data', DEFAULT_LOAN_DATA);
-    const updated = loans.map((l: any) => {
-      if (l.id === lMemberId) {
-        const val = parseFloat(lAmount);
-        const interestRateRaw = parseFloat(lRate) || 1.5;
-        const interestPaidVal = val * (interestRateRaw / 100);
-        return {
-          ...l,
-          loanValue: val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-          remaining: val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-          interest: interestPaidVal.toFixed(2),
-          repayment: '-',
-          interestPaid: '-'
-        };
-      }
-      return l;
-    });
-    setStoredData('sof_loans_data', updated);
+    // New disbursement → the SELECTED month's loan store (newLoan + per-loan rate).
+    const val = parseFloat(lAmount);
+    const rateNum = parseFloat(lRate) || 1.5;
+    const lBy = getStoredData('sof_loans_by_month', {}) || {};
+    const rows = loanMonthRows(lBy, lMonth);
+    lBy[lMonth] = rows.map((r: any) => (r.id === lMemberId ? { ...r, newLoan: val.toFixed(2), rate: String(rateNum) } : r));
+    setStoredData('sof_loans_by_month', lBy);
 
     // Success log
     const logs = getStoredData('sof_query_logs', []);
@@ -1186,21 +1166,13 @@ function DashboardGeneral() {
     const selectedM = allMembersForSelect.find(member => member.code === rMemberId);
     if (!selectedM) return;
 
-    const loans = getStoredData('sof_loans_data', DEFAULT_LOAN_DATA);
-    const updated = loans.map((l: any) => {
-      if (l.id === rMemberId) {
-        const origVal = parseFloat(l.loanValue?.replace(/,/g, '')) || 0;
-        const remainingVal = Math.max(0, origVal - pAmt);
-        return {
-          ...l,
-          repayment: pAmt > 0 ? pAmt.toFixed(2) : '-',
-          interestPaid: iAmt > 0 ? iAmt.toFixed(2) : '-',
-          remaining: remainingVal > 0 ? remainingVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'
-        };
-      }
-      return l;
-    });
-    setStoredData('sof_loans_data', updated);
+    // Repayment (principal + interest paid) → the SELECTED month's loan store.
+    const lBy = getStoredData('sof_loans_by_month', {}) || {};
+    const rows = loanMonthRows(lBy, rMonth);
+    lBy[rMonth] = rows.map((r: any) => (r.id === rMemberId
+      ? { ...r, repayment: pAmt > 0 ? pAmt.toFixed(2) : '-', interestPaid: iAmt > 0 ? iAmt.toFixed(2) : '-' }
+      : r));
+    setStoredData('sof_loans_by_month', lBy);
 
     // Success log
     const logs = getStoredData('sof_query_logs', []);
@@ -1261,6 +1233,81 @@ function DashboardGeneral() {
         ))}
       </div>
       
+      {/* ផ្នែកគ្រប់គ្រងប្រព័ន្ធជម្រើស (Admin Management Quick Options List) */}
+      <div className="space-y-4">
+        <h3 className="text-xs font-black text-[#0a6652] uppercase tracking-wider flex items-center gap-2">
+          <Menu size={16} />
+          <span>ជម្រើសគ្រប់គ្រងគណនេយ្យ និងប្រព័ន្ធ</span>
+        </h3>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[
+            { 
+              title: "ព័ត៌មានសមាជិក (Members)", 
+              desc: "គ្រប់គ្រង និងមើលប្រវត្តិរូបសមាជិកសកម្ម/បញ្ញើ", 
+              path: "/members", 
+              icon: <Users className="w-5 h-5" />, 
+              color: "bg-teal-50 text-[#0a6652] border-teal-100/60 hover:bg-teal-100/90" 
+            },
+            { 
+              title: "ការសន្សំប្រាក់ (Savings)", 
+              desc: "កត់ត្រា និងគ្រប់គ្រងការសន្សំប្រាក់របស់សមាជិក", 
+              path: "/savings", 
+              icon: <Wallet className="w-5 h-5" />, 
+              color: "bg-emerald-50 text-emerald-600 border-emerald-100/60 hover:bg-emerald-100/90" 
+            },
+            { 
+              title: "ការផ្តល់កម្ចីប្រាក់ (Loans)", 
+              desc: "គ្រប់គ្រងទិន្នន័យកម្ចី លក្ខខណ្ឌ និងតារាងបង់រំលស់", 
+              path: "/loans", 
+              icon: <HandCoins className="w-5 h-5" />, 
+              color: "bg-amber-50 text-amber-600 border-amber-100/60 hover:bg-amber-100/90" 
+            },
+            { 
+              title: "ការចំណាយ (Expenses)", 
+              desc: "កត់ត្រា និងគ្រប់គ្រងរាល់ការចំណាយផ្សេងៗ", 
+              path: "/expenses", 
+              icon: <Receipt className="w-5 h-5" />, 
+              color: "bg-blue-50 text-blue-600 border-blue-100/60 hover:bg-blue-100/90" 
+            },
+            { 
+              title: "របាយការណ៍ហិរញ្ញវត្ថុ (Reports)", 
+              desc: "មើលតារាងតុល្យការ ចំណូលចំណាយ និងវិភាគសង្ខេប", 
+              path: "/reports", 
+              icon: <BarChart3 className="w-5 h-5" />, 
+              color: "bg-indigo-50 text-indigo-600 border-indigo-100/60 hover:bg-indigo-100/90" 
+            },
+            { 
+              title: "ប្រវត្តិប្រតិបត្តិការ (History)", 
+              desc: "ពិនិត្យមើលរាល់សកម្មភាព និងប្រតិបត្តិការក្នុងប្រព័ន្ធ", 
+              path: "/history", 
+              icon: <TrendingUp className="w-5 h-5" />, 
+              color: "bg-rose-50 text-rose-600 border-rose-100/60 hover:bg-rose-100/90" 
+            },
+            { 
+              title: "ការកំណត់ប្រព័ន្ធ (Settings)", 
+              desc: "កែសម្រួលគណនី លេខសម្ងាត់ និងការកំណត់ផ្សេងៗ", 
+              path: "/settings", 
+              icon: <Settings className="w-5 h-5" />, 
+              color: "bg-slate-50 text-slate-600 border-slate-200/60 hover:bg-slate-100" 
+            }
+          ].map((item) => (
+            <button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              className={`flex items-start gap-4 p-4 rounded-2xl border text-left transition-all duration-200 active:scale-[0.98] cursor-pointer ${item.color}`}
+            >
+              <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-100/30">
+                {item.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-extrabold text-xs text-slate-800 mb-1">{item.title}</h4>
+                <p className="text-[10px] text-slate-500 font-bold leading-normal truncate">{item.desc}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
       {/* ផ្នែកបញ្ចូលទិន្នន័យ (Data Input Dashboard Module) */}
       <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-100 shadow-sm mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
@@ -1633,81 +1680,6 @@ function DashboardGeneral() {
         )}
       </div>
 
-      {/* ផ្នែកគ្រប់គ្រងប្រព័ន្ធជម្រើស (Admin Management Quick Options List) */}
-      <div className="space-y-4">
-        <h3 className="text-xs font-black text-[#0a6652] uppercase tracking-wider flex items-center gap-2">
-          <Menu size={16} />
-          <span>ជម្រើសគ្រប់គ្រងគណនេយ្យ និងប្រព័ន្ធ</span>
-        </h3>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {[
-            { 
-              title: "ព័ត៌មានសមាជិក (Members)", 
-              desc: "គ្រប់គ្រង និងមើលប្រវត្តិរូបសមាជិកសកម្ម/បញ្ញើ", 
-              path: "/members", 
-              icon: <Users className="w-5 h-5" />, 
-              color: "bg-teal-50 text-[#0a6652] border-teal-100/60 hover:bg-teal-100/90" 
-            },
-            { 
-              title: "ការសន្សំប្រាក់ (Savings)", 
-              desc: "កត់ត្រា និងគ្រប់គ្រងការសន្សំប្រាក់របស់សមាជិក", 
-              path: "/savings", 
-              icon: <Wallet className="w-5 h-5" />, 
-              color: "bg-emerald-50 text-emerald-600 border-emerald-100/60 hover:bg-emerald-100/90" 
-            },
-            { 
-              title: "ការផ្តល់កម្ចីប្រាក់ (Loans)", 
-              desc: "គ្រប់គ្រងទិន្នន័យកម្ចី លក្ខខណ្ឌ និងតារាងបង់រំលស់", 
-              path: "/loans", 
-              icon: <HandCoins className="w-5 h-5" />, 
-              color: "bg-amber-50 text-amber-600 border-amber-100/60 hover:bg-amber-100/90" 
-            },
-            { 
-              title: "ការចំណាយ (Expenses)", 
-              desc: "កត់ត្រា និងគ្រប់គ្រងរាល់ការចំណាយផ្សេងៗ", 
-              path: "/expenses", 
-              icon: <Receipt className="w-5 h-5" />, 
-              color: "bg-blue-50 text-blue-600 border-blue-100/60 hover:bg-blue-100/90" 
-            },
-            { 
-              title: "របាយការណ៍ហិរញ្ញវត្ថុ (Reports)", 
-              desc: "មើលតារាងតុល្យការ ចំណូលចំណាយ និងវិភាគសង្ខេប", 
-              path: "/reports", 
-              icon: <BarChart3 className="w-5 h-5" />, 
-              color: "bg-indigo-50 text-indigo-600 border-indigo-100/60 hover:bg-indigo-100/90" 
-            },
-            { 
-              title: "ប្រវត្តិប្រតិបត្តិការ (History)", 
-              desc: "ពិនិត្យមើលរាល់សកម្មភាព និងប្រតិបត្តិការក្នុងប្រព័ន្ធ", 
-              path: "/history", 
-              icon: <TrendingUp className="w-5 h-5" />, 
-              color: "bg-rose-50 text-rose-600 border-rose-100/60 hover:bg-rose-100/90" 
-            },
-            { 
-              title: "ការកំណត់ប្រព័ន្ធ (Settings)", 
-              desc: "កែសម្រួលគណនី លេខសម្ងាត់ និងការកំណត់ផ្សេងៗ", 
-              path: "/settings", 
-              icon: <Settings className="w-5 h-5" />, 
-              color: "bg-slate-50 text-slate-600 border-slate-200/60 hover:bg-slate-100" 
-            }
-          ].map((item) => (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              className={`flex items-start gap-4 p-4 rounded-2xl border text-left transition-all duration-200 active:scale-[0.98] cursor-pointer ${item.color}`}
-            >
-              <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-100/30">
-                {item.icon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-extrabold text-xs text-slate-800 mb-1">{item.title}</h4>
-                <p className="text-[10px] text-slate-500 font-bold leading-normal truncate">{item.desc}</p>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
     </PageView>
   );
 }
