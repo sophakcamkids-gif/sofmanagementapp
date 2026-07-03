@@ -1230,15 +1230,26 @@ function DashboardGeneral() {
   const dashVal = (key: string, fallback: number) =>
     (latestBal && typeof latestBal[key] === 'number') ? latestBal[key] : fallback;
 
+  // LIVE summary: use the latest month that actually has savings data, and compute the
+  // same way the balance sheet does (shared engine) so the cards match it exactly.
+  const dashSavBy = getStoredData('sof_savings_by_month', {}) || {};
+  const dashDataMonth = [...MONTH_ORDER].reverse().find((m) => Array.isArray(dashSavBy[m]) && dashSavBy[m].length) || latestMonth || MONTH_ORDER[0];
+  const dashLive = savingsLiveTotals(dashDataMonth);
+  const dashSumTotal = (rows: any[]) => (rows || []).reduce((s: number, r: any) => s + num(r.total), 0);
+  const dashGroupLive = (needle: string) => {
+    const g = (dashLive?.group || []).find((r: any) => (r.name || '').includes(needle));
+    return g ? num(g.total) : 0;
+  };
+
   return (
     <PageView title="ផ្ទាំងគ្រប់គ្រងទូទៅ (Dashboard)" hideBack={true} hideDownload={true} hideAdd={true}>
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {[
-          { label: 'ទុនសន្សំសមាជិកសកម្ម', value: '$' + fmtMoney(dashVal('memberSavings', sumField(dashSavings, 'total'))), color: 'text-[#0a6652]' },
-          { label: 'ទុនសន្សំសមាជិកបញ្ញើ', value: '$' + fmtMoney(dashVal('depositSavings', sumField(dashDeposit, 'total'))), color: 'text-blue-600' },
-          { label: 'គណនីសន្សំមានកាលកំណត់', value: '$' + fmtMoney(latestMonth ? fixedTermBalanceOf(latestMonth) : 0), color: 'text-amber-600' },
-          { label: 'ទុនបម្រុង', value: '$' + fmtMoney(dashVal('reserve', groupTotalBy('បម្រុង'))), color: 'text-rose-500' },
-          { label: 'ទុនសង្គម', value: '$' + fmtMoney(dashVal('social', groupTotalBy('សង្គម'))), color: 'text-violet-600' }
+          { label: 'ទុនសន្សំសមាជិកសកម្ម', value: '$' + fmtMoney(dashLive ? dashSumTotal(dashLive.active) : dashVal('memberSavings', sumField(dashSavings, 'total'))), color: 'text-[#0a6652]' },
+          { label: 'ទុនសន្សំសមាជិកបញ្ញើ', value: '$' + fmtMoney(dashLive ? dashSumTotal(dashLive.deposit) : dashVal('depositSavings', sumField(dashDeposit, 'total'))), color: 'text-blue-600' },
+          { label: 'គណនីសន្សំមានកាលកំណត់', value: '$' + fmtMoney(fixedTermBalanceOf(dashDataMonth)), color: 'text-amber-600' },
+          { label: 'ទុនបម្រុង', value: '$' + fmtMoney(dashLive ? dashGroupLive('បម្រុង') : dashVal('reserve', groupTotalBy('បម្រុង'))), color: 'text-rose-500' },
+          { label: 'ទុនសង្គម', value: '$' + fmtMoney(dashLive ? dashGroupLive('សង្គម') : dashVal('social', groupTotalBy('សង្គម'))), color: 'text-violet-600' }
         ].map((stat, i) => (
           <div key={i} className="bg-[#eef8f2] p-4 md:p-5 rounded-2xl border border-green-100">
             <div className="text-[10px] md:text-xs font-bold text-slate-500 mb-1 leading-tight truncate-2-lines line-clamp-2 h-8 flex items-center">{stat.label}</div>
