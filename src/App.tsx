@@ -6149,7 +6149,7 @@ function MemberReport() {
                       <td className="py-2.5 px-3 text-center border-r border-slate-100 font-bold text-slate-400">{row.seq}</td>
                       <td className="py-2.5 px-3 border-r border-slate-100 font-bold text-[#0a6652]/90">{row.monthName}</td>
                       <td className="py-2.5 px-3 border-r border-slate-100 text-right font-semibold">${fmtMoney(num(row.loanValue))}</td>
-                      <td className="py-2.5 px-3 border-r border-slate-100 text-center text-slate-500">{num(row.rate) ? `${num(row.rate)}%` : '-'}</td>
+                      <td className="py-2.5 px-3 border-r border-slate-100 text-center text-slate-500">{(() => { const r = num(row.rate) || (num(row.loanValue) ? num(row.interest) / num(row.loanValue) * 100 : 0); return r ? `${r.toFixed(2)}%` : '-'; })()}</td>
                       <td className="py-2.5 px-3 border-r border-slate-100 text-right font-bold text-amber-600">{num(row.interest) ? '$' + fmtMoney(num(row.interest)) : '-'}</td>
                       <td className="py-2.5 px-3 border-r border-slate-100 text-right font-bold text-slate-600">{num(row.repayment) ? '$' + fmtMoney(num(row.repayment)) : '-'}</td>
                       <td className="py-2.5 px-3 border-r border-slate-100 text-right font-bold text-emerald-600">{num(row.interestPaid) ? '$' + fmtMoney(num(row.interestPaid)) : '-'}</td>
@@ -6163,10 +6163,7 @@ function MemberReport() {
 
                   {memberLoanRows.length > 0 && (
                   <tr className="bg-slate-50 font-bold border-t border-slate-200 text-slate-800">
-                    <td className="py-3 px-3 text-center border-r border-slate-200">-</td>
-                    <td className="py-3 px-3 border-r border-slate-200 font-extrabold text-[#0a6652]">សរុប</td>
-                    <td className="py-3 px-3 border-r border-slate-200 text-right">-</td>
-                    <td className="py-3 px-3 border-r border-slate-200 text-center">-</td>
+                    <td colSpan={4} className="py-3 px-3 text-center border-r border-slate-200 font-extrabold text-[#0a6652]">សរុប</td>
                     <td className="py-3 px-3 border-r border-slate-200 text-right font-extrabold text-amber-600">${fmtMoney(memberLoanSum('interest'))}</td>
                     <td className="py-3 px-3 border-r border-slate-200 text-right font-extrabold text-slate-700">${fmtMoney(memberLoanSum('repayment'))}</td>
                     <td className="py-3 px-3 border-r border-slate-200 text-right font-extrabold text-emerald-700">${fmtMoney(memberLoanSum('interestPaid'))}</td>
