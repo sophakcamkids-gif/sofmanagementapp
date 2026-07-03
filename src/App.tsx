@@ -5240,9 +5240,10 @@ function MemberReport() {
   };
 
   return (
-    <PageView 
-      title={activeTab === 'dashboard' ? "ព័ត៌មានផ្ទាល់ខ្លួន" : activeTab} 
-      hideAdd 
+    <PageView
+      title={activeTab === 'dashboard' ? "ព័ត៌មានផ្ទាល់ខ្លួន" : activeTab}
+      hideAdd
+      hideUpload
       hideDownload={activeTab !== 'របាយការណ៍ផ្ទាល់ខ្លួន'}
       downloadLabel="ទាញយក PDF"
       onDownloadClick={() => window.print()}
@@ -5288,7 +5289,7 @@ function MemberReport() {
           {/* Bento grid style buttons like Admin */}
           <div>
             <h4 className="text-[11px] font-black text-slate-400 mb-3 tracking-wider text-left uppercase">សេវាកម្មសមាជិក</h4>
-            <div className="grid grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3.5">
               {[
                 {
                   id: 'របាយការណ៍ផ្ទាល់ខ្លួន',
@@ -5336,24 +5337,26 @@ function MemberReport() {
                   icon2Class: "text-amber-500 fill-amber-100/40"
                 }
               ].map((card, i) => (
-                <div 
-                  key={i} 
-                  onClick={() => setActiveTab(card.id)} 
-                  className="bg-white rounded-[24px] p-4 shadow-[0_4px_15px_rgba(0,100,50,0.02)] min-h-[120px] flex flex-col justify-between cursor-pointer hover:shadow-[0_8px_25px_rgba(0,100,50,0.06)] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 border border-slate-100 hover:border-emerald-100 text-left"
+                <div
+                  key={i}
+                  onClick={() => setActiveTab(card.id)}
+                  className="group relative overflow-hidden bg-white rounded-[24px] p-4 shadow-[0_4px_15px_rgba(0,100,50,0.03)] min-h-[124px] flex flex-col justify-between cursor-pointer hover:shadow-[0_10px_30px_rgba(0,100,50,0.08)] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 border border-slate-100 hover:border-emerald-200 text-left"
                 >
-                  <div className="flex justify-between items-start w-full">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${card.icon1Class}`}>
+                  {/* faded decorative watermark */}
+                  <div className={`absolute -right-3 -bottom-3 opacity-[0.08] group-hover:opacity-[0.14] transition-opacity duration-300 ${card.icon2Class}`}>
+                    {React.cloneElement(card.icon2, { size: 76, strokeWidth: 1.5 })}
+                  </div>
+                  <div className="relative z-10 flex items-center justify-between">
+                    <div className={`w-9 h-9 rounded-2xl flex items-center justify-center ${card.icon1Class}`}>
                       {card.icon1}
                     </div>
-                    <div className={`${card.icon2Class} opacity-80`}>
-                      {card.icon2}
-                    </div>
+                    <ChevronLeft size={16} className="rotate-180 text-slate-300 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all duration-300" />
                   </div>
-                  <div>
+                  <div className="relative z-10">
                     <h3 className="text-xs font-black text-[#0a6652] tracking-tight leading-tight">
                       {card.title}
                     </h3>
-                    <p className="text-[9px] text-slate-400 font-bold mt-0.5 leading-none">
+                    <p className="text-[9px] text-slate-400 font-bold mt-0.5 leading-tight">
                       {card.desc}
                     </p>
                   </div>

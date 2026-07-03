@@ -1,0 +1,14 @@
+{
+  "name": "ក្រុមសន្សំប្រាក់អនាគតយើង",
+  "short_name": "សន្សំ SOF",
+  "description": "ប្រព័ន្ធគ្រប់គ្រងក្រុមសន្សំប្រាក់",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0a6652",
+  "icons": [
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/logo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/logo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
