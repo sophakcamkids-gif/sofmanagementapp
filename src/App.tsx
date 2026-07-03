@@ -5411,13 +5411,13 @@ function MemberReport() {
                   icon2Class: "text-[#0a6652] fill-teal-100/40"
                 },
                 {
-                  id: 'ស្នើកម្ចី',
-                  title: "ទម្រង់ស្នើសុំកម្ចី",
-                  desc: "ស្នើប្រាក់កម្ចីថ្មីលឿនៗ",
-                  icon1: <Receipt size={16} strokeWidth={2.5} />,
-                  icon1Class: "bg-purple-50 text-purple-600",
-                  icon2: <HandCoins size={28} strokeWidth={1.5} />,
-                  icon2Class: "text-purple-600 fill-purple-100/40"
+                  id: 'របាយការណ៍សន្សំ',
+                  title: "របាយការណ៍សន្សំ",
+                  desc: "ប្រវត្តិដាក់ និងការចាក់ចំណេញ",
+                  icon1: <TrendingUp size={16} strokeWidth={2.5} />,
+                  icon1Class: "bg-blue-50 text-blue-600",
+                  icon2: <Wallet size={28} strokeWidth={1.5} />,
+                  icon2Class: "text-blue-500 fill-blue-100/40"
                 },
                 {
                   id: 'របាយការណ៍កម្ចី',
@@ -5429,13 +5429,13 @@ function MemberReport() {
                   icon2Class: "text-orange-500 fill-orange-100/40"
                 },
                 {
-                  id: 'របាយការណ៍សន្សំ',
-                  title: "របាយការណ៍សន្សំ",
-                  desc: "ប្រវត្តិដាក់ និងការចាក់ចំណេញ",
-                  icon1: <TrendingUp size={16} strokeWidth={2.5} />,
-                  icon1Class: "bg-blue-50 text-blue-600",
-                  icon2: <Wallet size={28} strokeWidth={1.5} />,
-                  icon2Class: "text-blue-500 fill-blue-100/40"
+                  id: 'ស្នើកម្ចី',
+                  title: "ទម្រង់ស្នើសុំកម្ចី",
+                  desc: "ស្នើប្រាក់កម្ចីថ្មីលឿនៗ",
+                  icon1: <Receipt size={16} strokeWidth={2.5} />,
+                  icon1Class: "bg-purple-50 text-purple-600",
+                  icon2: <HandCoins size={28} strokeWidth={1.5} />,
+                  icon2Class: "text-purple-600 fill-purple-100/40"
                 },
                 {
                   id: 'ការដាក់សន្សំ និងបង់កម្ចី',
