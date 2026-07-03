@@ -1142,8 +1142,18 @@ function DashboardGeneral() {
     const val = parseFloat(lAmount);
     const rateNum = parseFloat(lRate) || 1.5;
     const lBy = getStoredData('sof_loans_by_month', {}) || {};
-    const rows = loanMonthRows(lBy, lMonth);
-    lBy[lMonth] = rows.map((r: any) => (r.id === lMemberId ? { ...r, newLoan: val.toFixed(2), rate: String(rateNum) } : r));
+    let rows = loanMonthRows(lBy, lMonth);
+    if (rows.some((r: any) => r.id === lMemberId)) {
+      rows = rows.map((r: any) => (r.id === lMemberId ? { ...r, newLoan: val.toFixed(2), rate: String(rateNum) } : r));
+    } else {
+      // Borrower has no row this month yet → add one so the disbursement is recorded.
+      rows = [...rows, {
+        id: lMemberId, name: selectedM.name, gender: selectedM.gender || 'ប្រុស',
+        loanValue: '-', repayment: '-', interest: '-', newLoan: val.toFixed(2),
+        remaining: '-', interestPaid: '-', rate: String(rateNum), checked: true,
+      }];
+    }
+    lBy[lMonth] = rows;
     setStoredData('sof_loans_by_month', lBy);
 
     // Success log
@@ -1420,7 +1430,7 @@ function DashboardGeneral() {
         {/* 2. LOAN ENTRY FORM */}
         {entryTab === 'loan' && (
           <form onSubmit={handleAddLoan} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 mb-1.5">សមាជិកស្នើសុំកម្ចី (Borrower)</label>
                 <select
@@ -1432,6 +1442,19 @@ function DashboardGeneral() {
                     <option key={m.code} value={m.code}>
                       [{m.code}] {m.name}
                     </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">ខែ (Month)</label>
+                <select
+                  value={lMonth}
+                  onChange={(e) => setLMonth(e.target.value)}
+                  className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:border-[#0a6652] outline-none"
+                >
+                  {MONTHS_2026.map((m) => (
+                    <option key={m} value={m}>{m}</option>
                   ))}
                 </select>
               </div>
