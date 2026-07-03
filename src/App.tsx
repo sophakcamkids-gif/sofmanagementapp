@@ -6364,8 +6364,7 @@ function MemberReport() {
                   {/* Summary Totals Row */}
                   {memberSavingRows.length > 0 && (
                   <tr className="bg-emerald-50/60 font-bold border-t-2 border-slate-300 text-slate-900 text-[11px] h-11">
-                    <td className="py-2.5 px-3 text-center border-r border-slate-300 font-bold">-</td>
-                    <td className="py-2.5 px-3 border-r border-slate-300 text-center font-extrabold text-[#0a6652]">សរុប</td>
+                    <td colSpan={2} className="py-2.5 px-3 border-r border-slate-300 text-center font-extrabold text-[#0a6652]">សរុប</td>
                     <td className="py-2.5 px-3 border-r border-slate-300 text-right font-black text-slate-800">{fmtMoney(memberSavingSum('startCapital'))}</td>
                     <td className="py-2.5 px-2 border-r border-slate-300 text-center font-bold text-slate-600">-</td>
                     <td className="py-2.5 px-3 border-r border-slate-300 text-right font-bold text-slate-800">{fmtMoney(memberSavingSum('addSaving'))}</td>
