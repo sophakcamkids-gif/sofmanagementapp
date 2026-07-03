@@ -5973,25 +5973,42 @@ function MemberReport() {
               <img src="https://i.ibb.co/Kp7CxnjC/Picture1.jpg" alt="" className="w-96 h-96 object-contain" referrerPolicy="no-referrer" />
             </div>
 
-            {/* Contract Royal Header */}
+            {/* Header section with brand details (same style as the savings report) */}
             <div className="text-center mb-6 relative">
-              <h1 className="text-sm font-bold tracking-widest text-slate-800 uppercase font-sans mb-1">ព្រះរាជាណាចក្រកម្ពុជា</h1>
-              <h2 className="text-xs font-bold text-slate-600 mb-4 tracking-wide">ជាតិ សាសនា ព្រះមហាក្សត្រ</h2>
-              
-              <div className="flex justify-between items-start gap-4 mt-2 border-b border-dashed border-slate-200 pb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 border border-slate-200 rounded-lg p-0.5 shrink-0 bg-slate-50 flex items-center justify-center">
-                    <img src="https://i.ibb.co/Kp7CxnjC/Picture1.jpg" alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="text-xs font-bold text-[#0a6652] leading-tight">ក្រុមសន្សំប្រាក់អនាគតយើង</h3>
-                    <p className="text-[9px] text-[#1fb487] font-bold tracking-tight">Saving For Our Future</p>
-                  </div>
+              <div className="flex flex-col items-center justify-center gap-2 mb-4">
+                <div className="w-14 h-14 border border-slate-200 rounded-2xl p-0.5 bg-slate-50 flex items-center justify-center shadow-sm">
+                  <img src="https://i.ibb.co/Kp7CxnjC/Picture1.jpg" alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                 </div>
-                <div className="text-right">
-                  <p className="text-[10px] text-slate-400 font-medium">យោងលើកិច្ចសន្យាលេខៈ <span className="font-bold text-slate-700 underline border-slate-300">{contractNum}</span></p>
+                <div>
+                  <h3 className="text-xs font-bold text-[#ecb22e] uppercase tracking-wide leading-tight">ក្រុមសន្សំប្រាក់អនាគតយើង</h3>
+                  <p className="text-[9px] text-[#0a6652] font-black tracking-widest uppercase">Saving For Our Future</p>
                 </div>
               </div>
+
+              <h1 className="text-lg font-extrabold text-slate-800 tracking-wide mb-1 flex items-center justify-center gap-2">
+                <span className="text-[#0a6652]">របាយការណ៍កម្ចីសមាជិក</span>
+              </h1>
+
+              <div className="flex items-center justify-center gap-3 mt-2 flex-wrap">
+                <span className="text-xs font-bold text-[#0a6652] bg-[#eef8f2] px-4 py-1.5 rounded-full shadow-sm">
+                  សម្រាប់ឆ្នាំ{selectedReportYear}
+                </span>
+                <div className="no-print flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-full px-2.5 py-1 shadow-sm">
+                  <span className="text-[10px] font-bold text-slate-400">ជ្រើសរើសឆ្នាំ៖</span>
+                  <select
+                    value={selectedReportYear}
+                    onChange={(e) => setSelectedReportYear(e.target.value)}
+                    className="text-[11px] font-extrabold bg-transparent text-slate-700 outline-none cursor-pointer py-0.5"
+                  >
+                    <option value="2025">2025</option>
+                    <option value="2026">2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
+                  </select>
+                </div>
+              </div>
+
+              <p className="text-[10px] text-slate-400 font-medium mt-3">យោងលើកិច្ចសន្យាលេខៈ <span className="font-bold text-slate-700 underline">{contractNum}</span></p>
             </div>
 
             {/* Document title */}
