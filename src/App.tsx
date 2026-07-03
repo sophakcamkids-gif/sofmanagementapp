@@ -45,6 +45,10 @@ const setStoredData = (key: string, value: any) => {
 const getAdminAuth = (): { username: string; password: string } =>
   ({ username: 'sofadmin', password: 'sof2026', ...(getStoredData('sof_admin_auth', {}) || {}) });
 
+// Convert ASCII digits to Khmer numerals (០–៩).
+const toKhmerNum = (v: string | number): string =>
+  String(v).replace(/[0-9]/g, (d) => '០១២៣៤៥៦៧៨៩'[+d]);
+
 // Parse a stored value ("0.00", "1,234.56", "0.00%", "-", number) into a number.
 const num = (v: any): number => {
   if (typeof v === 'number') return v;
@@ -5848,7 +5852,7 @@ function MemberReport() {
         </div>
 
         <div className="mt-20 flex flex-col items-center md:items-end text-sm text-slate-800 relative z-10 md:pr-10">
-          <p className="mb-3 font-medium text-slate-500">ធ្វើនៅ​ភ្នំពេញ ថ្ងៃទី {summaryLastDay} ខែ{summaryMonthName} ឆ្នាំ {selectedReportYear}</p>
+          <p className="mb-3 font-medium text-slate-500">ធ្វើនៅ​ភ្នំពេញ ថ្ងៃទី {toKhmerNum(summaryLastDay)} ខែ{summaryMonthName} ឆ្នាំ {toKhmerNum(selectedReportYear)}</p>
           <p className="mb-2 font-bold text-slate-700">ហត្ថលេខាអ្នកធ្វើរបាយការណ៍</p>
           {/* Signature — click the area to add/replace it on screen (no button). */}
           <div
