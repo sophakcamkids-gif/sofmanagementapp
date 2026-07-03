@@ -41,6 +41,10 @@ const setStoredData = (key: string, value: any) => {
   }
 };
 
+// Admin login credentials, synced across devices via the cloud (sof_ → sof_live_).
+const getAdminAuth = (): { username: string; password: string } =>
+  ({ username: 'sofadmin', password: 'sof2026', ...(getStoredData('sof_admin_auth', {}) || {}) });
+
 // Parse a stored value ("0.00", "1,234.56", "0.00%", "-", number) into a number.
 const num = (v: any): number => {
   if (typeof v === 'number') return v;
@@ -4665,16 +4669,19 @@ function SettingsPage() {
   const [interestRate, setInterestRate] = useState('1.5%');
   const [telegramNotification, setTelegramNotification] = useState(true);
 
-  const [newAdminUsername, setNewAdminUsername] = useState(localStorage.getItem('adminUsername') || 'sofadmin');
+  const [newAdminUsername, setNewAdminUsername] = useState(getAdminAuth().username);
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [passwordSuccessMsg, setPasswordSuccessMsg] = useState('');
 
   const handleChangePassword = (e: React.FormEvent) => {
     e.preventDefault();
+    const cur = getAdminAuth();
+    const next = { ...cur };
     let changed = false;
-    if (newAdminUsername.trim() !== '') { localStorage.setItem('adminUsername', newAdminUsername.trim()); changed = true; }
-    if (newAdminPassword.trim() !== '') { localStorage.setItem('adminPassword', newAdminPassword); changed = true; }
+    if (newAdminUsername.trim() !== '') { next.username = newAdminUsername.trim(); changed = true; }
+    if (newAdminPassword.trim() !== '') { next.password = newAdminPassword; changed = true; }
     if (changed) {
+      setStoredData('sof_admin_auth', next);  // synced to Supabase → works on every device
       setPasswordSuccessMsg('ប្តូរគណនី/លេខសំងាត់បានជោគជ័យ! (Saved)');
       setTimeout(() => setPasswordSuccessMsg(''), 3000);
       setNewAdminPassword('');
@@ -4843,7 +4850,7 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
   const [loginType, setLoginType] = useState<'member' | 'admin'>(isInitiallyMember ? 'member' : 'admin');
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
-  const [adminUsername, setAdminUsername] = useState(localStorage.getItem('adminUsername') || 'sofadmin');
+  const [adminUsername, setAdminUsername] = useState(getAdminAuth().username);
   const [adminPassword, setAdminPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -4881,8 +4888,7 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
       onLogin('member', code);
       navigate(`/member-report?id=${code}`);
     } else {
-      const storedAdminPassword = localStorage.getItem('adminPassword') || 'sof2026';
-      const storedAdminUsername = localStorage.getItem('adminUsername') || 'sofadmin';
+      const { username: storedAdminUsername, password: storedAdminPassword } = getAdminAuth();
       if (adminUsername.trim() === storedAdminUsername && adminPassword === storedAdminPassword) {
         localStorage.setItem('userRole', 'admin');
         onLogin('admin', '');
