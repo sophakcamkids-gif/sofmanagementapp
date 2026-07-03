@@ -5383,6 +5383,8 @@ function MemberReport() {
   const sumS: any = memberSavingRows.find((r) => r.mi === summaryIdx) || {};
   const sumL: any = memberLoanRows.find((r) => r.mi === summaryIdx) || {};
   const summaryMonthName = summaryIdx >= 0 ? KHMER_MONTHS[summaryIdx] : '';
+  // Auto date = last day of the selected month (ចុងខែ).
+  const summaryLastDay = summaryIdx >= 0 ? new Date(Number(selectedReportYear), summaryIdx + 1, 0).getDate() : '';
   const fm = (v: number) => (v ? fmtMoney(v) : '-');
 
   return (
@@ -5843,7 +5845,7 @@ function MemberReport() {
         </div>
 
         <div className="mt-20 flex flex-col items-center md:items-end text-sm text-slate-800 relative z-10 md:pr-10">
-          <p className="mb-3 font-medium text-slate-500">ធ្វើនៅ​ភ្នំពេញ ថ្ងៃទី........ ខែ{summaryMonthName} ឆ្នាំ {selectedReportYear}</p>
+          <p className="mb-3 font-medium text-slate-500">ធ្វើនៅ​ភ្នំពេញ ថ្ងៃទី {summaryLastDay} ខែ{summaryMonthName} ឆ្នាំ {selectedReportYear}</p>
           <p className="mb-4 font-bold text-slate-700">ហត្ថលេខាអ្នកធ្វើរបាយការណ៍</p>
           <div className="w-48 h-20 border-b-2 border-slate-200 border-dashed relative flex items-center justify-center">
             {sigImg
