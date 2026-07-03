@@ -5851,7 +5851,7 @@ function MemberReport() {
           </div>
         </div>
 
-        <div className="mt-20 flex flex-col items-center text-center text-sm text-slate-800 relative z-10">
+        <div className="mt-20 w-fit ml-auto flex flex-col items-center text-center text-sm text-slate-800 relative z-10 md:pr-4">
           <p className="mb-3 font-medium text-slate-500">ធ្វើនៅ​ភ្នំពេញ ថ្ងៃទី {toKhmerNum(summaryLastDay)} ខែ{summaryMonthName} ឆ្នាំ {toKhmerNum(selectedReportYear)}</p>
           <p className="mb-1 font-bold text-slate-700">ហត្ថលេខាអ្នកធ្វើរបាយការណ៍</p>
           {/* Signature — click the area to add/replace it on screen (no button). */}
