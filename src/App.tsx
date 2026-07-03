@@ -4665,7 +4665,7 @@ function SettingsPage() {
   const [interestRate, setInterestRate] = useState('1.5%');
   const [telegramNotification, setTelegramNotification] = useState(true);
 
-  const [newAdminUsername, setNewAdminUsername] = useState(localStorage.getItem('adminUsername') || 'admin');
+  const [newAdminUsername, setNewAdminUsername] = useState(localStorage.getItem('adminUsername') || 'sofadmin');
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [passwordSuccessMsg, setPasswordSuccessMsg] = useState('');
 
@@ -4843,8 +4843,8 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
   const [loginType, setLoginType] = useState<'member' | 'admin'>(isInitiallyMember ? 'member' : 'admin');
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
-  const [adminUsername, setAdminUsername] = useState('admin');
-  const [adminPassword, setAdminPassword] = useState('admin123');
+  const [adminUsername, setAdminUsername] = useState(localStorage.getItem('adminUsername') || 'sofadmin');
+  const [adminPassword, setAdminPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   // Already signed in? Skip the login form and go straight to the right home page
@@ -4881,8 +4881,8 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
       onLogin('member', code);
       navigate(`/member-report?id=${code}`);
     } else {
-      const storedAdminPassword = localStorage.getItem('adminPassword') || 'admin123';
-      const storedAdminUsername = localStorage.getItem('adminUsername') || 'admin';
+      const storedAdminPassword = localStorage.getItem('adminPassword') || 'sof2026';
+      const storedAdminUsername = localStorage.getItem('adminUsername') || 'sofadmin';
       if (adminUsername.trim() === storedAdminUsername && adminPassword === storedAdminPassword) {
         localStorage.setItem('userRole', 'admin');
         onLogin('admin', '');
@@ -4985,7 +4985,7 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
                     type={showPassword ? "text" : "password"}
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
-                    placeholder={localStorage.getItem('adminPassword') || 'admin123'} 
+                    placeholder="••••••••"
                     className="w-full pl-4 pr-12 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent font-black text-xs sm:text-sm text-slate-800 placeholder:font-normal placeholder:text-slate-400"
                     required
                   />
@@ -4997,10 +4997,6 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
-              </div>
-              
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-[10px] font-bold text-slate-500 leading-normal">
-                💡 គណនីសាកល្បង៖ <span className="text-rose-600 font-extrabold">{localStorage.getItem('adminUsername') || 'admin'}</span> / លេខកូដ៖ <span className="text-rose-600 font-extrabold">{localStorage.getItem('adminPassword') || 'admin123'}</span>
               </div>
 
               <button type="submit" className="w-full h-11 bg-rose-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-rose-950/20 hover:bg-rose-700 transition-colors flex items-center justify-center gap-2 mt-2 text-xs sm:text-sm cursor-pointer">
