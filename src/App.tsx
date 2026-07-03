@@ -5799,8 +5799,8 @@ function MemberReport() {
       )}
 
       {activeTab === 'របាយការណ៍ផ្ទាល់ខ្លួន' && (
-        <div className="max-w-3xl mx-auto bg-white p-6 md:p-12 rounded-[32px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100 relative overflow-hidden">
-        
+        <div className="report-sheet max-w-3xl mx-auto bg-white p-6 md:p-12 rounded-[32px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100 relative overflow-hidden">
+
         {/* Background Watermark */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 border-8 border-slate-50 text-slate-50 rounded-full flex items-center justify-center font-black text-6xl pointer-events-none -rotate-12">
           SOF
