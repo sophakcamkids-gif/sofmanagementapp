@@ -5273,7 +5273,8 @@ function MemberReport() {
   // ---- Live data for the logged-in member ----
   const memberCode = (localStorage.getItem('memberId') || '').toUpperCase();
   const codeOf = (r: any) => { const s = String(r?.id ?? r?.code ?? ''); return (s.includes(' ') ? s.split(' ').pop() : s || '').toUpperCase(); };
-  const memberMonths = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
+  // Month keys for the selected report year (so the year selector filters the data).
+  const memberMonths = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'].map((m) => `${m} ${selectedReportYear}`);
   const memberProfile = (() => {
     const lists = [
       getStoredData('sof_member_list_data', []) || [],
@@ -5505,17 +5506,6 @@ function MemberReport() {
             >
               <ChevronLeft size={16} strokeWidth={2.5} /> ត្រឡប់ក្រោយ
             </button>
-            <div className="flex gap-2">
-              <select 
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white font-black text-[10px] text-slate-700 focus:outline-none cursor-pointer"
-              >
-                {months.map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-            </div>
           </div>
 
       {showChangePassword && (
@@ -6055,7 +6045,7 @@ function MemberReport() {
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500 font-semibold">ខែទទួលកម្ចី</span>
-                  <span className="font-bold text-slate-700">{loanStartMonthName} 2026</span>
+                  <span className="font-bold text-slate-700">{loanStartMonthName} {selectedReportYear}</span>
                 </div>
               </div>
 
