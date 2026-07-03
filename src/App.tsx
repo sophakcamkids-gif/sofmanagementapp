@@ -5849,36 +5849,32 @@ function MemberReport() {
 
         <div className="mt-20 flex flex-col items-center md:items-end text-sm text-slate-800 relative z-10 md:pr-10">
           <p className="mb-3 font-medium text-slate-500">ធ្វើនៅ​ភ្នំពេញ ថ្ងៃទី {summaryLastDay} ខែ{summaryMonthName} ឆ្នាំ {selectedReportYear}</p>
-          <p className="mb-4 font-bold text-slate-700">ហត្ថលេខាអ្នកធ្វើរបាយការណ៍</p>
-          <div className="w-48 h-20 border-b-2 border-slate-200 border-dashed relative flex items-center justify-center">
+          <p className="mb-2 font-bold text-slate-700">ហត្ថលេខាអ្នកធ្វើរបាយការណ៍</p>
+          {/* Signature — click the area to add/replace it on screen (no button). */}
+          <div
+            onClick={() => sigFileRef.current?.click()}
+            title="ចុចដើម្បីបញ្ចូល/ប្តូរហត្ថលេខា"
+            className="w-48 h-20 flex items-center justify-center cursor-pointer"
+          >
             {sigImg
               ? <img src={sigImg} alt="signature" className="max-h-16 max-w-full object-contain" />
-              : <span className="text-slate-300 text-[11px] no-print">មិនទាន់មានហត្ថលេខា</span>}
+              : <span className="text-slate-300 text-[11px] no-print">ចុចដើម្បីបញ្ចូលហត្ថលេខា</span>}
           </div>
 
-          {/* Add-signature button — above the name (hidden when printing) */}
-          <div className="no-print mt-3 flex items-center gap-2">
+          {/* Preparer name — directly below the signature */}
+          {sigName && <p className="font-bold text-slate-700">{sigName}</p>}
+
+          {/* Small remove link (screen only, when a signature exists) */}
+          {sigImg && (
             <button
               type="button"
-              onClick={() => sigFileRef.current?.click()}
-              className="flex items-center gap-1.5 bg-[#0a6652] hover:bg-[#084f40] text-white font-bold text-xs px-4 py-1.5 rounded-lg cursor-pointer active:scale-95"
+              onClick={() => { setSigImg(''); saveSig('', sigName); }}
+              className="no-print mt-1 text-[11px] font-bold text-rose-500 hover:text-rose-700 cursor-pointer"
             >
-              <Plus size={14} /> បន្ថែមហត្ថលេខា
+              លុបហត្ថលេខា
             </button>
-            {sigImg && (
-              <button
-                type="button"
-                onClick={() => { setSigImg(''); saveSig('', sigName); }}
-                className="text-xs font-bold text-rose-500 hover:text-rose-700 px-2 py-1.5 cursor-pointer"
-              >
-                លុប
-              </button>
-            )}
-            <input type="file" ref={sigFileRef} accept="image/*" className="hidden" onChange={handleSigUpload} />
-          </div>
-
-          {/* Preparer name (shown once, on screen and print) */}
-          {sigName && <p className="mt-3 font-bold text-slate-700">{sigName}</p>}
+          )}
+          <input type="file" ref={sigFileRef} accept="image/*" className="hidden" onChange={handleSigUpload} />
         </div>
       </div>
       )}
