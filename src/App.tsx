@@ -189,6 +189,79 @@ function monthlyIncome(month: string) {
   return { interestIncome, otherIncome, totalIncome, depositInterestCost, fixedTermInterest, externalLoanInterest, grossProfit, operatingExpense, reserveAlloc, socialAlloc, netProfit };
 }
 
+// ---- Live savings distribution (single source of truth) ------------------------
+// The Savings page AND the balance sheet compute member/group/deposit balances the same
+// way here: distribute each month's live net profit by share of beginning capital, carry
+// the ending total forward as next month's beginning. Because both read from this, the
+// balance sheet always ties to the savings page and the income statement — leaving no
+// stale-data gap to pile up in retained earnings.
+const MONTHS_2026 = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
+
+// Deposit member row: flat 0.5% interest, no profit-pool share.
+function computeDepositRowLive(r: any) {
+  const beginning = num(r.startCapital);
+  const profit = DEFAULT_RATES.deposit * beginning;
+  const total = beginning + num(r.addSaving) + profit - num(r.withdraw) - num(r.actualFee) - num(r.deductFee);
+  return { ...r, profit: profit.toFixed(2), total: total.toFixed(2) };
+}
+
+// Recompute ONE month's savings distribution from raw inputs (saved snapshot, else roster).
+// `prevTotals` supplies the carry-forward beginnings. Mirrors the Savings page exactly.
+function computeSavingsMonthLive(month: string, prevTotals: { active: Record<string, any>; group: Record<string, any>; deposit: Record<string, any> } | null) {
+  const sBy = getStoredData('sof_savings_by_month', {});
+  const gBy = getStoredData('sof_group_by_month', {});
+  const dBy = getStoredData('sof_deposit_by_month', {});
+  let active = (sBy[month] && sBy[month].length) ? sBy[month] : (getStoredData('sof_savings_data', DEFAULT_SAVING_DATA) || []);
+  let group = (gBy[month] && gBy[month].length) ? gBy[month] : (getStoredData('sof_savings_group_data', DEFAULT_GROUP_DATA) || []);
+  if (!group.some((r: any) => r.id === 'R004')) group = [...group, DEFAULT_GROUP_DATA.find((r) => r.id === 'R004')];
+  let deposit = (dBy[month] && dBy[month].length) ? dBy[month] : (getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA) || []);
+  if (prevTotals) {
+    active = active.map((r: any) => (prevTotals.active[r.id] !== undefined ? { ...r, startCapital: String(prevTotals.active[r.id]) } : r));
+    group = group.map((r: any) => (prevTotals.group[r.id] !== undefined ? { ...r, startCapital: String(prevTotals.group[r.id]) } : r));
+    deposit = deposit.map((r: any) => (prevTotals.deposit[r.id] !== undefined ? { ...r, startCapital: String(prevTotals.deposit[r.id]) } : r));
+  }
+  const incM = monthlyIncome(month);
+  const net = incM.netProfit;
+  const unpaidInt = Math.max(0,
+    (sumMonthOf('sof_loans_by_month', month, 'interest') + sumMonthOf('sof_loans_deposit_by_month', month, 'interest'))
+    - (sumMonthOf('sof_loans_by_month', month, 'interestPaid') + sumMonthOf('sof_loans_deposit_by_month', month, 'interestPaid')));
+  group = group.map((r: any) => {
+    const nm = r.name || '';
+    if (nm.includes('បម្រុង')) return { ...r, addSaving: incM.reserveAlloc.toFixed(2) };
+    if (nm.includes('សង្គម')) return { ...r, addSaving: incM.socialAlloc.toFixed(2) };
+    if (r.id === 'R004') return { ...r, name: 'ការប្រាក់រក្សាទុក', addSaving: unpaidInt.toFixed(2) };
+    return r;
+  });
+  const pool = [...active, ...group].filter((r: any) => r.id !== 'R004').map((r: any) => ({
+    id: r.id, beginning: num(r.startCapital), addSaving: num(r.addSaving) + num(r.manualAdd),
+    withdraw: num(r.withdraw), penalty: num(r.actualFee), deductFee: num(r.deductFee),
+  }));
+  const byId: Record<string, any> = {};
+  computeSavings(pool, net).forEach((x) => { byId[x.id] = x; });
+  const apply = (rows: any[]) => rows.map((r: any) => {
+    if (r.id === 'R004') {
+      const total = num(r.startCapital) + num(r.addSaving);
+      return { ...r, share: '0.00%', profit: '0.00', total: total.toFixed(2) };
+    }
+    const c = byId[r.id];
+    return c ? { ...r, share: (c.share * 100).toFixed(2) + '%', profit: c.profit.toFixed(2), total: c.total.toFixed(2) } : r;
+  });
+  return { active: apply(active), group: apply(group), deposit: deposit.map((r: any) => computeDepositRowLive(r)) };
+}
+
+// Chain January → targetMonth, returning that month's live ending rows (active/group/deposit).
+function savingsLiveTotals(targetMonth: string) {
+  const idx = MONTHS_2026.indexOf(targetMonth);
+  if (idx < 0) return null;
+  const colTotals = (arr: any[]) => { const m: Record<string, number> = {}; (arr || []).forEach((r: any) => { m[r.id] = num(r.total); }); return m; };
+  let prev: any = null; let result: any = null;
+  for (let i = 0; i <= idx; i++) {
+    result = computeSavingsMonthLive(MONTHS_2026[i], prev);
+    prev = { active: colTotals(result.active), group: colTotals(result.group), deposit: colTotals(result.deposit) };
+  }
+  return result as { active: any[]; group: any[]; deposit: any[] } | null;
+}
+
 // ---- Member portal credentials -------------------------------------------------
 // Members log in with their ID (C001…/D001…) + a password. Everyone starts with a
 // single shared default password; each member can then change their own. Changed
@@ -2282,60 +2355,9 @@ function Savings() {
     return sd;
   });
 
-  // Recompute ONE month's rows from raw inputs (saved snapshot, else current roster),
-  // applying the profit engine. The carry-forward beginning is supplied by the caller.
-  const computeMonth = (month: string, prevTotals: { active: Record<string, any>; group: Record<string, any>; deposit: Record<string, any> } | null) => {
-    const sBy = getStoredData('sof_savings_by_month', {});
-    const gBy = getStoredData('sof_group_by_month', {});
-    const dBy = getStoredData('sof_deposit_by_month', {});
-    const reports = getStoredData('sof_monthly_reports', {});
-    let active = (sBy[month] && sBy[month].length) ? sBy[month] : getStoredData('sof_savings_data', DEFAULT_SAVING_DATA) || [];
-    let group = (gBy[month] && gBy[month].length) ? gBy[month] : getStoredData('sof_savings_group_data', DEFAULT_GROUP_DATA) || [];
-    // Ensure R004 (ការប្រាក់រក្សាទុក) exists even in months saved before it was added.
-    if (!group.some((r: any) => r.id === 'R004')) {
-      group = [...group, DEFAULT_GROUP_DATA.find((r) => r.id === 'R004')];
-    }
-    let deposit = (dBy[month] && dBy[month].length) ? dBy[month] : getStoredData('sof_savings_deposit_data', DEFAULT_DEPOSIT_DATA) || [];
-
-    // Carry forward: this month's beginning = previous month's freshly recomputed total.
-    if (prevTotals) {
-      active = active.map((r: any) => (prevTotals.active[r.id] !== undefined ? { ...r, startCapital: String(prevTotals.active[r.id]) } : r));
-      group = group.map((r: any) => (prevTotals.group[r.id] !== undefined ? { ...r, startCapital: String(prevTotals.group[r.id]) } : r));
-      deposit = deposit.map((r: any) => (prevTotals.deposit[r.id] !== undefined ? { ...r, startCapital: String(prevTotals.deposit[r.id]) } : r));
-    }
-
-    const incM = monthlyIncome(month);
-    const net = incM.netProfit;
-    // Unpaid loan interest this month (ការត្រូវបង់ − ការបានបង់) auto-deposits into R004.
-    const unpaidInt = Math.max(0,
-      (sumMonthOf('sof_loans_by_month', month, 'interest') + sumMonthOf('sof_loans_deposit_by_month', month, 'interest'))
-      - (sumMonthOf('sof_loans_by_month', month, 'interestPaid') + sumMonthOf('sof_loans_deposit_by_month', month, 'interestPaid')));
-    // The reserve & social fund allocations from income auto-deposit (ទុនសន្សំបន្ថែម)
-    // into their own group savings accounts (ទុនបម្រុង / ទុនសង្គម); R004 gets unpaid interest.
-    group = group.map((r: any) => {
-      const nm = r.name || '';
-      if (nm.includes('បម្រុង')) return { ...r, addSaving: incM.reserveAlloc.toFixed(2) };
-      if (nm.includes('សង្គម')) return { ...r, addSaving: incM.socialAlloc.toFixed(2) };
-      if (r.id === 'R004') return { ...r, name: 'ការប្រាក់រក្សាទុក', addSaving: unpaidInt.toFixed(2) };
-      return r;
-    });
-    // R004 is a receivable tracker, not a savings fund — keep it out of the profit pool.
-    const pool = [...active, ...group].filter((r: any) => r.id !== 'R004').map((r: any) => ({
-      id: r.id, beginning: num(r.startCapital), addSaving: num(r.addSaving) + num(r.manualAdd),
-      withdraw: num(r.withdraw), penalty: num(r.actualFee), deductFee: num(r.deductFee),
-    }));
-    const byId: Record<string, any> = {};
-    computeSavings(pool, net).forEach((x) => { byId[x.id] = x; });
-    const apply = (rows: any[]) => rows.map((r: any) => {
-      if (r.id === 'R004') {
-        const total = num(r.startCapital) + num(r.addSaving);
-        return { ...r, share: '0.00%', profit: '0.00', total: total.toFixed(2) };
-      }
-      const c = byId[r.id];
-      return c ? { ...r, share: (c.share * 100).toFixed(2) + '%', profit: c.profit.toFixed(2), total: c.total.toFixed(2) } : r;
-    });
-    return { active: apply(active), group: apply(group), deposit: deposit.map((r: any) => computeDepositRow(r)) };
-  };
+  // Recompute ONE month's rows — delegates to the shared engine so the Savings page and
+  // the balance sheet always agree (see computeSavingsMonthLive above).
+  const computeMonth = computeSavingsMonthLive;
 
   // AUTO-CALCULATE the selected month. Every prior month is recomputed in order so the
   // carry-forward beginning always equals the freshly recomputed previous-month total —
@@ -2373,13 +2395,8 @@ function Savings() {
     });
     return { active: apply(activeRows), group: apply(groupRows) };
   };
-  // Deposit row total: deposit members earn a flat 0.5%, no profit-pool share.
-  const computeDepositRow = (r: any) => {
-    const beginning = num(r.startCapital);
-    const profit = DEFAULT_RATES.deposit * beginning;
-    const total = beginning + num(r.addSaving) + profit - num(r.withdraw) - num(r.actualFee) - num(r.deductFee);
-    return { ...r, profit: profit.toFixed(2), total: total.toFixed(2) };
-  };
+  // Deposit row total: deposit members earn a flat 0.5%, no profit-pool share (shared engine).
+  const computeDepositRow = computeDepositRowLive;
   // Edit a raw input cell (startCapital / addSaving / withdraw / deductFee / actualFee) → live recompute.
   const editSavingRaw = (idx: number, field: string, value: string) => {
     const next = savingData.map((r: any, i: number) => (i === idx ? { ...r, [field]: value } : r));
@@ -4074,16 +4091,24 @@ function Reports() {
   };
   const ftSum = (month: string, field: string) => ftRowsFor(month).reduce((s: number, r: any) => s + num(r[field]), 0);
 
-  // Balance-sheet lines — running balances that carry forward automatically each month.
-  const bsMemberSavings = carrySum('sof_savings_by_month', 'total');
-  const bsDepositSavings = carrySum('sof_deposit_by_month', 'total');
+  // Balance-sheet lines. Savings & group funds are computed LIVE (same engine as the
+  // Savings page) so they always tie to the income statement — no stale-data gap that
+  // would pile into retained earnings. Loans/fixed-term carry their last known balance.
+  const liveSav = savingsLiveTotals(selectedMonth);
+  const sumTotal = (rows: any[]) => (rows || []).reduce((s: number, r: any) => s + num(r.total), 0);
+  const liveGroupTotal = (needle: string) => {
+    const g = (liveSav?.group || []).find((r: any) => (r.name || '').includes(needle));
+    return g ? num(g.total) : 0;
+  };
+  const bsMemberSavings = liveSav ? sumTotal(liveSav.active) : carrySum('sof_savings_by_month', 'total');
+  const bsDepositSavings = liveSav ? sumTotal(liveSav.deposit) : carrySum('sof_deposit_by_month', 'total');
   const bsFixedTerm = carryFixedTerm();
   const bsLoansMembers = carrySum('sof_loans_by_month', 'remaining');
   const bsLoansExternal = carrySum('sof_external_provided_by_month', 'remaining');
   const bsExternalBorrow = carrySum('sof_external_received_by_month', 'remaining');
-  const bsReserve = carryGroup('បម្រុង');
-  const bsSocial = carryGroup('សង្គម');
-  const bsYes = carryGroup('យេស');
+  const bsReserve = liveSav ? liveGroupTotal('បម្រុង') : carryGroup('បម្រុង');
+  const bsSocial = liveSav ? liveGroupTotal('សង្គម') : carryGroup('សង្គម');
+  const bsYes = liveSav ? liveGroupTotal('យេស') : carryGroup('យេស');
   const bsBankBalance = 0;
   const bsTotalLiabilities = bsMemberSavings + bsDepositSavings + bsExternalBorrow + bsFixedTerm;
   // Cash on hand = cash-flow net; equity (incl. retained) + assets computed after the cash-flow block.
