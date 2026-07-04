@@ -5725,7 +5725,7 @@ function MemberReport() {
     try {
       const el = document.querySelector('.loan-request-sheet') as HTMLElement | null;
       if (el) {
-        const dataUrl = await renderElementToPngDataUrl(el, 950);
+        const dataUrl = await renderElementToPngDataUrl(el, 820);
         sent = await sendTelegramPhoto(dataUrl, caption);
       }
       if (!sent) sent = await sendTelegramMessage(caption);
@@ -6695,11 +6695,11 @@ function MemberReport() {
             <>
               {/* Export + submit buttons — OUTSIDE the sheet so they aren't captured */}
               <div className="no-print flex flex-wrap justify-end gap-2">
-                <button type="button" onClick={() => exportSheet('.loan-request-sheet', 'pdf', `គំរូស្នើកម្ចី-${memberCode}`, 'lreq-pdf', 950)} disabled={exportBusy === 'lreq-pdf'}
+                <button type="button" onClick={() => exportSheet('.loan-request-sheet', 'pdf', `គំរូស្នើកម្ចី-${memberCode}`, 'lreq-pdf', 820)} disabled={exportBusy === 'lreq-pdf'}
                   className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-60">
                   <Download size={14} /> <span>{exportBusy === 'lreq-pdf' ? 'កំពុងបង្កើត...' : 'PDF'}</span>
                 </button>
-                <button type="button" onClick={() => exportSheet('.loan-request-sheet', 'img', `គំរូស្នើកម្ចី-${memberCode}`, 'lreq-img', 950)} disabled={exportBusy === 'lreq-img'}
+                <button type="button" onClick={() => exportSheet('.loan-request-sheet', 'img', `គំរូស្នើកម្ចី-${memberCode}`, 'lreq-img', 820)} disabled={exportBusy === 'lreq-img'}
                   className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-60">
                   <FileText size={14} /> <span>{exportBusy === 'lreq-img' ? 'កំពុងទាញយក...' : 'រូបភាព'}</span>
                 </button>
@@ -6709,7 +6709,10 @@ function MemberReport() {
                 </button>
               </div>
 
-              <div className="loan-request-sheet bg-white p-6 sm:p-10 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left relative overflow-hidden">
+              {/* Fixed-width design (no md: breakpoints) scaled to fit via FitToWidth,
+                  so the Telegram/PDF snapshot is identical on phone and desktop. */}
+              <FitToWidth designWidth={820}>
+              <div className="loan-request-sheet w-full bg-white p-8 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left relative overflow-hidden">
                 {/* Header */}
                 <div className="text-center mb-6">
                   <p className="text-sm font-bold text-slate-700">ព្រះរាជាណាចក្រកម្ពុជា</p>
@@ -6733,7 +6736,7 @@ function MemberReport() {
                 </div>
 
                 {/* Two-column info grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mb-8">
+                <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-8">
                   {/* Left — loan parameters (editable) */}
                   <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-2.5">
                     <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
@@ -6840,6 +6843,7 @@ function MemberReport() {
                   </table>
                 </div>
               </div>
+              </FitToWidth>
             </>
           );
         })()}
