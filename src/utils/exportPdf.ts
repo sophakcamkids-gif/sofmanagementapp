@@ -170,6 +170,63 @@ async function renderElementToCanvas(el: HTMLElement, fixedWidth?: number): Prom
     ctrl.replaceWith(span);
   });
 
+  // html2canvas on iOS Safari drops CSS that comes from Tailwind class rules —
+  // especially colours (Tailwind v4 emits oklch(), which the iOS build can't parse)
+  // plus borders / backgrounds / text-align / flex / grid — so exports lose their
+  // boxes, table lines, colours and centering. Copy the resolved values back onto
+  // every clone node as INLINE styles, which html2canvas honours on every device.
+  //
+  // getComputedStyle returns colours in their AUTHORED space (still oklch), so
+  // rasterise a 1px sample to force a plain rgb() that html2canvas can parse.
+  const _cvs = document.createElement('canvas'); _cvs.width = _cvs.height = 1;
+  const _ctx = _cvs.getContext('2d', { willReadFrequently: true });
+  const _colorCache = new Map<string, string>();
+  const toRgb = (c: string): string => {
+    if (!c) return c;
+    const hit = _colorCache.get(c);
+    if (hit !== undefined) return hit;
+    let out = c;
+    try {
+      _ctx!.clearRect(0, 0, 1, 1);
+      _ctx!.fillStyle = 'rgba(0,0,0,0)';
+      _ctx!.fillStyle = c;
+      _ctx!.fillRect(0, 0, 1, 1);
+      const d = _ctx!.getImageData(0, 0, 1, 1).data;
+      out = d[3] === 0 ? 'transparent' : `rgb(${d[0]}, ${d[1]}, ${d[2]})`;
+    } catch { /* unparseable — keep original */ }
+    _colorCache.set(c, out);
+    return out;
+  };
+  const paint = (e: HTMLElement) => {
+    const cs = window.getComputedStyle(e);
+    e.style.color = toRgb(cs.color);
+    const bg = toRgb(cs.backgroundColor);
+    if (bg !== 'transparent') e.style.backgroundColor = bg;
+    for (const side of ['top', 'right', 'bottom', 'left']) {
+      if (parseFloat(cs.getPropertyValue(`border-${side}-width`)) > 0) {
+        e.style.setProperty(`border-${side}`,
+          `${cs.getPropertyValue(`border-${side}-width`)} ${cs.getPropertyValue(`border-${side}-style`)} ${toRgb(cs.getPropertyValue(`border-${side}-color`))}`);
+      }
+    }
+    if (cs.borderRadius && cs.borderRadius !== '0px') e.style.borderRadius = cs.borderRadius;
+    if (cs.textAlign && cs.textAlign !== 'start') e.style.textAlign = cs.textAlign;
+    const disp = cs.display;
+    if (disp === 'grid' || disp === 'inline-grid') {
+      e.style.display = disp;
+      e.style.gridTemplateColumns = cs.gridTemplateColumns;
+      e.style.gap = cs.gap;
+    } else if (disp === 'flex' || disp === 'inline-flex') {
+      e.style.display = disp;
+      e.style.flexDirection = cs.flexDirection;
+      e.style.justifyContent = cs.justifyContent;
+      e.style.alignItems = cs.alignItems;
+      e.style.flexWrap = cs.flexWrap;
+      e.style.gap = cs.gap;
+    }
+  };
+  paint(clone);
+  clone.querySelectorAll<HTMLElement>('*').forEach(paint);
+
   const options = {
     scale,
     useCORS: true,
