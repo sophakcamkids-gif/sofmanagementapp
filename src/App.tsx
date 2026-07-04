@@ -5594,7 +5594,8 @@ function MemberReport() {
       
       const dayStr = repFreq === 'monthly' ? `ខែទី ${i}` : `${i} អាទិត្យ`;
       const monthName = khmerMonths[dueDate.getMonth()];
-      const dateString = `ថ្ងៃទី ${dueDate.getDate()} ខែ${dueDate.getMonth() + 1} ឆ្នាំ ${dueDate.getFullYear()}`;
+      // Khmer format e.g. "ថ្ងៃទី ០៤ ខែកក្កដា ឆ្នាំ២០២៦" (Khmer numerals, month name).
+      const dateString = `ថ្ងៃទី ${toKhmerNum(String(dueDate.getDate()).padStart(2, '0'))} ខែ${monthName} ឆ្នាំ${toKhmerNum(dueDate.getFullYear())}`;
       
       schedule.push({
         num: i,
