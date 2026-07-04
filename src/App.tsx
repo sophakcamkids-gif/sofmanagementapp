@@ -5451,7 +5451,10 @@ function MemberReport() {
     if (!el) return;
     setSavingImg(true);
     try {
-      const dataUrl = await toPng(el, { cacheBust: true, pixelRatio: 2, backgroundColor: '#ffffff' });
+      const dataUrl = await toPng(el, {
+        cacheBust: true, pixelRatio: 2, backgroundColor: '#ffffff',
+        filter: (node: any) => !(node.classList && node.classList.contains('no-print')),
+      });
       const link = document.createElement('a');
       link.download = `របាយការណ៍-${memberCode}-${summaryMonthName}-${selectedReportYear}.png`;
       link.href = dataUrl;
@@ -5469,7 +5472,7 @@ function MemberReport() {
       title={activeTab === 'dashboard' ? "ព័ត៌មានផ្ទាល់ខ្លួន" : activeTab}
       hideAdd
       hideUpload
-      hideDownload={activeTab !== 'របាយការណ៍ផ្ទាល់ខ្លួន'}
+      hideDownload={true}
       downloadLabel="ទាញយក PDF"
       onDownloadClick={() => window.print()}
       hideBack={true}
@@ -5820,6 +5823,25 @@ function MemberReport() {
       )}
 
       {activeTab === 'របាយការណ៍ផ្ទាល់ខ្លួន' && (
+      <>
+        {/* Download options — kept OUTSIDE .report-sheet so they aren't in the image/PDF. */}
+        <div className="no-print max-w-3xl mx-auto flex items-center justify-center sm:justify-end gap-2 mb-4">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-4 py-2 rounded-full cursor-pointer active:scale-95"
+          >
+            <Download size={14} strokeWidth={2.5} /> ទាញយក PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadImage}
+            disabled={savingImg}
+            className="flex items-center gap-1.5 bg-[#0a6652] hover:bg-[#084f40] text-white font-bold text-xs px-4 py-2 rounded-full cursor-pointer active:scale-95 disabled:opacity-60"
+          >
+            <FileText size={14} strokeWidth={2.5} /> {savingImg ? 'កំពុងទាញយក...' : 'ទាញយក រូបភាព'}
+          </button>
+        </div>
         <div className="report-sheet max-w-3xl mx-auto bg-white p-6 md:p-12 rounded-[32px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100 relative overflow-hidden">
 
         {/* Background Watermark */}
@@ -5853,23 +5875,6 @@ function MemberReport() {
                   <option key={m} value={m}>{m} {selectedReportYear}</option>
                 ))}
               </select>
-            </div>
-            <div className="no-print flex items-center justify-center gap-2 mt-3">
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] px-4 py-1.5 rounded-full cursor-pointer active:scale-95"
-              >
-                <Download size={13} strokeWidth={2.5} /> ទាញយក PDF
-              </button>
-              <button
-                type="button"
-                onClick={handleDownloadImage}
-                disabled={savingImg}
-                className="flex items-center gap-1.5 bg-[#0a6652] hover:bg-[#084f40] text-white font-bold text-[11px] px-4 py-1.5 rounded-full cursor-pointer active:scale-95 disabled:opacity-60"
-              >
-                <FileText size={13} strokeWidth={2.5} /> {savingImg ? 'កំពុងទាញយក...' : 'ទាញយក រូបភាព'}
-              </button>
             </div>
         </div>
 
@@ -5968,6 +5973,7 @@ function MemberReport() {
           <input type="file" ref={sigFileRef} accept="image/*" className="hidden" onChange={handleSigUpload} />
         </div>
       </div>
+      </>
       )}
 
       {activeTab === 'ស្នើកម្ចី' && (
