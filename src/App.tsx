@@ -4850,22 +4850,23 @@ function History() {
     }
     return false;
   };
-  const updateTxn = (id: string, changes: any) => {
-    const all = (getStoredData('sof_pending_payments', []) || []).map((t: any) => (t.id === id ? { ...t, ...changes } : t));
+  // Remove a processed request from the shared store — keeps the cloud list lean
+  // (proof stays in Telegram, the amount is already in the savings/loan table).
+  const removeTxn = (id: string) => {
+    const all = (getStoredData('sof_pending_payments', []) || []).filter((t: any) => t.id !== id);
     setStoredData('sof_pending_payments', all);
     setPayments(all);
   };
   const approve = (txn: any) => {
     const ok = applyPayment(txn);
-    updateTxn(txn.id, { status: 'approved' });
+    removeTxn(txn.id);
     alert(ok
       ? `បានអនុម័ត និងកត់ត្រាទៅតារាង${txn.type === 'loan' ? 'កម្ចី' : 'សន្សំ'} ខែ ${txn.monthKey} ដោយជោគជ័យ!`
-      : `បានអនុម័ត តែរកមិនឃើញជួររបស់ ${txn.memberCode} សម្រាប់ខែ ${txn.monthKey} — សូមពិនិត្យតារាង។`);
+      : `រកមិនឃើញជួររបស់ ${txn.memberCode} សម្រាប់ខែ ${txn.monthKey} — សូមពិនិត្យតារាង។`);
   };
-  const reject = (txn: any) => { if (window.confirm('បដិសេធការស្នើសុំនេះមែនទេ?')) updateTxn(txn.id, { status: 'rejected' }); };
+  const reject = (txn: any) => { if (window.confirm('បដិសេធការស្នើសុំនេះមែនទេ?')) removeTxn(txn.id); };
 
   const pending = payments.filter((p) => p.status === 'pending');
-  const done = payments.filter((p) => p.status !== 'pending');
   const money = (n: number) => '$' + fmtMoney(num(n));
 
   return (
@@ -4903,22 +4904,6 @@ function History() {
         </div>
       )}
 
-      {done.length > 0 && (
-        <div className="mt-8">
-          <h4 className="text-xs font-black text-slate-400 uppercase tracking-wide mb-3">ប្រវត្តិ (បានដំណើរការ)</h4>
-          <div className="space-y-2">
-            {done.slice(0, 30).map((txn) => (
-              <div key={txn.id} className="flex items-center justify-between gap-2 text-xs bg-slate-50 border border-slate-100 rounded-xl px-4 py-2">
-                <span className="font-bold text-slate-700 truncate">{txn.memberName || txn.memberCode} · {txn.type === 'loan' ? 'បង់កម្ចី' : 'ដាក់សន្សំ'} · ខែ {txn.monthKey}</span>
-                <span className="flex items-center gap-2 shrink-0">
-                  <span className="font-bold text-slate-600">{money(txn.amount)}</span>
-                  <span className={`font-bold px-2 py-0.5 rounded-full ${txn.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'}`}>{txn.status === 'approved' ? 'អនុម័ត' : 'បដិសេធ'}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </PageView>
   );
 }
