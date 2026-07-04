@@ -6,3 +6,10 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Local data / spreadsheets — never commit member data or financial workbooks
+*.xlsx
+Members/
+
+# Stale extracted-zip duplicate of the app (do not track)
+sofmanagementapp-main/
