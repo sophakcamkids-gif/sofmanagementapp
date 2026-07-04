@@ -4859,7 +4859,15 @@ function History() {
   };
   const approve = (txn: any) => {
     const ok = applyPayment(txn);
-    removeTxn(txn.id);
+    // Keep this as the member's ONE retained approved record (so they still see a
+    // confirmation in their portal), and drop that member's older approved items
+    // so the synced list stays bounded — pending items + ≤1 approved per member.
+    const memCode = String(txn.memberCode ?? '').toUpperCase();
+    const next = (getStoredData('sof_pending_payments', []) || [])
+      .filter((t: any) => !(t.id !== txn.id && t.status === 'approved' && String(t.memberCode ?? '').toUpperCase() === memCode))
+      .map((t: any) => (t.id === txn.id ? { ...t, status: 'approved' } : t));
+    setStoredData('sof_pending_payments', next);
+    setPayments(next);
     alert(ok
       ? `បានអនុម័ត និងកត់ត្រាទៅតារាង${txn.type === 'loan' ? 'កម្ចី' : 'សន្សំ'} ខែ ${txn.monthKey} ដោយជោគជ័យ!`
       : `រកមិនឃើញជួររបស់ ${txn.memberCode} សម្រាប់ខែ ${txn.monthKey} — សូមពិនិត្យតារាង។`);
