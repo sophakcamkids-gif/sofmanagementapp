@@ -6528,39 +6528,7 @@ function MemberReport() {
 
             {/* Loan parameters grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mb-8">
-              {/* Left Column Parameters */}
-              <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-2.5">
-                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
-                  <span className="text-slate-500 font-bold">ទំហំកម្ចី (Loan Size)</span>
-                  <span className="font-black text-[#0a6652]">${(parseFloat(repLoanAmt) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
-                  <span className="text-slate-500 font-semibold">រយៈពេលនៃកម្ចី</span>
-                  <span className="font-bold text-slate-700">{loanTermMonths} ខែ</span>
-                </div>
-                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
-                  <span className="text-slate-500 font-semibold">អត្រាការប្រាក់</span>
-                  <span className="font-bold text-slate-700">{(loanRatePct || DEFAULT_RATES.loan * 100).toFixed(2)}% / ខែ</span>
-                </div>
-                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
-                  <span className="text-slate-500 font-semibold">ទឹកប្រាក់បង់រំលស់សរុប</span>
-                  <span className="font-bold text-slate-700">${fmtMoney(loanPrincipalRepaid)}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
-                  <span className="text-slate-500 font-semibold">ការប្រាក់បានបង់</span>
-                  <span className="font-bold text-[#0a6652]">${fmtMoney(loanInterestPaid)}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
-                  <span className="text-slate-500 font-semibold">ទឹកប្រាក់បានបង់សរុប</span>
-                  <span className="font-black text-[#0a6652]">${fmtMoney(loanTotalPaid)}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 font-semibold">ខែទទួលកម្ចី</span>
-                  <span className="font-bold text-slate-700">{loanStartMonthName} {selectedReportYear}</span>
-                </div>
-              </div>
-
-              {/* Right Column Parameters - Client / Guarantor details */}
+              {/* Left Column - Client / Guarantor details */}
               <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-2.5">
                 <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
                   <span className="text-slate-500 font-semibold">ឈ្មោះអ្នកទទួលកម្ចី</span>
@@ -6624,6 +6592,38 @@ function MemberReport() {
                     onChange={(e) => setRepGuarantor2Id(e.target.value)}
                     className="font-bold text-slate-700 text-right bg-transparent focus:underline hover:bg-white/50 px-1 py-0.5 rounded focus:outline-none w-20 border-none"
                   />
+                </div>
+              </div>
+
+              {/* Right Column - Loan parameters */}
+              <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-2.5">
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <span className="text-slate-500 font-bold">ទំហំកម្ចី (Loan Size)</span>
+                  <span className="font-black text-[#0a6652]">${(parseFloat(repLoanAmt) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <span className="text-slate-500 font-semibold">រយៈពេលនៃកម្ចី</span>
+                  <span className="font-bold text-slate-700">{loanTermMonths} ខែ</span>
+                </div>
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <span className="text-slate-500 font-semibold">អត្រាការប្រាក់</span>
+                  <span className="font-bold text-slate-700">{(loanRatePct || DEFAULT_RATES.loan * 100).toFixed(2)}% / ខែ</span>
+                </div>
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <span className="text-slate-500 font-semibold">ទឹកប្រាក់បង់រំលស់សរុប</span>
+                  <span className="font-bold text-slate-700">${fmtMoney(loanPrincipalRepaid)}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <span className="text-slate-500 font-semibold">ការប្រាក់បានបង់</span>
+                  <span className="font-bold text-[#0a6652]">${fmtMoney(loanInterestPaid)}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <span className="text-slate-500 font-semibold">ទឹកប្រាក់បានបង់សរុប</span>
+                  <span className="font-black text-[#0a6652]">${fmtMoney(loanTotalPaid)}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-semibold">ខែទទួលកម្ចី</span>
+                  <span className="font-bold text-slate-700">{loanStartMonthName} {selectedReportYear}</span>
                 </div>
               </div>
             </div>
