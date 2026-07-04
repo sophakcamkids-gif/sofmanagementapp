@@ -309,8 +309,10 @@ const memberExists = (code: string): boolean => {
   const u = (code || '').toUpperCase();
   if (!u) return false;
   const list = getStoredData('sof_member_list_data', []) || [];
-  return list.some((m: any) =>
-    String(m.code || '').toUpperCase() === u || String(m.id || '').toUpperCase().endsWith(' ' + u));
+  if (list.some((m: any) =>
+    String(m.code || '').toUpperCase() === u || String(m.id || '').toUpperCase().endsWith(' ' + u))) return true;
+  // Fixed-term account holders (F-codes) are a separate roster.
+  return FIXEDTERM_ROSTER.some((r) => String(r.id).toUpperCase() === u);
 };
 
 function SidebarLink({ to, label }: { to: string, label: string }) {
