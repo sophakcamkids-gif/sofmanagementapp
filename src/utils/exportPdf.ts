@@ -210,6 +210,14 @@ async function renderElementToCanvas(el: HTMLElement, fixedWidth?: number): Prom
     }
     if (cs.borderRadius && cs.borderRadius !== '0px') e.style.borderRadius = cs.borderRadius;
     if (cs.textAlign && cs.textAlign !== 'start') e.style.textAlign = cs.textAlign;
+    // Images: pin the laid-out size inline. html2canvas on iOS otherwise ignores
+    // class-based sizing (max-h-16, w-full…) and draws the image at its natural
+    // resolution — e.g. the signature ballooned to fill the page.
+    if (e.tagName === 'IMG') {
+      e.style.width = cs.width;
+      e.style.height = cs.height;
+      e.style.objectFit = cs.objectFit;
+    }
     const disp = cs.display;
     if (disp === 'grid' || disp === 'inline-grid') {
       e.style.display = disp;
