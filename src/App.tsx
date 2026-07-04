@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx';
-import { toPng } from 'html-to-image';
+import { exportElementToPdf, exportElementToImage } from './utils/exportPdf';
 import { db } from './lib/db';
 import { loadAllCloudState, saveCloudState } from './lib/cloudStore';
 import { computeSavings, computeLoan, DEFAULT_RATES } from './lib/calcEngine';
@@ -5444,26 +5444,36 @@ function MemberReport() {
   const summaryLastDay = summaryIdx >= 0 ? new Date(Number(selectedReportYear), summaryIdx + 1, 0).getDate() : '';
   const fm = (v: number) => (v ? fmtMoney(v) : '-');
 
-  // Download the on-screen report card as a PNG image.
+  // Download the on-screen report card as a PNG image or PDF. Uses the shared,
+  // mobile-friendly exporter (html2canvas-pro + jsPDF) so it works on iOS/Android
+  // and in-app browsers — the old html-to-image + <a download> failed on phones.
   const [savingImg, setSavingImg] = useState(false);
+  const [savingPdf, setSavingPdf] = useState(false);
+  const reportFilename = () => `របាយការណ៍-${memberCode}-${summaryMonthName}-${selectedReportYear}`;
   const handleDownloadImage = async () => {
     const el = document.querySelector('.report-sheet') as HTMLElement | null;
     if (!el) return;
     setSavingImg(true);
     try {
-      const dataUrl = await toPng(el, {
-        cacheBust: true, pixelRatio: 2, backgroundColor: '#ffffff',
-        filter: (node: any) => !(node.classList && node.classList.contains('no-print')),
-      });
-      const link = document.createElement('a');
-      link.download = `របាយការណ៍-${memberCode}-${summaryMonthName}-${selectedReportYear}.png`;
-      link.href = dataUrl;
-      link.click();
+      await exportElementToImage(el, reportFilename());
     } catch (err) {
       console.error('Image export failed:', err);
       alert('មិនអាចទាញយករូបភាពបានទេ។ សូមព្យាយាមម្តងទៀត។');
     } finally {
       setSavingImg(false);
+    }
+  };
+  const handleDownloadPdf = async () => {
+    const el = document.querySelector('.report-sheet') as HTMLElement | null;
+    if (!el) return;
+    setSavingPdf(true);
+    try {
+      await exportElementToPdf(el, reportFilename());
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      alert('មិនអាចទាញយក PDF បានទេ។ សូមព្យាយាមម្តងទៀត។');
+    } finally {
+      setSavingPdf(false);
     }
   };
 
@@ -5828,10 +5838,11 @@ function MemberReport() {
         <div className="no-print max-w-3xl mx-auto flex items-center justify-center sm:justify-end gap-2 mb-4">
           <button
             type="button"
-            onClick={() => window.print()}
-            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-4 py-2 rounded-full cursor-pointer active:scale-95"
+            onClick={handleDownloadPdf}
+            disabled={savingPdf}
+            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-4 py-2 rounded-full cursor-pointer active:scale-95 disabled:opacity-60"
           >
-            <Download size={14} strokeWidth={2.5} /> ទាញយក PDF
+            <Download size={14} strokeWidth={2.5} /> {savingPdf ? 'កំពុងបង្កើត PDF...' : 'ទាញយក PDF'}
           </button>
           <button
             type="button"
