@@ -5437,9 +5437,10 @@ function MemberReport() {
         proofImg: t.proofImg || '',
       }));
 
-    // Pending first, then recorded — both newest month first (stable sort keeps
-    // pending above a recorded entry that shares the same month).
-    return [...pending, ...recorded].sort((a, b) => sortKey(b.date) - sortKey(a.date));
+    // Show every pending request (awaiting review) plus ONLY the single most
+    // recent approved/recorded transaction — the member keeps just their last one.
+    const latestApproved = recorded.sort((a, b) => sortKey(b.date) - sortKey(a.date)).slice(0, 1);
+    return [...pending, ...latestApproved].sort((a, b) => sortKey(b.date) - sortKey(a.date));
   });
 
   // Pre-fill the loan report with the logged-in member's live borrower + loan details.
