@@ -4959,16 +4959,8 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
   return (
     <PageView title="ច្រកចូលប្រព័ន្ធ (System Login)" hideUpload hideAdd hideBack hideDownload>
       <div className="max-w-md mx-auto bg-white p-5 sm:p-8 rounded-[24px] border border-slate-200 shadow-sm mt-4">
-        
-        {loginType === 'member' && (
-          <button
-            type="button"
-            onClick={() => { setLoginType('admin'); navigate('/login?tab=admin'); }}
-            className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-800 mb-4"
-          >
-            <ChevronLeft size={14} /> ត្រឡប់ទៅគណៈកម្មការ (Admin)
-          </button>
-        )}
+        {/* The member portal is a dedicated members-only entrance (link sent by the
+            committee) — it must NOT expose any path to the admin console. */}
 
         <div className="text-center mb-6">
           <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-sm ${
