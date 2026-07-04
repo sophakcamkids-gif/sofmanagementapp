@@ -5590,7 +5590,7 @@ function MemberReport() {
 
   return (
     <PageView
-      title={activeTab === 'dashboard' ? "ព័ត៌មានផ្ទាល់ខ្លួន" : activeTab}
+      title={activeTab === 'dashboard' ? "" : activeTab}
       hideAdd
       hideUpload
       hideDownload={true}
