@@ -5366,9 +5366,9 @@ function MemberReport() {
 
   // Payment states for 'ការដាក់សន្សំ និងបង់កម្ចី' tab
   const [paymentType, setPaymentType] = useState<'savings' | 'loan'>('savings');
-  const [paymentAmount, setPaymentAmount] = useState('50.00');
-  const [loanPrincipal, setLoanPrincipal] = useState('40.00');
-  const [loanInterest, setLoanInterest] = useState('10.00');
+  const [paymentAmount, setPaymentAmount] = useState('0.00');
+  const [loanPrincipal, setLoanPrincipal] = useState('0.00');
+  const [loanInterest, setLoanInterest] = useState('0.00');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [transactionId, setTransactionId] = useState('');
   const [proofImage, setProofImage] = useState<string | null>(null);
