@@ -4859,18 +4859,14 @@ function History() {
   };
   const approve = (txn: any) => {
     const ok = applyPayment(txn);
-    // Keep this as the member's ONE retained approved record (so they still see a
-    // confirmation in their portal), and drop that member's older approved items
-    // so the synced list stays bounded — pending items + ≤1 approved per member.
-    const memCode = String(txn.memberCode ?? '').toUpperCase();
-    const next = (getStoredData('sof_pending_payments', []) || [])
-      .filter((t: any) => !(t.id !== txn.id && t.status === 'approved' && String(t.memberCode ?? '').toUpperCase() === memCode))
-      .map((t: any) => (t.id === txn.id ? { ...t, status: 'approved' } : t));
-    setStoredData('sof_pending_payments', next);
-    setPayments(next);
+    // Once written into the by-month savings/loan table the payment is permanently
+    // recorded there (and shows in the member's history, which reads those tables),
+    // so drop it from the pending store to keep the synced list lean. If no matching
+    // row was found we keep it pending so the admin can fix and retry.
+    if (ok) removeTxn(txn.id);
     alert(ok
       ? `បានអនុម័ត និងកត់ត្រាទៅតារាង${txn.type === 'loan' ? 'កម្ចី' : 'សន្សំ'} ខែ ${txn.monthKey} ដោយជោគជ័យ!`
-      : `រកមិនឃើញជួររបស់ ${txn.memberCode} សម្រាប់ខែ ${txn.monthKey} — សូមពិនិត្យតារាង។`);
+      : `រកមិនឃើញជួររបស់ ${txn.memberCode} សម្រាប់ខែ ${txn.monthKey} — សូមពិនិត្យតារាង (មិនទាន់លុបចេញ)។`);
   };
   const reject = (txn: any) => { if (window.confirm('បដិសេធការស្នើសុំនេះមែនទេ?')) removeTxn(txn.id); };
 
@@ -5393,15 +5389,41 @@ function MemberReport() {
     proofName: string;
     proofImg: string;
   }>>(() => {
-    // Show THIS member's real recent submissions (newest first), pulled from the
-    // shared pending store — not a hardcoded sample. Approved items are removed
-    // from that store (they now live in the savings/loan report), so this list
-    // reflects the member's latest pending requests.
+    // THIS member's history, newest first. Two sources so nothing is ever lost:
+    //   1. Recorded activity from the by-month savings/loan tables — every approved
+    //      payment lands there permanently, so past approvals always show (even
+    //      after the pending entry was cleared on approval).
+    //   2. Still-pending submissions from the shared pending store (with proof).
     const code = (localStorage.getItem('memberId') || '').toUpperCase();
-    const all = getStoredData('sof_pending_payments', []) || [];
-    return all
-      .filter((t: any) => String(t.memberCode ?? '').toUpperCase() === code)
-      .sort((a: any, b: any) => String(b.date ?? '').localeCompare(String(a.date ?? '')))
+    const cOf = (r: any) => { const s = String(r?.id ?? r?.code ?? ''); return (s.includes(' ') ? s.split(' ').pop() : s || '').toUpperCase(); };
+    const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
+    const sortKey = (s: string) => {
+      if (/^\d{4}-\d{2}/.test(s)) return Number(s.slice(0, 4)) * 100 + Number(s.slice(5, 7));
+      const parts = String(s).trim().split(' ');
+      const mi = KHM.indexOf(parts[0]);
+      return (Number(parts[parts.length - 1]) || 0) * 100 + (mi >= 0 ? mi + 1 : 0);
+    };
+
+    const recorded: any[] = [];
+    const sav = getStoredData('sof_savings_by_month', {}) || {};
+    for (const [month, rows] of Object.entries(sav)) {
+      if (!Array.isArray(rows)) continue;
+      const r = (rows as any[]).find((x) => cOf(x) === code);
+      if (r && num(r.addSaving) > 0) {
+        recorded.push({ id: `SAV-${month}`, type: 'savings', amount: num(r.addSaving), date: month, transactionId: '', status: 'approved', proofName: '', proofImg: '' });
+      }
+    }
+    const ln = getStoredData('sof_loans_by_month', {}) || {};
+    for (const [month, rows] of Object.entries(ln)) {
+      if (!Array.isArray(rows)) continue;
+      const r = (rows as any[]).find((x) => cOf(x) === code);
+      if (r && (num(r.repayment) > 0 || num(r.interestPaid) > 0)) {
+        recorded.push({ id: `LN-${month}`, type: 'loan', amount: num(r.repayment) + num(r.interestPaid), principal: num(r.repayment), interest: num(r.interestPaid), date: month, transactionId: '', status: 'approved', proofName: '', proofImg: '' });
+      }
+    }
+
+    const pending = (getStoredData('sof_pending_payments', []) || [])
+      .filter((t: any) => String(t.memberCode ?? '').toUpperCase() === code && t.status !== 'approved')
       .map((t: any) => ({
         id: t.id,
         type: t.type === 'loan' ? 'loan' : 'savings',
@@ -5410,10 +5432,14 @@ function MemberReport() {
         interest: t.interest,
         date: t.date || '',
         transactionId: t.transactionId || '',
-        status: t.status === 'approved' ? 'approved' : 'pending',
+        status: 'pending',
         proofName: t.proofName || '',
         proofImg: t.proofImg || '',
       }));
+
+    // Pending first, then recorded — both newest month first (stable sort keeps
+    // pending above a recorded entry that shares the same month).
+    return [...pending, ...recorded].sort((a, b) => sortKey(b.date) - sortKey(a.date));
   });
 
   // Pre-fill the loan report with the logged-in member's live borrower + loan details.
@@ -7056,11 +7082,15 @@ function MemberReport() {
                           }
                         }
                       }}>
-                        <img 
-                          src={txn.proofImg} 
-                          alt="Proof thumb" 
-                          className="w-full h-full object-cover rounded-lg"
-                        />
+                        {txn.proofImg ? (
+                          <img
+                            src={txn.proofImg}
+                            alt="Proof thumb"
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                        ) : (
+                          <TrendingUp size={18} className="text-slate-300" strokeWidth={2.5} />
+                        )}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
