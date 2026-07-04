@@ -5364,6 +5364,7 @@ function MemberReport() {
       getStoredData('sof_member_list_data', []) || [],
       getStoredData('sof_profile_data', DEFAULT_PROFILE_DATA) || [],
       getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA) || [],
+      FIXEDTERM_ROSTER,  // fixed-term account holders (F-codes)
     ];
     for (const list of lists) {
       const m = list.find((x: any) => codeOf(x) === memberCode || String(x.code || '').toUpperCase() === memberCode);
@@ -5391,12 +5392,18 @@ function MemberReport() {
   const memberSavingRows = (() => {
     const active = getStoredData('sof_savings_by_month', {}) || {};
     const deposit = getStoredData('sof_deposit_by_month', {}) || {};
+    const fixedterm = getStoredData('sof_fixedterm_by_month', FIXEDTERM_BY_MONTH) || {};
     const out: any[] = [];
     memberMonths.forEach((m, i) => {
       const a = Array.isArray(active[m]) ? active[m].find((x: any) => codeOf(x) === memberCode) : null;
       const d = (!a && Array.isArray(deposit[m])) ? deposit[m].find((x: any) => codeOf(x) === memberCode) : null;
-      const r = a || d;
-      if (r) out.push({ seq: String(i + 1).padStart(2, '0'), mi: i, monthName: m.split(' ')[0], ...r });
+      const f = (!a && !d && Array.isArray(fixedterm[m])) ? fixedterm[m].find((x: any) => codeOf(x) === memberCode) : null;
+      const r = a || d || f;
+      if (r) {
+        const row: any = { seq: String(i + 1).padStart(2, '0'), mi: i, monthName: m.split(' ')[0], ...r };
+        if (f) row.profit = f.interest;  // fixed-term earns interest (1%/month), not a profit-share
+        out.push(row);
+      }
     });
     return out;
   })();
