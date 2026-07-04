@@ -2181,11 +2181,17 @@ function Members() {
         >
           ប្រវតិ្តរូបសមាជិកសកម្ម
         </button>
-        <button 
+        <button
           onClick={() => setActiveTab('deposit_profile')}
           className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'deposit_profile' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
         >
           ប្រវតិ្តរូបសមាជិកបញ្ញើ
+        </button>
+        <button
+          onClick={() => setActiveTab('fixedterm')}
+          className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors ${activeTab === 'fixedterm' ? 'bg-[#0a6652] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          សមាជិកមានកាលកំណត់
         </button>
       </div>
 
@@ -2281,6 +2287,55 @@ function Members() {
               <Save size={16} />
               <span>រក្សាទុក</span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'fixedterm' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
+          <p className="text-xs font-medium text-slate-500 mb-4">
+            គណនីមានកាលកំណត់ (F01–F08) — បញ្ជីនេះកំណត់ជាមូលដ្ឋាន។ អាចមើល/កំណត់ពាក្យសម្ងាត់សម្រាប់ចូលគណនីបាន។
+          </p>
+          <div className="frz3 overflow-x-auto border border-slate-300 rounded-xl">
+            <table data-pwtick={pwTick} className="w-full text-left border-collapse text-sm min-w-[700px]">
+              <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
+                <tr>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle">ល.រ</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle">លេខ ID</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle">ឈ្មោះ</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle">ភេទ</th>
+                  <th className="px-3 py-3 border-r border-slate-300 align-middle">ប្រភេទសមាជិក</th>
+                  <th className="px-3 py-3 align-middle">
+                    <button type="button" onClick={() => setShowPasswords((v) => !v)} className="inline-flex items-center gap-1 hover:text-emerald-700 cursor-pointer" title="បង្ហាញ/លាក់ ពាក្យសម្ងាត់">
+                      ពាក្យសម្ងាត់ {showPasswords ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {FIXEDTERM_ROSTER.map((row, i) => {
+                  const code = rowMemberCode(row);
+                  const pw = getMemberPassword(code);
+                  const isDefault = pw === getMemberDefaultPassword();
+                  return (
+                    <tr key={row.id} className="border-b border-slate-300 hover:bg-slate-50 transition-colors">
+                      <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-slate-500">{getKhmerNum(i + 1)}</td>
+                      <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.id}</td>
+                      <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
+                      <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
+                      <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600">គណនីមានកាលកំណត់</td>
+                      <td className="px-3 py-2 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className={`font-mono text-xs ${isDefault ? 'text-slate-400' : 'text-slate-800 font-bold'}`}>{showPasswords ? pw : '••••••'}</span>
+                          {!isDefault && <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded" title="សមាជិកបានប្តូរ">ដូរ</span>}
+                          <button onClick={() => handleResetPassword(row)} className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer" title="កំណត់ពាក្យសម្ងាត់ឡើងវិញ (Reset to default)"><Key size={13} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
