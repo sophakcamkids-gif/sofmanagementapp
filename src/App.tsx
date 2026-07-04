@@ -6268,8 +6268,8 @@ function MemberReport() {
             <span className="text-amber-700 text-base whitespace-nowrap"><span className="text-amber-700/50 mr-0.5">$</span>{fm(num(sumS.addSaving) + num(sumL.repayment) + num(sumL.interestPaid))}</span>
           </div>
           <div className="flex justify-between items-center gap-1 py-1 mt-2">
-            <span className="text-slate-500 font-medium whitespace-nowrap">សមាជិកភាព:</span>
-            <span className="px-3 py-1 whitespace-nowrap"><span className="text-slate-300 mr-0.5">$</span>{fm(num(sumS.actualFee))}</span>
+            <span className="text-slate-500 font-medium whitespace-nowrap">ការប្រាក់ត្រូវបង់ខែបន្ទាប់:</span>
+            <span className="text-amber-600 px-3 py-1 whitespace-nowrap"><span className="text-amber-600/50 mr-0.5">$</span>{fm(num(sumL.remaining) * (loanRatePct || DEFAULT_RATES.loan * 100) / 100)}</span>
           </div>
         </div>
 
