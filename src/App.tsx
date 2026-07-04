@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx';
-import { exportElementToPdf, exportElementToImage } from './utils/exportPdf';
+import { exportElementToPdf, exportElementToImage, renderElementToPngDataUrl } from './utils/exportPdf';
 import FitToWidth from './FitToWidth';
 import { db } from './lib/db';
 import { loadAllCloudState, saveCloudState } from './lib/cloudStore';
@@ -5702,6 +5702,62 @@ function MemberReport() {
       : 'ពាក្យស្នើសុំកម្ចីត្រូវបានកត់ត្រា! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។');
   };
 
+  // Submit the on-screen loan-request TEMPLATE: snapshot the filled sheet to a PNG,
+  // send it to the SOF Telegram group, and push a loan-request entry for the admin.
+  const submitLoanTemplate = async () => {
+    if (loanReqBusy) return;
+    const amt = parseFloat(repLoanAmt) || 0;
+    if (amt <= 0) { alert('សូមបញ្ចូលទំហំកម្ចីឲ្យត្រឹមត្រូវ!'); return; }
+    if (!repBorrower.trim()) { alert('សូមបញ្ចូលឈ្មោះអ្នកទទួលកម្ចី!'); return; }
+    setLoanReqBusy(true);
+    const code = (localStorage.getItem('memberId') || '').toUpperCase();
+    const now = new Date();
+    const date = now.toISOString().split('T')[0];
+    const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
+    const monthKey = `${KHM[now.getMonth()]} ${now.getFullYear()}`;
+    const caption =
+      `📝 ពាក្យស្នើសុំកម្ចី (គំរូ)\n` +
+      `ឈ្មោះ៖ ${repBorrower} (${code})\n` +
+      `ទំហំកម្ចី៖ $${amt.toLocaleString()}\n` +
+      `រយៈពេល៖ ${repLoanTerm} ខែ · អត្រា ${repLoanRate}%/ខែ\n` +
+      `កិច្ចសន្យាលេខ៖ ${contractNum}\n` +
+      `កាលបរិច្ឆេទ៖ ${date}`;
+    let sent = false;
+    try {
+      const el = document.querySelector('.loan-request-sheet') as HTMLElement | null;
+      if (el) {
+        const dataUrl = await renderElementToPngDataUrl(el, 950);
+        sent = await sendTelegramPhoto(dataUrl, caption);
+      }
+      if (!sent) sent = await sendTelegramMessage(caption);
+    } catch { /* network issue — still record below */ }
+
+    const txn = {
+      id: `LR-${Date.now()}`,
+      memberCode: code,
+      memberName: repBorrower,
+      type: 'loan-request',
+      amount: amt,
+      term: repLoanTerm,
+      rate: repLoanRate,
+      contractNum,
+      phone: repPhone,
+      date,
+      monthKey,
+      transactionId: 'N/A',
+      status: 'pending' as const,
+      proofName: `គំរូស្នើកម្ចី ${contractNum}`,
+      proofImg: '',
+      sentToTelegram: sent,
+    };
+    const all = getStoredData('sof_pending_loan_requests', []) || [];
+    setStoredData('sof_pending_loan_requests', [txn, ...all]);
+    setLoanReqBusy(false);
+    alert(sent
+      ? 'បានផ្ញើពាក្យស្នើសុំកម្ចីចូល Telegram ក្រុម SOF! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។'
+      : 'ពាក្យស្នើសុំកម្ចីត្រូវបានកត់ត្រា! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។');
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -6488,7 +6544,8 @@ function MemberReport() {
       )}
 
       {activeTab === 'ស្នើកម្ចី' && (
-        <div className="max-w-3xl mx-auto bg-white p-6 md:p-8 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left">
+       <div className="max-w-3xl mx-auto space-y-6">
+        <div className="bg-white p-6 md:p-8 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left">
            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-green-50/60">
              <div className="flex items-center gap-3">
                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center shrink-0">
@@ -6627,6 +6684,163 @@ function MemberReport() {
              </div>
            )}
         </div>
+
+        {/* ===== Loan-request TEMPLATE (matches the Excel application form) ===== */}
+        {(() => {
+          const sch = calculateSchedule();
+          const totalInterest = sch.reduce((s, r) => s + r.interest, 0);
+          const totalToPay = sch.reduce((s, r) => s + r.total, 0);
+          const fmt2 = (v: number) => (v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          const inputCls = 'font-bold text-slate-800 text-right bg-transparent focus:underline hover:bg-emerald-50/40 px-1 py-0.5 rounded focus:outline-none border-none';
+          return (
+            <>
+              {/* Export + submit buttons — OUTSIDE the sheet so they aren't captured */}
+              <div className="no-print flex flex-wrap justify-end gap-2">
+                <button type="button" onClick={() => exportSheet('.loan-request-sheet', 'pdf', `គំរូស្នើកម្ចី-${memberCode}`, 'lreq-pdf', 950)} disabled={exportBusy === 'lreq-pdf'}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-60">
+                  <Download size={14} /> <span>{exportBusy === 'lreq-pdf' ? 'កំពុងបង្កើត...' : 'PDF'}</span>
+                </button>
+                <button type="button" onClick={() => exportSheet('.loan-request-sheet', 'img', `គំរូស្នើកម្ចី-${memberCode}`, 'lreq-img', 950)} disabled={exportBusy === 'lreq-img'}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-60">
+                  <FileText size={14} /> <span>{exportBusy === 'lreq-img' ? 'កំពុងទាញយក...' : 'រូបភាព'}</span>
+                </button>
+                <button type="button" onClick={submitLoanTemplate} disabled={loanReqBusy}
+                  className="bg-[#0a6652] hover:bg-[#085241] text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-900/10 transition-all active:scale-95 disabled:opacity-60">
+                  <Save size={14} /> <span>{loanReqBusy ? 'កំពុងផ្ញើ...' : 'ផ្ញើពាក្យស្នើសុំ'}</span>
+                </button>
+              </div>
+
+              <div className="loan-request-sheet bg-white p-6 sm:p-10 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left relative overflow-hidden">
+                {/* Header */}
+                <div className="text-center mb-6">
+                  <p className="text-sm font-bold text-slate-700">ព្រះរាជាណាចក្រកម្ពុជា</p>
+                  <p className="text-xs font-bold text-slate-500">ជាតិ សាសនា ព្រះមហាក្សត្រ</p>
+                  <div className="flex flex-col items-center justify-center gap-1 my-3">
+                    <div className="w-12 h-12 border border-slate-200 rounded-2xl p-0.5 bg-slate-50 flex items-center justify-center shadow-sm">
+                      <img src="https://i.ibb.co/Kp7CxnjC/Picture1.jpg" alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                    </div>
+                    <h3 className="text-xs font-bold text-[#ecb22e] uppercase tracking-wide">ក្រុមសន្សំប្រាក់អនាគតយើង</h3>
+                  </div>
+                  <h1 className="text-lg font-extrabold text-[#0a6652] tracking-wide">ពាក្យស្នើសុំកម្ចី</h1>
+                  <div className="text-xs text-slate-500 mt-1 flex items-center justify-center gap-1">
+                    <span>យោងលើកិច្ចសន្យាលេខ៖</span>
+                    <input type="text" value={contractNum} onChange={(e) => setContractNum(e.target.value)} className={inputCls + ' w-32 text-center'} />
+                  </div>
+                </div>
+
+                {/* Loan Information title */}
+                <div className="text-left mb-3">
+                  <span className="text-sm font-extrabold text-[#0a6652] tracking-wide border-l-4 border-[#0a6652] pl-2.5">ព័ត៌មានកម្ចី</span>
+                </div>
+
+                {/* Two-column info grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mb-8">
+                  {/* Left — loan parameters (editable) */}
+                  <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-2.5">
+                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                      <span className="text-slate-500 font-bold">ទំហំកម្ចី (Loan Size)</span>
+                      <span className="flex items-center"><span className="text-slate-400 mr-0.5">$</span><input type="number" value={repLoanAmt} onChange={(e) => setRepLoanAmt(e.target.value)} className={inputCls + ' w-24'} /></span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                      <span className="text-slate-500 font-semibold">រយៈពេលនៃកម្ចី (ខែ)</span>
+                      <input type="number" value={repLoanTerm} onChange={(e) => setRepLoanTerm(parseInt(e.target.value) || 0)} className={inputCls + ' w-16'} />
+                    </div>
+                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                      <span className="text-slate-500 font-semibold">អត្រាការប្រាក់ (%/ខែ)</span>
+                      <span className="flex items-center"><input type="number" step="0.01" value={repLoanRate} onChange={(e) => setRepLoanRate(parseFloat(e.target.value) || 0)} className={inputCls + ' w-16'} /><span className="text-slate-400 ml-0.5">%</span></span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                      <span className="text-slate-500 font-semibold">ទឹកប្រាក់សរុបត្រូវបង់</span>
+                      <span className="font-black text-[#0a6652]">${fmt2(totalToPay)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                      <span className="text-slate-500 font-semibold">ការប្រាក់សរុប</span>
+                      <span className="font-bold text-amber-600">${fmt2(totalInterest)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-500 font-semibold">ប្រេកង់បង់</span>
+                      <select value={repFreq} onChange={(e) => setRepFreq(e.target.value as 'monthly' | 'weekly')} className="font-bold text-slate-700 text-right bg-transparent focus:outline-none border-none cursor-pointer">
+                        <option value="monthly">ប្រចាំខែ</option>
+                        <option value="weekly">ប្រចាំសប្តាហ៍</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Right — borrower / guarantors (editable) */}
+                  <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-2.5">
+                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                      <span className="text-slate-500 font-semibold">ឈ្មោះអ្នកទទួលកម្ចី</span>
+                      <input type="text" value={repBorrower} onChange={(e) => setRepBorrower(e.target.value)} className={inputCls + ' w-32'} />
+                    </div>
+                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                      <span className="text-slate-500 font-semibold">លេខ ID សមាជិក</span>
+                      <input type="text" value={repBorrowerId} onChange={(e) => setRepBorrowerId(e.target.value)} className={inputCls + ' w-20'} />
+                    </div>
+                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                      <span className="text-slate-500 font-semibold">លេខទូរស័ព្ទ</span>
+                      <input type="text" value={repPhone} onChange={(e) => setRepPhone(e.target.value)} className={inputCls + ' w-32'} />
+                    </div>
+                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                      <span className="text-slate-500 font-semibold">អ្នកធានាទី ១</span>
+                      <input type="text" value={repGuarantor1} onChange={(e) => setRepGuarantor1(e.target.value)} className={inputCls + ' w-32'} />
+                    </div>
+                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                      <span className="text-slate-500 font-semibold">លេខ ID ធានាទី ១</span>
+                      <input type="text" value={repGuarantor1Id} onChange={(e) => setRepGuarantor1Id(e.target.value)} className={inputCls + ' w-20'} />
+                    </div>
+                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                      <span className="text-slate-500 font-semibold">អ្នកធានាទី ២</span>
+                      <input type="text" value={repGuarantor2} onChange={(e) => setRepGuarantor2(e.target.value)} className={inputCls + ' w-32'} />
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-500 font-semibold">លេខ ID ធានាទី ២</span>
+                      <input type="text" value={repGuarantor2Id} onChange={(e) => setRepGuarantor2Id(e.target.value)} className={inputCls + ' w-20'} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Amortization schedule */}
+                <div className="text-left mb-3">
+                  <span className="text-sm font-extrabold text-[#0a6652] tracking-wide border-l-4 border-[#0a6652] pl-2.5">តារាងបង់រំលស់</span>
+                </div>
+                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                  <table className="w-full text-xs text-left text-slate-700 border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                        <th className="py-2.5 px-3 text-center border-r border-slate-200 w-12">ល.រ</th>
+                        <th className="py-2.5 px-3 border-r border-slate-200">ថ្ងៃទីខែឆ្នាំត្រូវបង់</th>
+                        <th className="py-2.5 px-3 border-r border-slate-200 text-right">ទឹកប្រាក់ត្រូវបង់</th>
+                        <th className="py-2.5 px-3 border-r border-slate-200 text-right">ការប្រាក់</th>
+                        <th className="py-2.5 px-3 border-r border-slate-200 text-right">បង់រំលស់ប្រាក់ដើម</th>
+                        <th className="py-2.5 px-3 text-right">តុល្យការ</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 divide-dashed">
+                      {sch.map((row) => (
+                        <tr key={row.num} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="py-2.5 px-3 text-center border-r border-slate-100 font-bold text-slate-400">{row.num}</td>
+                          <td className="py-2.5 px-3 border-r border-slate-100 text-slate-600">{row.dueDate}</td>
+                          <td className="py-2.5 px-3 border-r border-slate-100 text-right font-bold text-slate-700">${fmt2(row.total)}</td>
+                          <td className="py-2.5 px-3 border-r border-slate-100 text-right font-bold text-amber-600">${fmt2(row.interest)}</td>
+                          <td className="py-2.5 px-3 border-r border-slate-100 text-right font-bold text-slate-600">${fmt2(row.principal)}</td>
+                          <td className="py-2.5 px-3 text-right font-black text-[#0a6652]">${fmt2(row.balance)}</td>
+                        </tr>
+                      ))}
+                      <tr className="bg-slate-50 font-bold border-t border-slate-200 text-slate-800">
+                        <td colSpan={2} className="py-3 px-3 text-center border-r border-slate-200 font-extrabold text-[#0a6652]">សរុប</td>
+                        <td className="py-3 px-3 border-r border-slate-200 text-right font-extrabold text-slate-700">${fmt2(totalToPay)}</td>
+                        <td className="py-3 px-3 border-r border-slate-200 text-right font-extrabold text-amber-600">${fmt2(totalInterest)}</td>
+                        <td className="py-3 px-3 border-r border-slate-200 text-right font-extrabold text-slate-700">${fmt2(parseFloat(repLoanAmt) || 0)}</td>
+                        <td className="py-3 px-3 text-right font-black text-[#0a6652]">$0.00</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          );
+        })()}
+       </div>
       )}
 
       {activeTab === 'របាយការណ៍កម្ចី' && (

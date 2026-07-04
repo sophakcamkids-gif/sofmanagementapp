@@ -190,6 +190,14 @@ export async function exportElementToPdf(el: HTMLElement, filename: string, fixe
   deliverBlob(pdf.output('blob'), name);
 }
 
+// Rasterize an element and return the PNG as a data URL (no download / overlay).
+// Used to attach an on-screen sheet (e.g. a loan-request template) to a Telegram
+// message.
+export async function renderElementToPngDataUrl(el: HTMLElement, fixedWidth?: number): Promise<string> {
+  const canvas = await renderElementToCanvas(el, fixedWidth);
+  return canvas.toDataURL('image/png');
+}
+
 // Render an element to a downloadable PNG image (mobile: in-app overlay).
 export async function exportElementToImage(el: HTMLElement, filename: string, fixedWidth?: number): Promise<void> {
   const canvas = await renderElementToCanvas(el, fixedWidth);
