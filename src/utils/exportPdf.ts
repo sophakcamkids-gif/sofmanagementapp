@@ -73,9 +73,27 @@ const deliverBlob = (blob: Blob, filename: string): void => {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 };
 
-// Rasterize a DOM element to a canvas. Because it's a snapshot it looks
-// pixel-identical on every device (no reflow). Normalized to ~1500px wide so
-// quality is the same on phone or PC.
+// Copy the LIVE values of form fields into a cloned subtree. cloneNode() copies
+// the HTML but NOT the current value/checked state of <input>/<textarea>/<select>,
+// so without this the report's editable fields (borrower, guarantors…) capture blank.
+function syncFieldValues(src: HTMLElement, dst: HTMLElement): void {
+  const s = src.querySelectorAll('input, textarea, select');
+  const d = dst.querySelectorAll('input, textarea, select');
+  s.forEach((node, i) => {
+    const from = node as HTMLInputElement;
+    const to = d[i] as HTMLInputElement | undefined;
+    if (!to) return;
+    if (from.type === 'checkbox' || from.type === 'radio') to.checked = from.checked;
+    else { to.value = from.value; to.setAttribute('value', from.value); }
+  });
+}
+
+// Rasterize a DOM element to a canvas at a FIXED design width, regardless of the
+// device. The report is cloned into an off-screen sandbox sized to `fixedWidth`,
+// so neither the phone's narrow viewport nor the on-screen FitToWidth scale/@media
+// breakpoints affect the output — the capture is byte-for-byte the same layout on
+// a phone and a PC. (Capturing the live element let html2canvas inherit the mobile
+// viewport, collapsing 2-column grids to 1 column — the reported distortion.)
 let _h2cWarmed = false;
 async function renderElementToCanvas(el: HTMLElement, fixedWidth?: number): Promise<HTMLCanvasElement> {
   // Wait for the Khmer web fonts (incl. BOLD) to finish loading, else html2canvas
@@ -83,68 +101,72 @@ async function renderElementToCanvas(el: HTMLElement, fixedWidth?: number): Prom
   try { await (document as any).fonts?.ready; } catch { /* fonts API absent — proceed */ }
   await new Promise(resolve => setTimeout(resolve, 50));
 
-  const renderWidth = fixedWidth ?? Math.max(el.scrollWidth, el.offsetWidth, 800);
-  const scale = Math.min(2.5, Math.max(1.5, 1500 / renderWidth));
+  const width = fixedWidth ?? Math.max(el.scrollWidth, el.offsetWidth, 800);
+  const scale = Math.min(2.5, Math.max(1.5, 1500 / width));
+
+  // Off-screen sandbox pinned to the design width. `position:fixed` + far-left keeps
+  // it out of view (no flash) and, because it's not inside FitToWidth, the clone
+  // lays out at its true desktop width. The media queries below force the desktop
+  // breakpoints since the sandbox is invisible to @media (viewport stays narrow).
+  const sandbox = document.createElement('div');
+  const sid = 'sof-export-sandbox';
+  sandbox.id = sid;
+  sandbox.style.cssText =
+    `position:fixed;left:-100000px;top:0;width:${width}px;background:#ffffff;` +
+    `z-index:-1;pointer-events:none;`;
+
+  const bp = document.createElement('style');
+  bp.textContent = `
+    #${sid} .sm\\:grid-cols-2, #${sid} .md\\:grid-cols-2, #${sid} .lg\\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+    #${sid} .sm\\:grid-cols-3, #${sid} .md\\:grid-cols-3, #${sid} .lg\\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0,1fr)) !important; }
+    #${sid} .sm\\:grid-cols-4, #${sid} .md\\:grid-cols-4, #${sid} .lg\\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0,1fr)) !important; }
+    #${sid} .sm\\:flex-row, #${sid} .md\\:flex-row { flex-direction: row !important; }
+    #${sid} .sm\\:p-10, #${sid} .md\\:p-10 { padding: 2.5rem !important; }
+    #${sid} .sm\\:p-8,  #${sid} .md\\:p-8  { padding: 2rem !important; }
+    #${sid} .md\\:pr-4 { padding-right: 1rem !important; }
+  `;
+
+  const clone = el.cloneNode(true) as HTMLElement;
+  clone.style.width = `${width}px`;
+  clone.style.maxWidth = 'none';
+  clone.style.margin = '0';
+  clone.style.transform = 'none';
+  // Hide screen-only chrome (download buttons, month/year pickers) so it matches print.
+  clone.querySelectorAll<HTMLElement>('.no-print, .rc-no-print').forEach(n => { n.style.display = 'none'; });
+  // Neutralize any FitToWidth scaling that got cloned along with the subtree.
+  clone.querySelectorAll<HTMLElement>('.rc-fit-outer, .rc-fit-frame, .rc-fit-inner').forEach(n => {
+    n.style.transform = 'none'; n.style.width = 'auto'; n.style.maxWidth = 'none';
+    n.style.height = 'auto'; n.style.overflow = 'visible'; n.style.margin = '0';
+  });
+
+  sandbox.appendChild(bp);
+  sandbox.appendChild(clone);
+  document.body.appendChild(sandbox);
+  syncFieldValues(el, clone);
+
   const options = {
     scale,
     useCORS: true,
     backgroundColor: '#ffffff',
     logging: false,
     imageTimeout: 15000,
-    windowWidth: renderWidth,
-    ...(fixedWidth ? { width: fixedWidth, windowWidth: fixedWidth } : {}),
-    onclone: (doc: Document) => {
-      if (fixedWidth && el.id) {
-        const root = doc.getElementById(el.id);
-        if (root) {
-          root.style.width = `${fixedWidth}px`;
-          root.style.maxWidth = 'none';
-          let p = root.parentElement;
-          for (let i = 0; p && i < 5; i++, p = p.parentElement) { p.style.maxWidth = 'none'; }
-        }
-      }
-      // html2canvas-pro does NOT reliably re-evaluate @media (Tailwind sm:/md:/lg:)
-      // breakpoints against `windowWidth`, so on a phone the report captures at the
-      // device's real (narrow) width: 2-column grids collapse to 1 column, paddings
-      // shrink — the "distorted on phone, clean on PC" bug. Force the desktop
-      // breakpoint utilities to apply for the duration of the capture, scoped to the
-      // export root so nothing on-screen changes.
-      if (el.id) {
-        const id = (window as any).CSS?.escape ? (window as any).CSS.escape(el.id) : el.id;
-        const bp = doc.createElement('style');
-        bp.textContent = `
-          #${id} .sm\\:grid-cols-2, #${id} .md\\:grid-cols-2, #${id} .lg\\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
-          #${id} .sm\\:grid-cols-3, #${id} .md\\:grid-cols-3, #${id} .lg\\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0,1fr)) !important; }
-          #${id} .sm\\:grid-cols-4, #${id} .md\\:grid-cols-4, #${id} .lg\\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0,1fr)) !important; }
-          #${id} .sm\\:flex-row, #${id} .md\\:flex-row { flex-direction: row !important; }
-          #${id} .sm\\:p-10, #${id} .md\\:p-10 { padding: 2.5rem !important; }
-          #${id} .sm\\:p-8,  #${id} .md\\:p-8  { padding: 2rem !important; }
-          #${id} .md\\:pr-4 { padding-right: 1rem !important; }
-        `;
-        doc.head.appendChild(bp);
-      }
-      // Un-scale the FitToWidth wrapper so the report captures at its full design
-      // width (not the shrunk-to-fit mobile size).
-      doc.querySelectorAll<HTMLElement>('.rc-fit-outer, .rc-fit-frame').forEach(n => {
-        n.style.transform = 'none'; n.style.width = 'auto'; n.style.maxWidth = 'none';
-        n.style.height = 'auto'; n.style.overflow = 'visible'; n.style.margin = '0';
-      });
-      doc.querySelectorAll<HTMLElement>('.rc-fit-inner').forEach(n => {
-        n.style.transform = 'none'; n.style.height = 'auto'; n.style.overflow = 'visible'; n.style.margin = '0';
-      });
-      // Hide screen-only chrome (buttons, upload placeholders) so it matches print.
-      doc.querySelectorAll<HTMLElement>('.no-print, .rc-no-print').forEach(n => { n.style.display = 'none'; });
-    },
+    windowWidth: width,
   };
 
-  // The FIRST capture after page load can mis-render (fonts not yet in the clone).
-  // Prime it ONCE with a throwaway low-res render so the first real export is warm.
-  if (!_h2cWarmed) {
-    _h2cWarmed = true;
-    try { await html2canvas(el, { ...options, scale: 0.5 }); } catch { /* warm-up only */ }
-    await new Promise(resolve => setTimeout(resolve, 60));
+  try {
+    await (document as any).fonts?.ready;
+    await new Promise(resolve => setTimeout(resolve, 40));
+    // The FIRST capture after page load can mis-render (fonts not yet in the clone).
+    // Prime it ONCE with a throwaway low-res render so the first real export is warm.
+    if (!_h2cWarmed) {
+      _h2cWarmed = true;
+      try { await html2canvas(clone, { ...options, scale: 0.5 }); } catch { /* warm-up only */ }
+      await new Promise(resolve => setTimeout(resolve, 60));
+    }
+    return await html2canvas(clone, options);
+  } finally {
+    sandbox.remove();
   }
-  return html2canvas(el, options);
 }
 
 // Render an element to a single-image PDF page (landscape if wider than tall).
