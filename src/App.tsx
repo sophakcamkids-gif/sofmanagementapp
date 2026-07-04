@@ -16,7 +16,7 @@ import {
   FileText, PieChart, Home, Heart, MessageSquare, 
   Menu, Bot, BarChart3, Receipt, HandCoins, 
   ShieldCheck, Calendar, BookOpen, Sparkles, TrendingUp,
-  ChevronLeft, Plus, Download, Search, Upload, LogIn, UserCheck, Key, Lock, Eye, EyeOff, Save, X, Trash2, Edit
+  ChevronLeft, Plus, Download, Search, Upload, LogIn, UserCheck, Key, Lock, Eye, EyeOff, Save, X, Trash2, Edit, RotateCw
 } from 'lucide-react';
 
 const getStoredData = (key: string, defaultValue: any) => {
@@ -97,6 +97,19 @@ const sendTelegramMessage = async (text: string): Promise<boolean> => {
     const j = await res.json().catch(() => ({ ok: false }));
     return !!j.ok;
   } catch { return false; }
+};
+
+// Force-load the freshest deploy: clear Cache Storage + any service worker, then
+// reload with a cache-busting query param (Vite's hashed assets do the rest). Fixes
+// "still seeing the old version" on phones that cached an earlier build.
+const hardRefresh = async (): Promise<void> => {
+  try {
+    if ('caches' in window) { const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); }
+    if ('serviceWorker' in navigator) { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); }
+  } catch { /* ignore — reload anyway */ }
+  const url = new URL(window.location.href);
+  url.searchParams.set('_r', Date.now().toString());
+  window.location.replace(url.toString());
 };
 
 // Convert ASCII digits to Khmer numerals (០–៩).
@@ -466,6 +479,13 @@ export default function App() {
                 </div>
               </div>
               <div className="flex gap-2 items-center shrink-0">
+                <button
+                  onClick={hardRefresh}
+                  className="w-9 h-9 bg-white text-[#0a6652] border border-slate-100 rounded-full flex items-center justify-center shadow-sm hover:bg-emerald-50 active:scale-95 transition-all"
+                  title="ផ្ទុកកំណែថ្មីឡើងវិញ (Hard Refresh)"
+                >
+                  <RotateCw size={15} />
+                </button>
                 <div className="relative">
                   <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm text-yellow-500 border border-slate-100">
                     <Bell className="w-4.5 h-4.5 fill-yellow-500 text-yellow-500" />
