@@ -5477,6 +5477,23 @@ function MemberReport() {
     }
   };
 
+  // Generic sheet exporter (loan/savings reports). `busyKey` tracks which button spins.
+  const [exportBusy, setExportBusy] = useState('');
+  const exportSheet = async (selector: string, kind: 'pdf' | 'img', name: string, busyKey: string) => {
+    const el = document.querySelector(selector) as HTMLElement | null;
+    if (!el) return;
+    setExportBusy(busyKey);
+    try {
+      if (kind === 'pdf') await exportElementToPdf(el, name);
+      else await exportElementToImage(el, name);
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert(kind === 'pdf' ? 'មិនអាចទាញយក PDF បានទេ។ សូមព្យាយាមម្តងទៀត។' : 'មិនអាចទាញយករូបភាពបានទេ។ សូមព្យាយាមម្តងទៀត។');
+    } finally {
+      setExportBusy('');
+    }
+  };
+
   return (
     <PageView
       title={activeTab === 'dashboard' ? "ព័ត៌មានផ្ទាល់ខ្លួន" : activeTab}
@@ -6134,16 +6151,25 @@ function MemberReport() {
       {activeTab === 'របាយការណ៍កម្ចី' && (
         <div className="max-w-4xl mx-auto space-y-6">
           {/* High Fidelity Loan Contract Sheet Display */}
-          <div className="bg-white p-6 sm:p-10 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left relative overflow-hidden print:p-0 print:border-none print:shadow-none">
-            
-            {/* Download/Print Button */}
-            <div className="absolute right-6 top-6 no-print z-10">
+          <div className="loan-report-sheet bg-white p-6 sm:p-10 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left relative overflow-hidden print:p-0 print:border-none print:shadow-none">
+
+            {/* Download buttons (PDF + image) — hidden from the capture via no-print */}
+            <div className="absolute right-6 top-6 no-print z-10 flex gap-2">
               <button
                 type="button"
-                onClick={() => window.print()}
-                className="bg-[#0a6652] hover:bg-[#085241] text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-900/10 transition-all active:scale-95 duration-200"
+                onClick={() => exportSheet('.loan-report-sheet', 'pdf', `របាយការណ៍កម្ចី-${memberCode}-${selectedReportYear}`, 'loan-pdf')}
+                disabled={exportBusy === 'loan-pdf'}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-60"
               >
-                <Download size={14} /> <span>បោះពុម្ភ ឬទាញយកជា PDF</span>
+                <Download size={14} /> <span>{exportBusy === 'loan-pdf' ? 'កំពុងបង្កើត...' : 'PDF'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => exportSheet('.loan-report-sheet', 'img', `របាយការណ៍កម្ចី-${memberCode}-${selectedReportYear}`, 'loan-img')}
+                disabled={exportBusy === 'loan-img'}
+                className="bg-[#0a6652] hover:bg-[#085241] text-white font-bold text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-900/10 transition-all active:scale-95 disabled:opacity-60"
+              >
+                <FileText size={14} /> <span>{exportBusy === 'loan-img' ? 'កំពុងទាញយក...' : 'រូបភាព'}</span>
               </button>
             </div>
 
@@ -6362,16 +6388,25 @@ function MemberReport() {
       {activeTab === 'របាយការណ៍សន្សំ' && (
         <div className="max-w-5xl mx-auto space-y-6">
           {/* Savings Report Sheet Display */}
-          <div className="bg-white p-6 sm:p-10 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left relative overflow-hidden print:p-0 print:border-none print:shadow-none">
-            
-            {/* Download/Print Button */}
-            <div className="absolute right-6 top-6 no-print z-10">
+          <div className="savings-report-sheet bg-white p-6 sm:p-10 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left relative overflow-hidden print:p-0 print:border-none print:shadow-none">
+
+            {/* Download buttons (PDF + image) — hidden from the capture via no-print */}
+            <div className="absolute right-6 top-6 no-print z-10 flex gap-2">
               <button
                 type="button"
-                onClick={() => window.print()}
-                className="bg-[#0a6652] hover:bg-[#085241] text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-950/10 transition-all active:scale-95 duration-200"
+                onClick={() => exportSheet('.savings-report-sheet', 'pdf', `របាយការណ៍សន្សំ-${memberCode}-${selectedReportYear}`, 'sav-pdf')}
+                disabled={exportBusy === 'sav-pdf'}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-60"
               >
-                <Download size={14} /> <span>បោះពុម្ភ ឬទាញយកជា PDF</span>
+                <Download size={14} /> <span>{exportBusy === 'sav-pdf' ? 'កំពុងបង្កើត...' : 'PDF'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => exportSheet('.savings-report-sheet', 'img', `របាយការណ៍សន្សំ-${memberCode}-${selectedReportYear}`, 'sav-img')}
+                disabled={exportBusy === 'sav-img'}
+                className="bg-[#0a6652] hover:bg-[#085241] text-white font-bold text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-950/10 transition-all active:scale-95 disabled:opacity-60"
+              >
+                <FileText size={14} /> <span>{exportBusy === 'sav-img' ? 'កំពុងទាញយក...' : 'រូបភាព'}</span>
               </button>
             </div>
 
