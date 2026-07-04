@@ -103,6 +103,26 @@ async function renderElementToCanvas(el: HTMLElement, fixedWidth?: number): Prom
           for (let i = 0; p && i < 5; i++, p = p.parentElement) { p.style.maxWidth = 'none'; }
         }
       }
+      // html2canvas-pro does NOT reliably re-evaluate @media (Tailwind sm:/md:/lg:)
+      // breakpoints against `windowWidth`, so on a phone the report captures at the
+      // device's real (narrow) width: 2-column grids collapse to 1 column, paddings
+      // shrink — the "distorted on phone, clean on PC" bug. Force the desktop
+      // breakpoint utilities to apply for the duration of the capture, scoped to the
+      // export root so nothing on-screen changes.
+      if (el.id) {
+        const id = (window as any).CSS?.escape ? (window as any).CSS.escape(el.id) : el.id;
+        const bp = doc.createElement('style');
+        bp.textContent = `
+          #${id} .sm\\:grid-cols-2, #${id} .md\\:grid-cols-2, #${id} .lg\\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+          #${id} .sm\\:grid-cols-3, #${id} .md\\:grid-cols-3, #${id} .lg\\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0,1fr)) !important; }
+          #${id} .sm\\:grid-cols-4, #${id} .md\\:grid-cols-4, #${id} .lg\\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0,1fr)) !important; }
+          #${id} .sm\\:flex-row, #${id} .md\\:flex-row { flex-direction: row !important; }
+          #${id} .sm\\:p-10, #${id} .md\\:p-10 { padding: 2.5rem !important; }
+          #${id} .sm\\:p-8,  #${id} .md\\:p-8  { padding: 2rem !important; }
+          #${id} .md\\:pr-4 { padding-right: 1rem !important; }
+        `;
+        doc.head.appendChild(bp);
+      }
       // Un-scale the FitToWidth wrapper so the report captures at its full design
       // width (not the shrunk-to-fit mobile size).
       doc.querySelectorAll<HTMLElement>('.rc-fit-outer, .rc-fit-frame').forEach(n => {
