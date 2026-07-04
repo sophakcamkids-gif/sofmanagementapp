@@ -6558,7 +6558,7 @@ function MemberReport() {
                   />
                 </div>
                 <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
-                  <span className="text-slate-500 font-semibold">អ្នកធានាទី 1 (Guarantor 1)</span>
+                  <span className="text-slate-500 font-semibold">អ្នកធានាទី 1</span>
                   <input
                     type="text"
                     value={repGuarantor1}
@@ -6576,7 +6576,7 @@ function MemberReport() {
                   />
                 </div>
                 <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
-                  <span className="text-slate-500 font-semibold">អ្នកធានាទី 2 (Guarantor 2)</span>
+                  <span className="text-slate-500 font-semibold">អ្នកធានាទី 2</span>
                   <input
                     type="text"
                     value={repGuarantor2}
