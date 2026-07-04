@@ -103,6 +103,15 @@ async function renderElementToCanvas(el: HTMLElement, fixedWidth?: number): Prom
           for (let i = 0; p && i < 5; i++, p = p.parentElement) { p.style.maxWidth = 'none'; }
         }
       }
+      // Un-scale the FitToWidth wrapper so the report captures at its full design
+      // width (not the shrunk-to-fit mobile size).
+      doc.querySelectorAll<HTMLElement>('.rc-fit-outer, .rc-fit-frame').forEach(n => {
+        n.style.transform = 'none'; n.style.width = 'auto'; n.style.maxWidth = 'none';
+        n.style.height = 'auto'; n.style.overflow = 'visible'; n.style.margin = '0';
+      });
+      doc.querySelectorAll<HTMLElement>('.rc-fit-inner').forEach(n => {
+        n.style.transform = 'none'; n.style.height = 'auto'; n.style.overflow = 'visible'; n.style.margin = '0';
+      });
       // Hide screen-only chrome (buttons, upload placeholders) so it matches print.
       doc.querySelectorAll<HTMLElement>('.no-print, .rc-no-print').forEach(n => { n.style.display = 'none'; });
     },

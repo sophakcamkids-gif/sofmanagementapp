@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { exportElementToPdf, exportElementToImage } from './utils/exportPdf';
+import FitToWidth from './FitToWidth';
 import { db } from './lib/db';
 import { loadAllCloudState, saveCloudState } from './lib/cloudStore';
 import { computeSavings, computeLoan, DEFAULT_RATES } from './lib/calcEngine';
@@ -5873,26 +5874,27 @@ function MemberReport() {
             <FileText size={14} strokeWidth={2.5} /> {savingImg ? 'កំពុងទាញយក...' : 'ទាញយក រូបភាព'}
           </button>
         </div>
-        <div className="report-sheet max-w-3xl mx-auto bg-white p-6 md:p-12 rounded-[32px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100 relative overflow-hidden">
+        <FitToWidth designWidth={800}>
+        <div id="sof-export-summary" className="report-sheet w-full bg-white p-10 rounded-[32px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100 relative overflow-hidden">
 
         {/* Background Watermark */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 border-8 border-slate-50 text-slate-50 rounded-full flex items-center justify-center font-black text-6xl pointer-events-none -rotate-12">
           SOF
         </div>
 
-        <div className="flex flex-col md:flex-row justify-between items-center border-b-[3px] border-blue-50 pb-8 mb-10 relative z-10 gap-6">
+        <div className="flex flex-row justify-between items-center border-b-[3px] border-blue-50 pb-8 mb-10 relative z-10 gap-6">
           <div className="w-24 h-24 flex items-center justify-center shrink-0">
              <img src="https://i.ibb.co/Kp7CxnjC/Picture1.jpg" alt="SOF Logo" className="w-full h-full object-contain" />
           </div>
-          <div className="text-center md:flex-1">
-            <h2 className="text-xl md:text-2xl font-black tracking-tight text-blue-600 mb-2">ក្រុមសន្សំប្រាក់អនាគតយើង</h2>
-            <h3 className="text-base md:text-lg font-bold text-blue-500 mb-2">SAVING FOR OUR FUTURE (SOF)</h3>
+          <div className="text-center flex-1">
+            <h2 className="text-2xl font-black tracking-tight text-blue-600 mb-2">ក្រុមសន្សំប្រាក់អនាគតយើង</h2>
+            <h3 className="text-lg font-bold text-blue-500 mb-2">SAVING FOR OUR FUTURE (SOF)</h3>
           </div>
-          <div className="w-24 shrink-0 hidden md:block"></div> {/* Spacer for symmetry */}
+          <div className="w-24 shrink-0 block"></div> {/* Spacer for symmetry */}
         </div>
 
         <div className="relative z-10 text-center mb-12">
-            <h3 className="inline-block text-xl md:text-2xl font-black text-blue-600 border-b-4 border-blue-600 pb-2 px-2">
+            <h3 className="inline-block text-2xl font-black text-blue-600 border-b-4 border-blue-600 pb-2 px-2">
             របាយការណ៍ប្រចាំខែ{summaryMonthName} {selectedReportYear}
             </h3>
             <div className="no-print flex items-center justify-center gap-1.5 mt-4">
@@ -5909,68 +5911,68 @@ function MemberReport() {
             </div>
         </div>
 
-        <div className="relative z-10 grid grid-cols-2 gap-x-2 md:gap-x-16 gap-y-2.5 md:gap-y-6 text-[10px] md:text-base font-bold text-slate-800">
+        <div className="relative z-10 grid grid-cols-2 gap-x-8 gap-y-4 text-sm font-bold text-slate-800">
           <div className="flex justify-between items-end gap-1 border-b border-slate-100 pb-2">
             <span className="text-slate-500 font-medium whitespace-nowrap">ឈ្មោះ:</span>
-            <span className="md:text-lg whitespace-nowrap">{memberName}</span>
+            <span className="text-base whitespace-nowrap">{memberName}</span>
           </div>
           <div className="flex justify-between items-end gap-1 border-b border-slate-100 pb-2">
             <span className="text-slate-500 font-medium whitespace-nowrap">លេខ ID:</span>
-            <span className="md:text-lg whitespace-nowrap">{memberCode}</span>
+            <span className="text-base whitespace-nowrap">{memberCode}</span>
           </div>
 
           <div className="flex justify-between items-center gap-1 py-1 mt-4">
             <span className="text-slate-500 font-medium whitespace-nowrap">ទុនសន្សំដើមគ្រា:</span>
-            <span className="text-emerald-700 bg-emerald-50 px-2 md:px-3 py-0.5 md:py-1 rounded-lg whitespace-nowrap"><span className="text-emerald-600/50 mr-0.5">$</span>{fm(num(sumS.startCapital))}</span>
+            <span className="text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg whitespace-nowrap"><span className="text-emerald-600/50 mr-0.5">$</span>{fm(num(sumS.startCapital))}</span>
           </div>
           <div className="flex justify-between items-center gap-1 py-1 mt-4">
             <span className="text-slate-500 font-medium whitespace-nowrap">កម្ចីដើមគ្រា:</span>
-            <span className="px-2 md:px-3 py-0.5 md:py-1 whitespace-nowrap"><span className="text-slate-300 mr-0.5">$</span>{fm(num(sumL.loanValue))}</span>
+            <span className="px-3 py-1 whitespace-nowrap"><span className="text-slate-300 mr-0.5">$</span>{fm(num(sumL.loanValue))}</span>
           </div>
 
           <div className="flex justify-between items-center gap-1 py-1">
             <span className="text-slate-500 font-medium whitespace-nowrap">សន្សំក្នុងខែ:</span>
-            <span className="text-blue-600 bg-blue-50 px-2 md:px-3 py-0.5 md:py-1 rounded-lg whitespace-nowrap"><span className="text-blue-600/50 mr-0.5">$</span>{fm(num(sumS.addSaving))}</span>
+            <span className="text-blue-600 bg-blue-50 px-3 py-1 rounded-lg whitespace-nowrap"><span className="text-blue-600/50 mr-0.5">$</span>{fm(num(sumS.addSaving))}</span>
           </div>
           <div className="flex justify-between items-center gap-1 py-1">
             <span className="text-slate-500 font-medium whitespace-nowrap">សងត្រលប់:</span>
-            <span className="text-amber-600 px-2 md:px-3 py-0.5 md:py-1 whitespace-nowrap"><span className="text-amber-600/50 mr-0.5">$</span>{fm(num(sumL.repayment))}</span>
+            <span className="text-amber-600 px-3 py-1 whitespace-nowrap"><span className="text-amber-600/50 mr-0.5">$</span>{fm(num(sumL.repayment))}</span>
           </div>
 
           <div className="flex justify-between items-center gap-1 py-1">
             <span className="text-slate-500 font-medium whitespace-nowrap">ប្រាក់ចំណេញ:</span>
-            <span className="text-emerald-600 px-2 md:px-3 py-0.5 md:py-1 whitespace-nowrap"><span className="text-emerald-600/50 mr-0.5">$</span>{fm(num(sumS.profit))}</span>
+            <span className="text-emerald-600 px-3 py-1 whitespace-nowrap"><span className="text-emerald-600/50 mr-0.5">$</span>{fm(num(sumS.profit))}</span>
           </div>
           <div className="flex justify-between items-center gap-1 py-1">
             <span className="text-slate-500 font-medium whitespace-nowrap">ការប្រាក់កម្ចី:</span>
-            <span className="text-amber-600 px-2 md:px-3 py-0.5 md:py-1 whitespace-nowrap"><span className="text-amber-600/50 mr-0.5">$</span>{fm(num(sumL.interest))}</span>
+            <span className="text-amber-600 px-3 py-1 whitespace-nowrap"><span className="text-amber-600/50 mr-0.5">$</span>{fm(num(sumL.interest))}</span>
           </div>
 
           <div className="flex justify-between items-center gap-1 py-1">
             <span className="text-slate-500 font-medium whitespace-nowrap">ការដកដើមទុន:</span>
-            <span className="text-rose-600 px-2 md:px-3 py-0.5 md:py-1 whitespace-nowrap"><span className="text-rose-600/50 mr-0.5">$</span>{fm(num(sumS.withdraw))}</span>
+            <span className="text-rose-600 px-3 py-1 whitespace-nowrap"><span className="text-rose-600/50 mr-0.5">$</span>{fm(num(sumS.withdraw))}</span>
           </div>
           <div className="flex justify-between items-center gap-1 py-1">
             <span className="text-slate-500 font-medium whitespace-nowrap">កម្ចីថ្មីក្នុងខែ:</span>
-            <span className="text-indigo-600 px-2 md:px-3 py-0.5 md:py-1 whitespace-nowrap"><span className="text-indigo-600/50 mr-0.5">$</span>{fm(num(sumL.newLoan))}</span>
+            <span className="text-indigo-600 px-3 py-1 whitespace-nowrap"><span className="text-indigo-600/50 mr-0.5">$</span>{fm(num(sumL.newLoan))}</span>
           </div>
 
-          <div className="flex justify-between items-center gap-1 py-1 pt-4 md:pt-6 border-t border-slate-100 mt-2 md:text-lg">
+          <div className="flex justify-between items-center gap-1 py-1 pt-6 border-t border-slate-100 mt-2 text-lg">
             <span className="text-slate-600 font-medium whitespace-nowrap">ដើមទុនចុងគ្រា:</span>
             <span className="text-[#0a6652] whitespace-nowrap"><span className="text-[#0a6652]/50 mr-0.5">$</span>{fm(num(sumS.total))}</span>
           </div>
-          <div className="flex justify-between items-center gap-1 py-1 pt-4 md:pt-6 border-t border-slate-100 mt-2">
+          <div className="flex justify-between items-center gap-1 py-1 pt-6 border-t border-slate-100 mt-2">
             <span className="text-slate-600 font-medium whitespace-nowrap">កម្ចីនៅសល់:</span>
             <span className="text-slate-800 whitespace-nowrap"><span className="text-slate-400 mr-0.5">$</span>{fm(num(sumL.remaining))}</span>
           </div>
 
-          <div className="flex justify-between items-center gap-1 py-1 bg-amber-50 rounded-xl px-2 md:px-4 mt-2">
+          <div className="flex justify-between items-center gap-1 py-1 bg-amber-50 rounded-xl px-4 mt-2">
             <span className="text-slate-600 font-bold whitespace-nowrap">ប្រាក់បានបង់:</span>
-            <span className="text-amber-700 md:text-lg whitespace-nowrap"><span className="text-amber-700/50 mr-0.5">$</span>{fm(num(sumS.addSaving) + num(sumL.repayment) + num(sumL.interestPaid))}</span>
+            <span className="text-amber-700 text-base whitespace-nowrap"><span className="text-amber-700/50 mr-0.5">$</span>{fm(num(sumS.addSaving) + num(sumL.repayment) + num(sumL.interestPaid))}</span>
           </div>
           <div className="flex justify-between items-center gap-1 py-1 mt-2">
             <span className="text-slate-500 font-medium whitespace-nowrap">សមាជិកភាព:</span>
-            <span className="px-2 md:px-3 py-0.5 md:py-1 whitespace-nowrap"><span className="text-slate-300 mr-0.5">$</span>{fm(num(sumS.actualFee))}</span>
+            <span className="px-3 py-1 whitespace-nowrap"><span className="text-slate-300 mr-0.5">$</span>{fm(num(sumS.actualFee))}</span>
           </div>
         </div>
 
@@ -6004,6 +6006,7 @@ function MemberReport() {
           <input type="file" ref={sigFileRef} accept="image/*" className="hidden" onChange={handleSigUpload} />
         </div>
       </div>
+        </FitToWidth>
       </>
       )}
 
