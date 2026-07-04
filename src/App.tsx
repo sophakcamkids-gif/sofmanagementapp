@@ -5430,7 +5430,7 @@ function MemberReport() {
   const [repGuarantor1Id, setRepGuarantor1Id] = useState('');
   const [repGuarantor2, setRepGuarantor2] = useState('');
   const [repGuarantor2Id, setRepGuarantor2Id] = useState('');
-  const [repFreq, setRepFreq] = useState<'monthly' | 'weekly'>('weekly'); // they say 'អាទិត្យ' in sheet, so let's support both but default 'weekly'!
+  const [repFreq, setRepFreq] = useState<'monthly' | 'weekly'>('monthly'); // payments fall on the request day-of-month each month
   const [repLoanDate, setRepLoanDate] = useState(new Date().toISOString().split('T')[0]); // loan/request date → schedule start
   const [contractNum, setContractNum] = useState('MFC-2026-008');
   const [selectedReportYear, setSelectedReportYear] = useState('2026');
@@ -5587,12 +5587,10 @@ function MemberReport() {
       const totalPay = principal + interest;
       const dueBal = currentBal - principal;
       
-      const dueDate = new Date(startDate);
-      if (repFreq === 'monthly') {
-        dueDate.setMonth(startDate.getMonth() + i);
-      } else {
-        dueDate.setDate(startDate.getDate() + (i * 7));
-      }
+      // Monthly: same day-of-month as the request date, i months later.
+      const dueDate = repFreq === 'monthly'
+        ? new Date(startDate.getFullYear(), startDate.getMonth() + i, startDate.getDate())
+        : new Date(startDate.getTime() + i * 7 * 86400000);
       
       const dayStr = repFreq === 'monthly' ? `ខែទី ${i}` : `${i} អាទិត្យ`;
       const monthName = khmerMonths[dueDate.getMonth()];
