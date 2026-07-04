@@ -5431,6 +5431,7 @@ function MemberReport() {
   const [repGuarantor2, setRepGuarantor2] = useState('');
   const [repGuarantor2Id, setRepGuarantor2Id] = useState('');
   const [repFreq, setRepFreq] = useState<'monthly' | 'weekly'>('weekly'); // they say 'អាទិត្យ' in sheet, so let's support both but default 'weekly'!
+  const [repLoanDate, setRepLoanDate] = useState(new Date().toISOString().split('T')[0]); // loan/request date → schedule start
   const [contractNum, setContractNum] = useState('MFC-2026-008');
   const [selectedReportYear, setSelectedReportYear] = useState('2026');
   const [summaryMonth, setSummaryMonth] = useState('');  // '' = auto (latest month with data)
@@ -5576,8 +5577,8 @@ function MemberReport() {
     let currentBal = amt;
     const monthlyPrincipal = amt / term;
     
-    // Start date on 15 Jan 2026
-    const startDate = new Date(2026, 0, 15);
+    // Schedule starts on the loan/request date (defaults to today).
+    const startDate = repLoanDate ? new Date(repLoanDate) : new Date();
     const khmerMonths = ["មករា", "កុម្ភៈ", "មីនា", "មេសា", "ឧសភា", "មិថុនា", "កក្កដា", "សីហា", "កញ្ញា", "តុលា", "វិច្ឆិកា", "ធ្នូ"];
     
     for (let i = 1; i <= term; i++) {
@@ -6756,6 +6757,10 @@ function MemberReport() {
                     <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
                       <span className="text-slate-500 font-semibold">ការប្រាក់សរុប</span>
                       <span className="font-bold text-amber-600">${fmt2(totalInterest)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                      <span className="text-slate-500 font-semibold">កាលបរិច្ឆេទខ្ចីប្រាក់</span>
+                      <input type="date" value={repLoanDate} onChange={(e) => setRepLoanDate(e.target.value)} className="font-bold text-slate-700 text-right bg-transparent focus:outline-none border-none cursor-pointer" />
                     </div>
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-slate-500 font-semibold">ប្រេកង់បង់</span>
