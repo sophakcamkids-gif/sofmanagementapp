@@ -70,6 +70,35 @@ const sendTelegramPhoto = async (dataUrl: string, caption: string): Promise<bool
   } catch { return false; }
 };
 
+// Send a non-image attachment (PDF / Word / Excel) to the Telegram group.
+const sendTelegramDocument = async (fileOrBlob: Blob, filename: string, caption: string): Promise<boolean> => {
+  const { token, chatId, enabled } = getTelegramConfig();
+  if (!enabled || !token || !chatId || !fileOrBlob) return false;
+  try {
+    const form = new FormData();
+    form.append('chat_id', chatId);
+    if (caption) form.append('caption', caption);
+    form.append('document', fileOrBlob, filename);
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendDocument`, { method: 'POST', body: form });
+    const j = await res.json().catch(() => ({ ok: false }));
+    return !!j.ok;
+  } catch { return false; }
+};
+
+// Send a plain text message (e.g. an online loan request with no attachment).
+const sendTelegramMessage = async (text: string): Promise<boolean> => {
+  const { token, chatId, enabled } = getTelegramConfig();
+  if (!enabled || !token || !chatId || !text) return false;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text }),
+    });
+    const j = await res.json().catch(() => ({ ok: false }));
+    return !!j.ok;
+  } catch { return false; }
+};
+
 // Convert ASCII digits to Khmer numerals (០–៩).
 const toKhmerNum = (v: string | number): string =>
   String(v).replace(/[0-9]/g, (d) => '០១២៣៤៥៦៧៨៩'[+d]);
@@ -485,6 +514,7 @@ export default function App() {
                   <SidebarLink to="/members" label="👥 ពត៌មានសមាជិក (Members)" />
                   <SidebarLink to="/savings" label="💰 ប្រាក់សន្សំ (Savings)" />
                   <SidebarLink to="/loans" label="🤝 ប្រាក់កម្ចី (Loans)" />
+                  <SidebarLink to="/loan-requests" label="📝 សំណើសុំកម្ចី (Loan Requests)" />
                   <SidebarLink to="/expenses" label="💸 ការចំណាយ (Expenses)" />
                   <SidebarLink to="/reports" label="📈 របាយការណ៍បិទបញ្ជី (Reports)" />
                   <SidebarLink to="/history" label="📜 ប្រវត្តិប្រតិបត្តិការ (Logs)" />
@@ -554,6 +584,11 @@ export default function App() {
                   <Reports />
                 </AdminGuard>
               } />
+              <Route path="/loan-requests" element={
+                <AdminGuard userRole={userRole}>
+                  <LoanRequests />
+                </AdminGuard>
+              } />
               <Route path="/history" element={
                 <AdminGuard userRole={userRole}>
                   <History />
@@ -621,6 +656,7 @@ export default function App() {
                     <SidebarLink to="/members" label="👥 ពត៌មានសមាជិក (Members)" />
                     <SidebarLink to="/savings" label="💰 ប្រាក់សន្សំ (Savings)" />
                     <SidebarLink to="/loans" label="🤝 ប្រាក់កម្ចី (Loans)" />
+                    <SidebarLink to="/loan-requests" label="📝 សំណើសុំកម្ចី (Loan Requests)" />
                     <SidebarLink to="/expenses" label="💸 ការចំណាយ (Expenses)" />
                     <SidebarLink to="/reports" label="📈 របាយការណ៍បិទបញ្ជី (Reports)" />
                     <SidebarLink to="/history" label="📜 ប្រវត្តិប្រតិបត្តិការ (Logs)" />
@@ -4823,6 +4859,62 @@ function Reports() {
   );
 }
 
+// Admin panel: member loan requests (separate from payment approvals). The
+// application document/photo is sent to the SOF Telegram group; this list is the
+// admin's review queue. Approving/rejecting just clears it — the admin then adds
+// the approved loan to the Loans table manually.
+function LoanRequests() {
+  const [requests, setRequests] = useState<any[]>(() => getStoredData('sof_pending_loan_requests', []) || []);
+  const removeReq = (id: string) => {
+    const all = (getStoredData('sof_pending_loan_requests', []) || []).filter((t: any) => t.id !== id);
+    setStoredData('sof_pending_loan_requests', all);
+    setRequests(all);
+  };
+  const approve = (txn: any) => {
+    removeReq(txn.id);
+    alert(`បានអនុម័តពាក្យស្នើសុំកម្ចីរបស់ ${txn.memberName || txn.memberCode}។ សូមបញ្ចូលកម្ចីទៅតារាងកម្ចី (Loans) ដោយផ្ទាល់។`);
+  };
+  const reject = (txn: any) => { if (window.confirm('បដិសេធពាក្យស្នើសុំកម្ចីនេះមែនទេ?')) removeReq(txn.id); };
+  const money = (n: number) => '$' + fmtMoney(num(n));
+
+  return (
+    <PageView title="សំណើសុំកម្ចី (Loan Requests)" hideUpload={true} hideDownload={true} hideAdd={true}>
+      <p className="text-slate-500 font-medium mb-6">ពាក្យស្នើសុំកម្ចីពីសមាជិក ដែលរង់ចាំការពិនិត្យ។ ឯកសារ/រូបថតពាក្យស្នើសុំ ត្រូវបានផ្ញើទៅ Telegram ក្រុម SOF។</p>
+
+      {requests.length === 0 ? (
+        <div className="flex items-center justify-center h-40 bg-slate-50 text-slate-400 rounded-2xl font-bold border border-slate-100">
+          គ្មានពាក្យស្នើសុំកម្ចីរង់ចាំ
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {requests.map((txn) => (
+            <div key={txn.id} className="flex flex-col md:flex-row md:items-start gap-3 bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-bold text-slate-800">{txn.memberName || txn.memberCode}</span>
+                  <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{txn.memberCode}</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">ស្នើកម្ចី</span>
+                  {txn.sentToTelegram && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-600">📨 Telegram</span>}
+                </div>
+                <div className="text-xs text-slate-500 mt-1 space-y-0.5">
+                  <div>កាលបរិច្ឆេទ៖ {txn.date}{txn.term ? ` · រយៈពេលសង ${txn.term} ខែ` : ''}{txn.phone ? ` · ☎ ${txn.phone}` : ''}</div>
+                  {txn.purpose && <div>គោលបំណង៖ {txn.purpose}</div>}
+                  {txn.proofName && <div className="text-slate-400 truncate">ឯកសារ៖ {txn.proofName}</div>}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {num(txn.amount) > 0 && <span className="font-black text-[#0a6652] text-lg">{money(txn.amount)}</span>}
+                <button onClick={() => approve(txn)} className="bg-[#0a6652] hover:bg-[#084f40] text-white font-bold text-xs px-4 py-2 rounded-xl cursor-pointer active:scale-95">អនុម័ត</button>
+                <button onClick={() => reject(txn)} className="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs px-3 py-2 rounded-xl cursor-pointer active:scale-95">បដិសេធ</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </PageView>
+  );
+}
+
 function History() {
   const [payments, setPayments] = useState<any[]>(() => getStoredData('sof_pending_payments', []) || []);
   const codeOf = (r: any) => { const s = String(r?.id ?? r?.code ?? ''); return (s.includes(' ') ? s.split(' ').pop() : s || '').toUpperCase(); };
@@ -5316,8 +5408,9 @@ function MemberReport() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   
-  const [loanFiles, setLoanFiles] = useState<{name: string; size: string; date: string; type: string}[]>([]);
+  const [loanFiles, setLoanFiles] = useState<{name: string; size: string; date: string; type: string; raw?: File}[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [loanReqBusy, setLoanReqBusy] = useState(false);
   
   // Digital loan form states
   const [showDigitalForm, setShowDigitalForm] = useState(false);
@@ -5536,7 +5629,8 @@ function MemberReport() {
         name: file.name,
         size: sizeStr,
         type: fileType,
-        date: dateStr
+        date: dateStr,
+        raw: file,
       });
     }
     setLoanFiles(newList);
@@ -5544,6 +5638,68 @@ function MemberReport() {
 
   const removeLoanFile = (index: number) => {
     setLoanFiles(loanFiles.filter((_, i) => i !== index));
+  };
+
+  // Submit a loan request: send each attached document/photo to the Telegram group
+  // (photos via sendPhoto, PDF/Word/Excel via sendDocument) and push a pending
+  // "loan-request" entry to the shared list for the admin to review/approve.
+  const submitLoanRequest = async () => {
+    if (loanReqBusy) return;
+    const withRaw = loanFiles.filter((f) => f.raw);
+    if (withRaw.length === 0) {
+      alert('សូមភ្ជាប់ឯកសារ ឬ រូបថត ពាក្យស្នើសុំ មុននឹងផ្ញើ។');
+      return;
+    }
+    setLoanReqBusy(true);
+    const code = (localStorage.getItem('memberId') || '').toUpperCase();
+    const now = new Date();
+    const date = now.toISOString().split('T')[0];
+    const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
+    const monthKey = `${KHM[now.getMonth()]} ${now.getFullYear()}`;
+    const caption =
+      `📝 ពាក្យស្នើសុំកម្ចី\n` +
+      `ឈ្មោះ៖ ${memberName} (${code})\n` +
+      `កាលបរិច្ឆេទ៖ ${date}`;
+    let sent = false;
+    try {
+      for (const f of withRaw) {
+        const file = f.raw as File;
+        const isImg = /^image\//.test(file.type) || /\.(png|jpe?g|webp|gif)$/i.test(file.name);
+        if (isImg) {
+          const dataUrl: string = await new Promise((resolve) => {
+            const r = new FileReader();
+            r.onload = () => resolve(String(r.result || ''));
+            r.onerror = () => resolve('');
+            r.readAsDataURL(file);
+          });
+          if (await sendTelegramPhoto(dataUrl, caption)) sent = true;
+        } else if (await sendTelegramDocument(file, file.name, caption)) {
+          sent = true;
+        }
+      }
+    } catch { /* network issue — still record the request below */ }
+
+    const txn = {
+      id: `LR-${Date.now()}`,
+      memberCode: code,
+      memberName,
+      type: 'loan-request',
+      amount: 0,
+      date,
+      monthKey,
+      transactionId: 'N/A',
+      status: 'pending' as const,
+      proofName: withRaw.map((f) => f.name).join(', '),
+      proofImg: '',
+      sentToTelegram: sent,
+    };
+    const all = getStoredData('sof_pending_loan_requests', []) || [];
+    setStoredData('sof_pending_loan_requests', [txn, ...all]);
+    setLoanFiles([]);
+    setLoanReqBusy(false);
+    alert(sent
+      ? 'បានផ្ញើពាក្យស្នើសុំកម្ចីចូល Telegram ក្រុម SOF! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។'
+      : 'ពាក្យស្នើសុំកម្ចីត្រូវបានកត់ត្រា! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។');
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -6057,27 +6213,51 @@ function MemberReport() {
               <p className="text-slate-500 text-xs font-medium leading-relaxed">សូមបំពេញព័ត៌មានលម្អិតខាងក្រោមដើម្បីបង្កើត និងផ្ញើសំណើសុំប្រាក់កម្ចីឌីជីថលរបស់អ្នក។</p>
             </div>
 
-            <form onSubmit={(e) => {
+            <form onSubmit={async (e) => {
               e.preventDefault();
               if (!digitalAmount || Number(digitalAmount) <= 0) {
                 alert("សូមបញ្ចូលចំនួនទឹកប្រាក់កម្ចីឲ្យត្រឹមត្រូវ!");
                 return;
               }
-              const sizeStr = "12.5 KB";
-              const dateStr = "ថ្ងៃទី " + new Date().getDate() + " ខែ" + (new Date().getMonth() + 1) + " ឆ្នាំ " + new Date().getFullYear();
-              const fileName = `លិខិតស្នើសុំកម្ចី_ឌីជីថល_$${Number(digitalAmount).toLocaleString()}USD.xlsx`;
-              
-              setLoanFiles([...loanFiles, {
-                name: fileName,
-                size: sizeStr,
-                type: 'xlsx',
-                date: dateStr
-              }]);
-              
+              const code = (localStorage.getItem('memberId') || '').toUpperCase();
+              const now = new Date();
+              const date = now.toISOString().split('T')[0];
+              const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
+              const monthKey = `${KHM[now.getMonth()]} ${now.getFullYear()}`;
+              const text =
+                `📝 ពាក្យស្នើសុំកម្ចី (អនឡាញ)\n` +
+                `ឈ្មោះ៖ ${memberName} (${code})\n` +
+                `ចំនួន៖ $${Number(digitalAmount).toLocaleString()}\n` +
+                `រយៈពេលសង៖ ${digitalTerm} ខែ\n` +
+                `ទូរស័ព្ទ៖ ${digitalPhone || '-'}\n` +
+                `គោលបំណង៖ ${digitalPurpose || '-'}\n` +
+                `កាលបរិច្ឆេទ៖ ${date}`;
+              const sent = await sendTelegramMessage(text);
+              const txn = {
+                id: `LR-${Date.now()}`,
+                memberCode: code,
+                memberName,
+                type: 'loan-request',
+                amount: Number(digitalAmount) || 0,
+                term: Number(digitalTerm) || 0,
+                purpose: digitalPurpose || '',
+                phone: digitalPhone || '',
+                date,
+                monthKey,
+                transactionId: 'N/A',
+                status: 'pending',
+                proofName: 'ពាក្យស្នើសុំអនឡាញ',
+                proofImg: '',
+                sentToTelegram: sent,
+              };
+              const all = getStoredData('sof_pending_loan_requests', []) || [];
+              setStoredData('sof_pending_loan_requests', [txn, ...all]);
               setShowDigitalForm(false);
               setDigitalAmount('');
               setDigitalPurpose('');
-              alert("ទិន្នន័យត្រូវបានរក្សាទុក និងបង្កើតជាឯកសារពាក្យស្នើសុំឌីជីថលជោគជ័យ! សូមពិនិត្យបញ្ជីឯកសារ និងចុចផ្ញើពាក្យស្នើសុំ។");
+              alert(sent
+                ? "បានផ្ញើពាក្យស្នើសុំកម្ចីអនឡាញចូល Telegram ក្រុម SOF! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។"
+                : "ពាក្យស្នើសុំកម្ចីត្រូវបានកត់ត្រា! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។");
             }} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">ចំនួនទឹកប្រាក់ស្នើសុំ (USD)</label>
@@ -6432,14 +6612,12 @@ function MemberReport() {
                </div>
 
                <div className="pt-4 border-t border-slate-100 flex justify-end animate-in fade-in duration-200">
-                 <button 
-                   onClick={() => {
-                     alert("ពាក្យស្នើសុំកម្ចីរបស់អ្នកត្រូវបានផ្ញើជូនគណៈកម្មការពិនិត្យរួចរាល់ហើយ!");
-                     setLoanFiles([]);
-                   }}
-                   className="bg-[#0a6652] text-white font-bold text-xs py-3 px-6 rounded-xl hover:bg-[#085241] active:scale-95 transition-all shadow-md shadow-emerald-900/10 inline-flex items-center gap-2"
+                 <button
+                   onClick={submitLoanRequest}
+                   disabled={loanReqBusy}
+                   className="bg-[#0a6652] text-white font-bold text-xs py-3 px-6 rounded-xl hover:bg-[#085241] active:scale-95 transition-all shadow-md shadow-emerald-900/10 inline-flex items-center gap-2 disabled:opacity-60"
                  >
-                   <span>ផ្ញើពាក្យស្នើសុំកម្ចី</span>
+                   <span>{loanReqBusy ? 'កំពុងផ្ញើ...' : 'ផ្ញើពាក្យស្នើសុំកម្ចី'}</span>
                  </button>
                </div>
              </div>
