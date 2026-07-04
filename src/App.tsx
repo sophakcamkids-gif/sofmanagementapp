@@ -5906,7 +5906,7 @@ function MemberReport() {
             </div>
         </div>
 
-        <div className="relative z-10 grid grid-cols-2 gap-x-3 md:gap-x-16 gap-y-3 md:gap-y-6 text-[11px] md:text-base font-bold text-slate-800">
+        <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-x-3 md:gap-x-16 gap-y-3 md:gap-y-6 text-sm md:text-base font-bold text-slate-800">
           <div className="flex justify-between items-end border-b border-slate-100 pb-2">
             <span className="text-slate-500 font-medium">ឈ្មោះ:</span>
             <span className="md:text-lg">{memberName}</span>
@@ -5917,8 +5917,8 @@ function MemberReport() {
           </div>
 
           <div className="flex justify-between items-center py-1 mt-4">
-            <span className="text-slate-500 font-medium">ទុនសន្សំសរុបដើមគ្រា:</span>
-            <span className="text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg"><span className="text-emerald-600/50 mr-1">$</span> {fm(num(sumS.startCapital))}</span>
+            <span className="text-slate-500 font-medium whitespace-nowrap">ទុនសន្សំដើមគ្រា:</span>
+            <span className="text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg whitespace-nowrap"><span className="text-emerald-600/50 mr-1">$</span> {fm(num(sumS.startCapital))}</span>
           </div>
           <div className="flex justify-between items-center py-1 mt-4">
             <span className="text-slate-500 font-medium">កម្ចីដើមគ្រា:</span>
