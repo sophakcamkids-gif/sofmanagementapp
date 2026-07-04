@@ -6712,6 +6712,13 @@ function MemberReport() {
           const totalToPay = sch.reduce((s, r) => s + r.total, 0);
           const fmt2 = (v: number) => (v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
           const inputCls = 'font-bold text-slate-800 text-right bg-transparent focus:underline hover:bg-emerald-50/40 px-1 py-0.5 rounded focus:outline-none border-none';
+          // INLINE styles for all visual properties (borders/backgrounds/colors/align).
+          // html2canvas on iOS Safari drops these when they come from Tailwind classes,
+          // but honors inline styles — so the exported/Telegram image keeps its format.
+          const boxSt: React.CSSProperties = { border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', borderRadius: '16px', padding: '16px' };
+          const th = (extra: React.CSSProperties = {}): React.CSSProperties => ({ padding: '10px 12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#64748b', fontWeight: 700, fontSize: '10px', textTransform: 'uppercase', ...extra });
+          const td = (extra: React.CSSProperties = {}): React.CSSProperties => ({ padding: '9px 12px', border: '1px solid #eef2f6', ...extra });
+          const inSt: React.CSSProperties = { color: '#1e293b', fontWeight: 700, textAlign: 'right' };
           return (
             <>
               {/* Export + submit buttons — OUTSIDE the sheet so they aren't captured */}
@@ -6735,25 +6742,25 @@ function MemberReport() {
               <FitToWidth designWidth={820}>
               <div className="loan-request-sheet w-full bg-white p-8 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left relative overflow-hidden">
                 {/* Header */}
-                <div className="text-center mb-6">
-                  <p className="text-sm font-bold text-slate-700">ព្រះរាជាណាចក្រកម្ពុជា</p>
-                  <p className="text-xs font-bold text-slate-500">ជាតិ សាសនា ព្រះមហាក្សត្រ</p>
-                  <div className="flex flex-col items-center justify-center gap-1 my-3">
-                    <div className="w-12 h-12 border border-slate-200 rounded-2xl p-0.5 bg-slate-50 flex items-center justify-center shadow-sm">
+                <div className="mb-6" style={{ textAlign: 'center' }}>
+                  <p className="text-sm font-bold" style={{ color: '#334155' }}>ព្រះរាជាណាចក្រកម្ពុជា</p>
+                  <p className="text-xs font-bold" style={{ color: '#64748b' }}>ជាតិ សាសនា ព្រះមហាក្សត្រ</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', margin: '12px 0' }}>
+                    <div style={{ width: '48px', height: '48px', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '2px', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <img src="https://i.ibb.co/Kp7CxnjC/Picture1.jpg" alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                     </div>
-                    <h3 className="text-xs font-bold text-[#ecb22e] uppercase tracking-wide">ក្រុមសន្សំប្រាក់អនាគតយើង</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-wide" style={{ color: '#ecb22e' }}>ក្រុមសន្សំប្រាក់អនាគតយើង</h3>
                   </div>
-                  <h1 className="text-lg font-extrabold text-[#0a6652] tracking-wide">ពាក្យស្នើសុំកម្ចី</h1>
-                  <div className="text-xs text-slate-500 mt-1 flex items-center justify-center gap-1">
-                    <span>យោងលើកិច្ចសន្យាលេខ៖</span>
-                    <input type="text" value={contractNum} onChange={(e) => setContractNum(e.target.value)} className={inputCls + ' w-32 text-center'} />
+                  <h1 className="text-lg font-extrabold tracking-wide" style={{ color: '#0a6652' }}>ពាក្យស្នើសុំកម្ចី</h1>
+                  <div className="text-xs mt-1" style={{ color: '#64748b' }}>
+                    <span>យោងលើកិច្ចសន្យាលេខ៖ </span>
+                    <input type="text" value={contractNum} onChange={(e) => setContractNum(e.target.value)} className={inputCls + ' w-32'} style={{ ...inSt, textAlign: 'center' }} />
                   </div>
                 </div>
 
                 {/* Loan Information title */}
-                <div className="text-left mb-3">
-                  <span className="text-sm font-extrabold text-[#0a6652] tracking-wide border-l-4 border-[#0a6652] pl-2.5">ព័ត៌មានកម្ចី</span>
+                <div className="mb-3" style={{ textAlign: 'left' }}>
+                  <span className="text-sm font-extrabold tracking-wide" style={{ color: '#0a6652', borderLeft: '4px solid #0a6652', paddingLeft: '10px' }}>ព័ត៌មានកម្ចី</span>
                 </div>
 
                 {/* Two-column info — a <table> (not CSS grid) so html2canvas keeps
@@ -6762,28 +6769,28 @@ function MemberReport() {
                   <tbody><tr>
                   {/* Left — loan parameters (editable) */}
                   <td className="align-top" style={{ width: '50%', paddingRight: '1rem' }}>
-                  <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-2.5">
-                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <div className="space-y-2.5" style={boxSt}>
+                    <div className="flex justify-between items-center text-xs" style={{ borderBottom: '1px dashed #e2e8f0', paddingBottom: '6px' }}>
                       <span className="text-slate-500 font-bold">ទំហំកម្ចី (Loan Size)</span>
                       <span className="flex items-center"><span className="text-slate-400 mr-0.5">$</span><input type="number" value={repLoanAmt} onChange={(e) => setRepLoanAmt(e.target.value)} className={inputCls + ' w-24'} /></span>
                     </div>
-                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                    <div className="flex justify-between items-center text-xs" style={{ borderBottom: '1px dashed #e2e8f0', paddingBottom: '6px' }}>
                       <span className="text-slate-500 font-semibold">រយៈពេលនៃកម្ចី (ខែ)</span>
                       <input type="number" value={repLoanTerm} onChange={(e) => setRepLoanTerm(parseInt(e.target.value) || 0)} className={inputCls + ' w-16'} />
                     </div>
-                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                    <div className="flex justify-between items-center text-xs" style={{ borderBottom: '1px dashed #e2e8f0', paddingBottom: '6px' }}>
                       <span className="text-slate-500 font-semibold">អត្រាការប្រាក់ (%/ខែ)</span>
                       <span className="flex items-center"><input type="number" step="0.01" value={repLoanRate} onChange={(e) => setRepLoanRate(parseFloat(e.target.value) || 0)} className={inputCls + ' w-16'} /><span className="text-slate-400 ml-0.5">%</span></span>
                     </div>
-                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                    <div className="flex justify-between items-center text-xs" style={{ borderBottom: '1px dashed #e2e8f0', paddingBottom: '6px' }}>
                       <span className="text-slate-500 font-semibold">ទឹកប្រាក់សរុបត្រូវបង់</span>
                       <span className="font-black text-[#0a6652]">${fmt2(totalToPay)}</span>
                     </div>
-                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                    <div className="flex justify-between items-center text-xs" style={{ borderBottom: '1px dashed #e2e8f0', paddingBottom: '6px' }}>
                       <span className="text-slate-500 font-semibold">ការប្រាក់សរុប</span>
                       <span className="font-bold text-amber-600">${fmt2(totalInterest)}</span>
                     </div>
-                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                    <div className="flex justify-between items-center text-xs" style={{ borderBottom: '1px dashed #e2e8f0', paddingBottom: '6px' }}>
                       <span className="text-slate-500 font-semibold">កាលបរិច្ឆេទខ្ចីប្រាក់</span>
                       <input type="date" value={repLoanDate} onChange={(e) => setRepLoanDate(e.target.value)} className="font-bold text-slate-700 text-right bg-transparent focus:outline-none border-none cursor-pointer" />
                     </div>
@@ -6798,28 +6805,28 @@ function MemberReport() {
                   </td>
                   {/* Right — borrower / guarantors (editable) */}
                   <td className="align-top" style={{ width: '50%', paddingLeft: '1rem' }}>
-                  <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-2.5">
-                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                  <div className="space-y-2.5" style={boxSt}>
+                    <div className="flex justify-between items-center text-xs" style={{ borderBottom: '1px dashed #e2e8f0', paddingBottom: '6px' }}>
                       <span className="text-slate-500 font-semibold">ឈ្មោះអ្នកទទួលកម្ចី</span>
                       <input type="text" value={repBorrower} onChange={(e) => setRepBorrower(e.target.value)} className={inputCls + ' w-32'} />
                     </div>
-                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                    <div className="flex justify-between items-center text-xs" style={{ borderBottom: '1px dashed #e2e8f0', paddingBottom: '6px' }}>
                       <span className="text-slate-500 font-semibold">លេខ ID សមាជិក</span>
                       <input type="text" value={repBorrowerId} onChange={(e) => setRepBorrowerId(e.target.value)} className={inputCls + ' w-20'} />
                     </div>
-                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                    <div className="flex justify-between items-center text-xs" style={{ borderBottom: '1px dashed #e2e8f0', paddingBottom: '6px' }}>
                       <span className="text-slate-500 font-semibold">លេខទូរស័ព្ទ</span>
                       <input type="text" value={repPhone} onChange={(e) => setRepPhone(e.target.value)} className={inputCls + ' w-32'} />
                     </div>
-                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                    <div className="flex justify-between items-center text-xs" style={{ borderBottom: '1px dashed #e2e8f0', paddingBottom: '6px' }}>
                       <span className="text-slate-500 font-semibold">អ្នកធានាទី ១</span>
                       <input type="text" value={repGuarantor1} onChange={(e) => setRepGuarantor1(e.target.value)} className={inputCls + ' w-32'} />
                     </div>
-                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                    <div className="flex justify-between items-center text-xs" style={{ borderBottom: '1px dashed #e2e8f0', paddingBottom: '6px' }}>
                       <span className="text-slate-500 font-semibold">លេខ ID ធានាទី ១</span>
                       <input type="text" value={repGuarantor1Id} onChange={(e) => setRepGuarantor1Id(e.target.value)} className={inputCls + ' w-20'} />
                     </div>
-                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
+                    <div className="flex justify-between items-center text-xs" style={{ borderBottom: '1px dashed #e2e8f0', paddingBottom: '6px' }}>
                       <span className="text-slate-500 font-semibold">អ្នកធានាទី ២</span>
                       <input type="text" value={repGuarantor2} onChange={(e) => setRepGuarantor2(e.target.value)} className={inputCls + ' w-32'} />
                     </div>
@@ -6833,38 +6840,38 @@ function MemberReport() {
                 </table>
 
                 {/* Amortization schedule */}
-                <div className="text-left mb-3">
-                  <span className="text-sm font-extrabold text-[#0a6652] tracking-wide border-l-4 border-[#0a6652] pl-2.5">តារាងបង់រំលស់</span>
+                <div className="mb-3" style={{ textAlign: 'left' }}>
+                  <span className="text-sm font-extrabold tracking-wide" style={{ color: '#0a6652', borderLeft: '4px solid #0a6652', paddingLeft: '10px' }}>តារាងបង់រំលស់</span>
                 </div>
-                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-                  <table className="w-full text-xs text-left text-slate-700 border-collapse">
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden', backgroundColor: '#ffffff' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                        <th className="py-2.5 px-3 text-center border-r border-slate-200 w-12">ល.រ</th>
-                        <th className="py-2.5 px-3 border-r border-slate-200">ថ្ងៃទីខែឆ្នាំត្រូវបង់</th>
-                        <th className="py-2.5 px-3 border-r border-slate-200 text-right">ទឹកប្រាក់ត្រូវបង់</th>
-                        <th className="py-2.5 px-3 border-r border-slate-200 text-right">ការប្រាក់</th>
-                        <th className="py-2.5 px-3 border-r border-slate-200 text-right">បង់រំលស់ប្រាក់ដើម</th>
-                        <th className="py-2.5 px-3 text-right">តុល្យការ</th>
+                      <tr>
+                        <th style={th({ width: '44px', textAlign: 'center' })}>ល.រ</th>
+                        <th style={th({ textAlign: 'left' })}>ថ្ងៃទីខែឆ្នាំត្រូវបង់</th>
+                        <th style={th({ textAlign: 'right' })}>ទឹកប្រាក់ត្រូវបង់</th>
+                        <th style={th({ textAlign: 'right' })}>ការប្រាក់</th>
+                        <th style={th({ textAlign: 'right' })}>បង់រំលស់ប្រាក់ដើម</th>
+                        <th style={th({ textAlign: 'right' })}>តុល្យការ</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 divide-dashed">
+                    <tbody>
                       {sch.map((row) => (
-                        <tr key={row.num} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="py-2.5 px-3 text-center border-r border-slate-100 font-bold text-slate-400">{row.num}</td>
-                          <td className="py-2.5 px-3 border-r border-slate-100 text-slate-600">{row.dueDate}</td>
-                          <td className="py-2.5 px-3 border-r border-slate-100 text-right font-bold text-slate-700">${fmt2(row.total)}</td>
-                          <td className="py-2.5 px-3 border-r border-slate-100 text-right font-bold text-amber-600">${fmt2(row.interest)}</td>
-                          <td className="py-2.5 px-3 border-r border-slate-100 text-right font-bold text-slate-600">${fmt2(row.principal)}</td>
-                          <td className="py-2.5 px-3 text-right font-black text-[#0a6652]">${fmt2(row.balance)}</td>
+                        <tr key={row.num}>
+                          <td style={td({ textAlign: 'center', color: '#94a3b8', fontWeight: 700 })}>{row.num}</td>
+                          <td style={td({ color: '#475569' })}>{row.dueDate}</td>
+                          <td style={td({ textAlign: 'right', color: '#334155', fontWeight: 700 })}>${fmt2(row.total)}</td>
+                          <td style={td({ textAlign: 'right', color: '#d97706', fontWeight: 700 })}>${fmt2(row.interest)}</td>
+                          <td style={td({ textAlign: 'right', color: '#475569', fontWeight: 700 })}>${fmt2(row.principal)}</td>
+                          <td style={td({ textAlign: 'right', color: '#0a6652', fontWeight: 800 })}>${fmt2(row.balance)}</td>
                         </tr>
                       ))}
-                      <tr className="bg-slate-50 font-bold border-t border-slate-200 text-slate-800">
-                        <td colSpan={2} className="py-3 px-3 text-center border-r border-slate-200 font-extrabold text-[#0a6652]">សរុប</td>
-                        <td className="py-3 px-3 border-r border-slate-200 text-right font-extrabold text-slate-700">${fmt2(totalToPay)}</td>
-                        <td className="py-3 px-3 border-r border-slate-200 text-right font-extrabold text-amber-600">${fmt2(totalInterest)}</td>
-                        <td className="py-3 px-3 border-r border-slate-200 text-right font-extrabold text-slate-700">${fmt2(parseFloat(repLoanAmt) || 0)}</td>
-                        <td className="py-3 px-3 text-right font-black text-[#0a6652]">$0.00</td>
+                      <tr>
+                        <td colSpan={2} style={td({ textAlign: 'center', backgroundColor: '#f8fafc', color: '#0a6652', fontWeight: 800 })}>សរុប</td>
+                        <td style={td({ textAlign: 'right', backgroundColor: '#f8fafc', color: '#334155', fontWeight: 800 })}>${fmt2(totalToPay)}</td>
+                        <td style={td({ textAlign: 'right', backgroundColor: '#f8fafc', color: '#d97706', fontWeight: 800 })}>${fmt2(totalInterest)}</td>
+                        <td style={td({ textAlign: 'right', backgroundColor: '#f8fafc', color: '#334155', fontWeight: 800 })}>${fmt2(parseFloat(repLoanAmt) || 0)}</td>
+                        <td style={td({ textAlign: 'right', backgroundColor: '#f8fafc', color: '#0a6652', fontWeight: 800 })}>$0.00</td>
                       </tr>
                     </tbody>
                   </table>
