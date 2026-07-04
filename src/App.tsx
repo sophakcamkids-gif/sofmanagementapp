@@ -6756,9 +6756,12 @@ function MemberReport() {
                   <span className="text-sm font-extrabold text-[#0a6652] tracking-wide border-l-4 border-[#0a6652] pl-2.5">ព័ត៌មានកម្ចី</span>
                 </div>
 
-                {/* Two-column info grid */}
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-8">
+                {/* Two-column info — a <table> (not CSS grid) so html2canvas keeps
+                    the columns side by side on every browser incl. iOS Safari. */}
+                <table className="w-full mb-8" style={{ borderCollapse: 'separate', borderSpacing: 0, tableLayout: 'fixed' }}>
+                  <tbody><tr>
                   {/* Left — loan parameters (editable) */}
+                  <td className="align-top" style={{ width: '50%', paddingRight: '1rem' }}>
                   <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-2.5">
                     <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
                       <span className="text-slate-500 font-bold">ទំហំកម្ចី (Loan Size)</span>
@@ -6792,8 +6795,9 @@ function MemberReport() {
                       </select>
                     </div>
                   </div>
-
+                  </td>
                   {/* Right — borrower / guarantors (editable) */}
+                  <td className="align-top" style={{ width: '50%', paddingLeft: '1rem' }}>
                   <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-2.5">
                     <div className="flex justify-between items-center text-xs pb-1.5 border-b border-dashed border-slate-200/80">
                       <span className="text-slate-500 font-semibold">ឈ្មោះអ្នកទទួលកម្ចី</span>
@@ -6824,7 +6828,9 @@ function MemberReport() {
                       <input type="text" value={repGuarantor2Id} onChange={(e) => setRepGuarantor2Id(e.target.value)} className={inputCls + ' w-20'} />
                     </div>
                   </div>
-                </div>
+                  </td>
+                  </tr></tbody>
+                </table>
 
                 {/* Amortization schedule */}
                 <div className="text-left mb-3">
