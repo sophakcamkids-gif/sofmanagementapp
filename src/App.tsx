@@ -4801,12 +4801,101 @@ function Reports() {
 }
 
 function History() {
+  const [payments, setPayments] = useState<any[]>(() => getStoredData('sof_pending_payments', []) || []);
+  const codeOf = (r: any) => { const s = String(r?.id ?? r?.code ?? ''); return (s.includes(' ') ? s.split(' ').pop() : s || '').toUpperCase(); };
+
+  // Apply an approved payment to the member's row in the by-month savings/loan table.
+  const applyPayment = (txn: any): boolean => {
+    const isLoan = txn.type === 'loan';
+    const keys = isLoan ? ['sof_loans_by_month', 'sof_loans_deposit_by_month'] : ['sof_savings_by_month', 'sof_deposit_by_month'];
+    for (const key of keys) {
+      const store = getStoredData(key, {}) || {};
+      const rows = store[txn.monthKey];
+      if (!Array.isArray(rows)) continue;
+      const r = rows.find((x: any) => codeOf(x) === String(txn.memberCode || '').toUpperCase());
+      if (!r) continue;
+      if (isLoan) {
+        r.repayment = (num(r.repayment) + (txn.principal || 0)).toFixed(2);
+        r.interestPaid = (num(r.interestPaid) + (txn.interest || 0)).toFixed(2);
+        r.remaining = (num(r.loanValue) + num(r.newLoan) - num(r.repayment)).toFixed(2);
+      } else {
+        r.addSaving = (num(r.addSaving) + (txn.amount || 0)).toFixed(2);
+        r.total = (num(r.total) + (txn.amount || 0)).toFixed(2);
+      }
+      setStoredData(key, store);
+      return true;
+    }
+    return false;
+  };
+  const updateTxn = (id: string, changes: any) => {
+    const all = (getStoredData('sof_pending_payments', []) || []).map((t: any) => (t.id === id ? { ...t, ...changes } : t));
+    setStoredData('sof_pending_payments', all);
+    setPayments(all);
+  };
+  const approve = (txn: any) => {
+    const ok = applyPayment(txn);
+    updateTxn(txn.id, { status: 'approved' });
+    alert(ok
+      ? `បានអនុម័ត និងកត់ត្រាទៅតារាង${txn.type === 'loan' ? 'កម្ចី' : 'សន្សំ'} ខែ ${txn.monthKey} ដោយជោគជ័យ!`
+      : `បានអនុម័ត តែរកមិនឃើញជួររបស់ ${txn.memberCode} សម្រាប់ខែ ${txn.monthKey} — សូមពិនិត្យតារាង។`);
+  };
+  const reject = (txn: any) => { if (window.confirm('បដិសេធការស្នើសុំនេះមែនទេ?')) updateTxn(txn.id, { status: 'rejected' }); };
+
+  const pending = payments.filter((p) => p.status === 'pending');
+  const done = payments.filter((p) => p.status !== 'pending');
+  const money = (n: number) => '$' + fmtMoney(num(n));
+
   return (
-    <PageView title="កំណត់ត្រាប្រវត្តិ (History)" hideUpload={true} hideDownload={true} hideAdd={true}>
-      <p className="text-slate-500 font-medium mb-6">ប្រវត្តិប្រតិបត្តិការទាំងអស់ ដែលបានធ្វើឡើងនៅក្នុងប្រព័ន្ធ។</p>
-      <div className="flex items-center justify-center h-48 bg-amber-50 text-amber-600 rounded-2xl font-bold border border-amber-100">
-        បញ្ជីប្រតិបត្តិការ (Log History)
-      </div>
+    <PageView title="ការស្នើសុំបង់ប្រាក់ (Pending)" hideUpload={true} hideDownload={true} hideAdd={true}>
+      <p className="text-slate-500 font-medium mb-6">ការស្នើសុំ ដាក់សន្សំ / បង់កម្ចី ពីសមាជិក ដែលរង់ចាំការអនុម័ត។ ពេលអនុម័ត វានឹងចូលទៅតារាងសន្សំ/កម្ចីស្វ័យប្រវត្តិ។</p>
+
+      {pending.length === 0 ? (
+        <div className="flex items-center justify-center h-40 bg-slate-50 text-slate-400 rounded-2xl font-bold border border-slate-100">
+          គ្មានការស្នើសុំរង់ចាំ
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {pending.map((txn) => (
+            <div key={txn.id} className="flex flex-col md:flex-row md:items-center gap-3 bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+              {txn.proofImg && <img src={txn.proofImg} alt="proof" className="w-16 h-16 object-cover rounded-lg border border-slate-200 shrink-0" />}
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-bold text-slate-800">{txn.memberName || txn.memberCode}</span>
+                  <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{txn.memberCode}</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${txn.type === 'loan' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>{txn.type === 'loan' ? 'បង់កម្ចី' : 'ដាក់សន្សំ'}</span>
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  ខែ {txn.monthKey} · {txn.date} · {txn.type === 'loan'
+                    ? `ដើម ${money(txn.principal)} + ការ ${money(txn.interest)}`
+                    : `ចំនួន ${money(txn.amount)}`}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="font-black text-[#0a6652] text-lg">{money(txn.amount)}</span>
+                <button onClick={() => approve(txn)} className="bg-[#0a6652] hover:bg-[#084f40] text-white font-bold text-xs px-4 py-2 rounded-xl cursor-pointer active:scale-95">អនុម័ត</button>
+                <button onClick={() => reject(txn)} className="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs px-3 py-2 rounded-xl cursor-pointer active:scale-95">បដិសេធ</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {done.length > 0 && (
+        <div className="mt-8">
+          <h4 className="text-xs font-black text-slate-400 uppercase tracking-wide mb-3">ប្រវត្តិ (បានដំណើរការ)</h4>
+          <div className="space-y-2">
+            {done.slice(0, 30).map((txn) => (
+              <div key={txn.id} className="flex items-center justify-between gap-2 text-xs bg-slate-50 border border-slate-100 rounded-xl px-4 py-2">
+                <span className="font-bold text-slate-700 truncate">{txn.memberName || txn.memberCode} · {txn.type === 'loan' ? 'បង់កម្ចី' : 'ដាក់សន្សំ'} · ខែ {txn.monthKey}</span>
+                <span className="flex items-center gap-2 shrink-0">
+                  <span className="font-bold text-slate-600">{money(txn.amount)}</span>
+                  <span className={`font-bold px-2 py-0.5 rounded-full ${txn.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'}`}>{txn.status === 'approved' ? 'អនុម័ត' : 'បដិសេធ'}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </PageView>
   );
 }
@@ -5389,55 +5478,36 @@ function MemberReport() {
     const interest = isLoanVal ? (parseFloat(loanInterest) || 0) : 0;
     const finalAmount = isLoanVal ? principal + interest : (parseFloat(paymentAmount) || 0);
 
-    // Auto-apply the payment to the live by-month tables for the member + payment month.
+    // Record the request in the shared PENDING list. It is applied to the savings/
+    // loan tables only after an admin approves it (see the admin Pending Payments page).
     const code = (localStorage.getItem('memberId') || '').toUpperCase();
-    const cOf = (r: any) => { const s = String(r?.id ?? r?.code ?? ''); return (s.includes(' ') ? s.split(' ').pop() : s || '').toUpperCase(); };
     const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
     const parts = (paymentDate || '').split('-');
     const monthKey = parts.length === 3 ? `${KHM[parseInt(parts[1], 10) - 1]} ${parts[0]}` : '';
-    let applied = false;
-    if (monthKey) {
-      const keys = isLoanVal ? ['sof_loans_by_month', 'sof_loans_deposit_by_month'] : ['sof_savings_by_month', 'sof_deposit_by_month'];
-      for (const key of keys) {
-        const store = getStoredData(key, {}) || {};
-        const rows = store[monthKey];
-        if (!Array.isArray(rows)) continue;
-        const r = rows.find((x: any) => cOf(x) === code);
-        if (!r) continue;
-        if (isLoanVal) {
-          r.repayment = (num(r.repayment) + principal).toFixed(2);
-          r.interestPaid = (num(r.interestPaid) + interest).toFixed(2);
-          r.remaining = (num(r.loanValue) + num(r.newLoan) - num(r.repayment)).toFixed(2);
-        } else {
-          r.addSaving = (num(r.addSaving) + finalAmount).toFixed(2);
-          r.total = (num(r.total) + finalAmount).toFixed(2);
-        }
-        setStoredData(key, store);
-        applied = true;
-        break;
-      }
-    }
 
     const newTxn = {
-      id: `TXN-${Math.floor(100 + Math.random() * 900)}`,
+      id: `TXN-${Date.now()}`,
+      memberCode: code,
+      memberName,
       type: paymentType,
       amount: finalAmount,
       principal: isLoanVal ? principal : undefined,
       interest: isLoanVal ? interest : undefined,
       date: paymentDate,
+      monthKey,
       transactionId: transactionId || "N/A",
-      status: (applied ? 'approved' : 'pending') as 'approved' | 'pending',
+      status: 'pending' as 'approved' | 'pending',
       proofName: proofFilename || 'screenshot.png',
       proofImg: proofImage,
     };
+    const all = getStoredData('sof_pending_payments', []) || [];
+    setStoredData('sof_pending_payments', [newTxn, ...all]);
     setSubmittedPayments([newTxn, ...submittedPayments]);
     // Reset form
     setTransactionId('');
     setProofImage(null);
     setProofFilename('');
-    alert(applied
-      ? "បានកត់ត្រាទៅតារាង" + (isLoanVal ? "កម្ចី" : "សន្សំ") + `ខែ ${monthKey} ដោយជោគជ័យ!`
-      : "ការផ្ញើភស្តុតាងបានជោគជ័យ! (រកមិនឃើញជួរខែនេះ — គណៈកម្មការនឹងពិនិត្យ)");
+    alert("ការផ្ញើភស្តុតាងបានជោគជ័យ! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។");
   };
   
   const tabs = ['របាយការណ៍ផ្ទាល់ខ្លួន', 'ស្នើកម្ចី', 'របាយការណ៍កម្ចី', 'របាយការណ៍សន្សំ', 'ការដាក់សន្សំ និងបង់កម្ចី'];
