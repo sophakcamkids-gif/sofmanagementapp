@@ -5385,19 +5385,48 @@ function MemberReport() {
       return;
     }
     const isLoanVal = paymentType === 'loan';
-    const finalAmount = isLoanVal
-      ? (parseFloat(loanPrincipal) || 0) + (parseFloat(loanInterest) || 0)
-      : parseFloat(paymentAmount) || 0;
+    const principal = isLoanVal ? (parseFloat(loanPrincipal) || 0) : 0;
+    const interest = isLoanVal ? (parseFloat(loanInterest) || 0) : 0;
+    const finalAmount = isLoanVal ? principal + interest : (parseFloat(paymentAmount) || 0);
+
+    // Auto-apply the payment to the live by-month tables for the member + payment month.
+    const code = (localStorage.getItem('memberId') || '').toUpperCase();
+    const cOf = (r: any) => { const s = String(r?.id ?? r?.code ?? ''); return (s.includes(' ') ? s.split(' ').pop() : s || '').toUpperCase(); };
+    const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
+    const parts = (paymentDate || '').split('-');
+    const monthKey = parts.length === 3 ? `${KHM[parseInt(parts[1], 10) - 1]} ${parts[0]}` : '';
+    let applied = false;
+    if (monthKey) {
+      const keys = isLoanVal ? ['sof_loans_by_month', 'sof_loans_deposit_by_month'] : ['sof_savings_by_month', 'sof_deposit_by_month'];
+      for (const key of keys) {
+        const store = getStoredData(key, {}) || {};
+        const rows = store[monthKey];
+        if (!Array.isArray(rows)) continue;
+        const r = rows.find((x: any) => cOf(x) === code);
+        if (!r) continue;
+        if (isLoanVal) {
+          r.repayment = (num(r.repayment) + principal).toFixed(2);
+          r.interestPaid = (num(r.interestPaid) + interest).toFixed(2);
+          r.remaining = (num(r.loanValue) + num(r.newLoan) - num(r.repayment)).toFixed(2);
+        } else {
+          r.addSaving = (num(r.addSaving) + finalAmount).toFixed(2);
+          r.total = (num(r.total) + finalAmount).toFixed(2);
+        }
+        setStoredData(key, store);
+        applied = true;
+        break;
+      }
+    }
 
     const newTxn = {
       id: `TXN-${Math.floor(100 + Math.random() * 900)}`,
       type: paymentType,
       amount: finalAmount,
-      principal: isLoanVal ? (parseFloat(loanPrincipal) || 0) : undefined,
-      interest: isLoanVal ? (parseFloat(loanInterest) || 0) : undefined,
+      principal: isLoanVal ? principal : undefined,
+      interest: isLoanVal ? interest : undefined,
       date: paymentDate,
       transactionId: transactionId || "N/A",
-      status: 'pending' as const,
+      status: (applied ? 'approved' : 'pending') as 'approved' | 'pending',
       proofName: proofFilename || 'screenshot.png',
       proofImg: proofImage,
     };
@@ -5406,7 +5435,9 @@ function MemberReport() {
     setTransactionId('');
     setProofImage(null);
     setProofFilename('');
-    alert("ការផ្ញើភស្តុតាងបានជោគជ័យ! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូនក្នុងពេលឆាប់ៗ។");
+    alert(applied
+      ? "បានកត់ត្រាទៅតារាង" + (isLoanVal ? "កម្ចី" : "សន្សំ") + `ខែ ${monthKey} ដោយជោគជ័យ!`
+      : "ការផ្ញើភស្តុតាងបានជោគជ័យ! (រកមិនឃើញជួរខែនេះ — គណៈកម្មការនឹងពិនិត្យ)");
   };
   
   const tabs = ['របាយការណ៍ផ្ទាល់ខ្លួន', 'ស្នើកម្ចី', 'របាយការណ៍កម្ចី', 'របាយការណ៍សន្សំ', 'ការដាក់សន្សំ និងបង់កម្ចី'];
