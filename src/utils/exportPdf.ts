@@ -144,6 +144,32 @@ async function renderElementToCanvas(el: HTMLElement, fixedWidth?: number): Prom
   document.body.appendChild(sandbox);
   syncFieldValues(el, clone);
 
+  // html2canvas renders <input>/<select> text unreliably across browsers (esp. on
+  // mobile the value often comes out blank). Replace each form control in the clone
+  // with a static <span> carrying its value, so the snapshot is identical on every
+  // device. The controls already have their live values from syncFieldValues.
+  clone.querySelectorAll<HTMLElement>('input, textarea, select').forEach(node => {
+    const ctrl = node as HTMLInputElement;
+    let text = ctrl.value;
+    if (ctrl.tagName === 'SELECT') {
+      const sel = node as unknown as HTMLSelectElement;
+      text = sel.options[sel.selectedIndex]?.text ?? ctrl.value;
+    } else if (ctrl.type === 'checkbox' || ctrl.type === 'radio') {
+      text = ctrl.checked ? '✓' : '';
+    }
+    const cs = window.getComputedStyle(ctrl);
+    const span = document.createElement('span');
+    span.textContent = text;
+    span.className = ctrl.className;
+    span.style.cssText =
+      `display:inline-block;box-sizing:border-box;` +
+      `width:${ctrl.style.width || cs.width};` +
+      `font-family:${cs.fontFamily};font-size:${cs.fontSize};font-weight:${cs.fontWeight};` +
+      `color:${cs.color};text-align:${cs.textAlign};padding:${cs.padding};` +
+      `line-height:${cs.lineHeight};white-space:nowrap;`;
+    ctrl.replaceWith(span);
+  });
+
   const options = {
     scale,
     useCORS: true,
