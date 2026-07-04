@@ -47,6 +47,29 @@ const setStoredData = (key: string, value: any) => {
 const getAdminAuth = (): { username: string; password: string } =>
   ({ username: 'sofadmin', password: 'sof2026', ...(getStoredData('sof_admin_auth', {}) || {}) });
 
+// Telegram bot config (token + chat/group id). Used to send payment proofs to a
+// Telegram group instead of storing the (heavy base64) image in Supabase.
+const getTelegramConfig = (): { token: string; chatId: string; enabled: boolean } =>
+  ({ token: '', chatId: '', enabled: true, ...(getStoredData('sof_telegram_config', {}) || {}) });
+
+// Send a proof image + caption to the configured Telegram group via the Bot API
+// (api.telegram.org allows cross-origin calls from the browser). Returns true on
+// success so the caller can drop the base64 image from cloud storage.
+const sendTelegramPhoto = async (dataUrl: string, caption: string): Promise<boolean> => {
+  const { token, chatId, enabled } = getTelegramConfig();
+  if (!enabled || !token || !chatId || !dataUrl) return false;
+  try {
+    const blob = await (await fetch(dataUrl)).blob();
+    const form = new FormData();
+    form.append('chat_id', chatId);
+    form.append('caption', caption);
+    form.append('photo', blob, 'proof.jpg');
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: form });
+    const j = await res.json().catch(() => ({ ok: false }));
+    return !!j.ok;
+  } catch { return false; }
+};
+
 // Convert ASCII digits to Khmer numerals (០–៩).
 const toKhmerNum = (v: string | number): string =>
   String(v).replace(/[0-9]/g, (d) => '០១២៣៤៥៦៧៨៩'[+d]);
@@ -4902,7 +4925,24 @@ function History() {
 
 function SettingsPage() {
   const [interestRate, setInterestRate] = useState('1.5%');
-  const [telegramNotification, setTelegramNotification] = useState(true);
+  const _tg = getTelegramConfig();
+  const [tgToken, setTgToken] = useState(_tg.token);
+  const [tgChatId, setTgChatId] = useState(_tg.chatId);
+  const [tgEnabled, setTgEnabled] = useState(_tg.enabled);
+  const [tgMsg, setTgMsg] = useState('');
+  const saveTg = (enabled = tgEnabled) => setStoredData('sof_telegram_config', { token: tgToken.trim(), chatId: tgChatId.trim(), enabled });
+  const testTg = async () => {
+    saveTg();
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${tgToken.trim()}/sendMessage`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: tgChatId.trim(), text: '✅ SOF៖ តេស្តភ្ជាប់ Telegram ជោគជ័យ!' }),
+      });
+      const j = await res.json();
+      setTgMsg(j.ok ? '✅ ភ្ជាប់បានជោគជ័យ! (ពិនិត្យក្នុងក្រុម Telegram)' : `❌ បរាជ័យ៖ ${j.description || 'error'}`);
+    } catch { setTgMsg('❌ បរាជ័យ (network / CORS)'); }
+    setTimeout(() => setTgMsg(''), 7000);
+  };
 
   const [newAdminUsername, setNewAdminUsername] = useState(getAdminAuth().username);
   const [newAdminPassword, setNewAdminPassword] = useState('');
@@ -4975,16 +5015,36 @@ function SettingsPage() {
 
           <div className="flex items-center justify-between py-2">
             <div>
-              <label className="block text-[10px] font-bold text-slate-800">ផ្ញើដំណឹងទៅ Telegram Bot</label>
-              <span className="text-[9px] text-slate-400">ផ្ញើរបាយការណ៍ប្រតិបត្តិការចូលគ្រុបស្វ័យប្រវត្ត</span>
+              <label className="block text-[10px] font-bold text-slate-800">ផ្ញើភស្តុតាងបង់ប្រាក់ចូល Telegram</label>
+              <span className="text-[9px] text-slate-400">ផ្ញើរូប proof ចូលក្រុម SOF (មិនរក្សាក្នុង Supabase)</span>
             </div>
-            <button 
-              onClick={() => setTelegramNotification(!telegramNotification)}
-              className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none cursor-pointer ${telegramNotification ? 'bg-[#0a6652]' : 'bg-slate-300'}`}
+            <button
+              type="button"
+              onClick={() => { const v = !tgEnabled; setTgEnabled(v); saveTg(v); }}
+              className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none cursor-pointer ${tgEnabled ? 'bg-[#0a6652]' : 'bg-slate-300'}`}
             >
-              <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-200 ${telegramNotification ? 'translate-x-4' : 'translate-x-0'}`} />
+              <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-200 ${tgEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
             </button>
           </div>
+
+          {tgEnabled && (
+            <div className="space-y-2.5 pt-2 border-t border-dashed border-slate-100">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1">Bot Token (ពី @BotFather)</label>
+                <input type="text" value={tgToken} onChange={(e) => setTgToken(e.target.value)} onBlur={() => saveTg()} placeholder="123456789:ABC-DEF..."
+                  className="w-full text-xs font-mono border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:border-[#0a6652] outline-none" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1">Chat ID (ក្រុម SOF — លេខអវិជ្ជមាន)</label>
+                <input type="text" value={tgChatId} onChange={(e) => setTgChatId(e.target.value)} onBlur={() => saveTg()} placeholder="-1001234567890"
+                  className="w-full text-xs font-mono border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:border-[#0a6652] outline-none" />
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={testTg} className="bg-[#0a6652] hover:bg-[#084f40] text-white font-bold text-xs px-4 py-2 rounded-xl cursor-pointer active:scale-95">តេស្តភ្ជាប់</button>
+                {tgMsg && <span className="text-[10px] font-bold text-slate-600">{tgMsg}</span>}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -5467,7 +5527,7 @@ function MemberReport() {
     }
   };
 
-  const handlePaymentSubmit = (e: React.FormEvent) => {
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!proofImage) {
       alert("សូមភ្ជាប់មកជាមួយនូវរូបភាពភស្តុតាងនៃការបង់ប្រាក់!");
@@ -5485,6 +5545,16 @@ function MemberReport() {
     const parts = (paymentDate || '').split('-');
     const monthKey = parts.length === 3 ? `${KHM[parseInt(parts[1], 10) - 1]} ${parts[0]}` : '';
 
+    // Send the proof image to the SOF Telegram group. If it succeeds, we DON'T keep
+    // the heavy base64 image in Supabase (only its metadata) — big egress/storage win.
+    const caption =
+      `🧾 ${isLoanVal ? 'បង់កម្ចី' : 'ដាក់សន្សំ'}\n` +
+      `ឈ្មោះ៖ ${memberName} (${code})\n` +
+      `ខែ៖ ${monthKey}\n` +
+      `ចំនួន៖ $${finalAmount.toFixed(2)}` + (isLoanVal ? `  (ដើម $${principal.toFixed(2)} + ការ $${interest.toFixed(2)})` : '') + '\n' +
+      `កាលបរិច្ឆេទ៖ ${paymentDate}   Txn៖ ${transactionId || 'N/A'}`;
+    const sent = await sendTelegramPhoto(proofImage, caption);
+
     const newTxn = {
       id: `TXN-${Date.now()}`,
       memberCode: code,
@@ -5498,7 +5568,8 @@ function MemberReport() {
       transactionId: transactionId || "N/A",
       status: 'pending' as 'approved' | 'pending',
       proofName: proofFilename || 'screenshot.png',
-      proofImg: proofImage,
+      proofImg: sent ? '' : proofImage,   // drop base64 once it's safely in Telegram
+      sentToTelegram: sent,
     };
     const all = getStoredData('sof_pending_payments', []) || [];
     setStoredData('sof_pending_payments', [newTxn, ...all]);
@@ -5507,7 +5578,9 @@ function MemberReport() {
     setTransactionId('');
     setProofImage(null);
     setProofFilename('');
-    alert("ការផ្ញើភស្តុតាងបានជោគជ័យ! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។");
+    alert(sent
+      ? "បានផ្ញើភស្តុតាងចូល Telegram ក្រុម SOF! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។"
+      : "ការផ្ញើភស្តុតាងបានជោគជ័យ! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។");
   };
   
   const tabs = ['របាយការណ៍ផ្ទាល់ខ្លួន', 'ស្នើកម្ចី', 'របាយការណ៍កម្ចី', 'របាយការណ៍សន្សំ', 'ការដាក់សន្សំ និងបង់កម្ចី'];
