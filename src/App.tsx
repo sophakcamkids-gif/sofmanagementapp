@@ -5384,18 +5384,29 @@ function MemberReport() {
     status: 'pending' | 'approved';
     proofName: string;
     proofImg: string;
-  }>>([
-    {
-      id: 'TXN-101',
-      type: 'savings',
-      amount: 30.00,
-      date: '2026-05-10',
-      transactionId: 'ABA-0098234B3',
-      status: 'approved',
-      proofName: 'savings_proof_may.png',
-      proofImg: 'https://i.ibb.co/xtBGLWX7/708852725-868075986313154-5636381465848274787-n.jpg'
-    }
-  ]);
+  }>>(() => {
+    // Show THIS member's real recent submissions (newest first), pulled from the
+    // shared pending store — not a hardcoded sample. Approved items are removed
+    // from that store (they now live in the savings/loan report), so this list
+    // reflects the member's latest pending requests.
+    const code = (localStorage.getItem('memberId') || '').toUpperCase();
+    const all = getStoredData('sof_pending_payments', []) || [];
+    return all
+      .filter((t: any) => String(t.memberCode ?? '').toUpperCase() === code)
+      .sort((a: any, b: any) => String(b.date ?? '').localeCompare(String(a.date ?? '')))
+      .map((t: any) => ({
+        id: t.id,
+        type: t.type === 'loan' ? 'loan' : 'savings',
+        amount: num(t.amount),
+        principal: t.principal,
+        interest: t.interest,
+        date: t.date || '',
+        transactionId: t.transactionId || '',
+        status: t.status === 'approved' ? 'approved' : 'pending',
+        proofName: t.proofName || '',
+        proofImg: t.proofImg || '',
+      }));
+  });
 
   // Pre-fill the loan report with the logged-in member's live borrower + loan details.
   React.useEffect(() => {
