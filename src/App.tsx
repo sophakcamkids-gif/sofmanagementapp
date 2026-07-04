@@ -5453,9 +5453,10 @@ function MemberReport() {
   const handleDownloadImage = async () => {
     const el = document.querySelector('.report-sheet') as HTMLElement | null;
     if (!el) return;
+    if (!el.id) el.id = 'sof-export-summary';
     setSavingImg(true);
     try {
-      await exportElementToImage(el, reportFilename());
+      await exportElementToImage(el, reportFilename(), 800);
     } catch (err) {
       console.error('Image export failed:', err);
       alert('មិនអាចទាញយករូបភាពបានទេ។ សូមព្យាយាមម្តងទៀត។');
@@ -5466,9 +5467,10 @@ function MemberReport() {
   const handleDownloadPdf = async () => {
     const el = document.querySelector('.report-sheet') as HTMLElement | null;
     if (!el) return;
+    if (!el.id) el.id = 'sof-export-summary';
     setSavingPdf(true);
     try {
-      await exportElementToPdf(el, reportFilename());
+      await exportElementToPdf(el, reportFilename(), 800);
     } catch (err) {
       console.error('PDF export failed:', err);
       alert('មិនអាចទាញយក PDF បានទេ។ សូមព្យាយាមម្តងទៀត។');
@@ -5479,13 +5481,14 @@ function MemberReport() {
 
   // Generic sheet exporter (loan/savings reports). `busyKey` tracks which button spins.
   const [exportBusy, setExportBusy] = useState('');
-  const exportSheet = async (selector: string, kind: 'pdf' | 'img', name: string, busyKey: string) => {
+  const exportSheet = async (selector: string, kind: 'pdf' | 'img', name: string, busyKey: string, fixedWidth = 800) => {
     const el = document.querySelector(selector) as HTMLElement | null;
     if (!el) return;
+    if (!el.id) el.id = 'sof-export-' + busyKey.replace(/[^a-z0-9]/gi, '');
     setExportBusy(busyKey);
     try {
-      if (kind === 'pdf') await exportElementToPdf(el, name);
-      else await exportElementToImage(el, name);
+      if (kind === 'pdf') await exportElementToPdf(el, name, fixedWidth);
+      else await exportElementToImage(el, name, fixedWidth);
     } catch (err) {
       console.error('Export failed:', err);
       alert(kind === 'pdf' ? 'មិនអាចទាញយក PDF បានទេ។ សូមព្យាយាមម្តងទៀត។' : 'មិនអាចទាញយករូបភាពបានទេ។ សូមព្យាយាមម្តងទៀត។');
@@ -6157,7 +6160,7 @@ function MemberReport() {
             <div className="absolute right-6 top-6 no-print z-10 flex gap-2">
               <button
                 type="button"
-                onClick={() => exportSheet('.loan-report-sheet', 'pdf', `របាយការណ៍កម្ចី-${memberCode}-${selectedReportYear}`, 'loan-pdf')}
+                onClick={() => exportSheet('.loan-report-sheet', 'pdf', `របាយការណ៍កម្ចី-${memberCode}-${selectedReportYear}`, 'loan-pdf', 950)}
                 disabled={exportBusy === 'loan-pdf'}
                 className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-60"
               >
@@ -6165,7 +6168,7 @@ function MemberReport() {
               </button>
               <button
                 type="button"
-                onClick={() => exportSheet('.loan-report-sheet', 'img', `របាយការណ៍កម្ចី-${memberCode}-${selectedReportYear}`, 'loan-img')}
+                onClick={() => exportSheet('.loan-report-sheet', 'img', `របាយការណ៍កម្ចី-${memberCode}-${selectedReportYear}`, 'loan-img', 950)}
                 disabled={exportBusy === 'loan-img'}
                 className="bg-[#0a6652] hover:bg-[#085241] text-white font-bold text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-900/10 transition-all active:scale-95 disabled:opacity-60"
               >
@@ -6394,7 +6397,7 @@ function MemberReport() {
             <div className="absolute right-6 top-6 no-print z-10 flex gap-2">
               <button
                 type="button"
-                onClick={() => exportSheet('.savings-report-sheet', 'pdf', `របាយការណ៍សន្សំ-${memberCode}-${selectedReportYear}`, 'sav-pdf')}
+                onClick={() => exportSheet('.savings-report-sheet', 'pdf', `របាយការណ៍សន្សំ-${memberCode}-${selectedReportYear}`, 'sav-pdf', 1100)}
                 disabled={exportBusy === 'sav-pdf'}
                 className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-60"
               >
@@ -6402,7 +6405,7 @@ function MemberReport() {
               </button>
               <button
                 type="button"
-                onClick={() => exportSheet('.savings-report-sheet', 'img', `របាយការណ៍សន្សំ-${memberCode}-${selectedReportYear}`, 'sav-img')}
+                onClick={() => exportSheet('.savings-report-sheet', 'img', `របាយការណ៍សន្សំ-${memberCode}-${selectedReportYear}`, 'sav-img', 1100)}
                 disabled={exportBusy === 'sav-img'}
                 className="bg-[#0a6652] hover:bg-[#085241] text-white font-bold text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-950/10 transition-all active:scale-95 disabled:opacity-60"
               >
