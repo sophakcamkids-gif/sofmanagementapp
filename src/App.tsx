@@ -16,7 +16,7 @@ import {
   FileText, PieChart, Home, Heart, MessageSquare, 
   Menu, Bot, BarChart3, Receipt, HandCoins, 
   ShieldCheck, Calendar, BookOpen, Sparkles, TrendingUp,
-  ChevronLeft, Plus, Download, Search, Upload, LogIn, UserCheck, Key, Lock, Eye, EyeOff, Save, X, Trash2, Edit, RotateCw
+  ChevronLeft, Plus, Download, Search, Upload, LogIn, UserCheck, Key, Lock, Eye, EyeOff, Save, X, Trash2, Edit, RotateCw, Send
 } from 'lucide-react';
 
 const getStoredData = (key: string, defaultValue: any) => {
@@ -110,6 +110,66 @@ const hardRefresh = async (): Promise<void> => {
   const url = new URL(window.location.href);
   url.searchParams.set('_r', Date.now().toString());
   window.location.replace(url.toString());
+};
+
+// ── SOF Bot (Gemini) ────────────────────────────────────────────────────────
+// AI assistant that answers a member's questions about their own savings/loans.
+// The key comes from the Settings page (cloud-synced, like the Telegram token) or
+// a VITE_GEMINI_API_KEY build env var. A free Google AI Studio key works.
+const getGeminiConfig = (): { key: string } =>
+  ({ key: ((import.meta as any).env?.VITE_GEMINI_API_KEY as string) || '', ...(getStoredData('sof_gemini_config', {}) || {}) });
+const hasGemini = (): boolean => !!getGeminiConfig().key;
+const askGemini = async (prompt: string): Promise<string> => {
+  const { key } = getGeminiConfig();
+  if (!key) throw new Error('nokey');
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(j?.error?.message || 'Gemini request failed');
+  return (j?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
+};
+
+// Summarise the logged-in member's real figures (from the by-month stores) into a
+// text digest for the bot prompt, so answers use actual data — never invented.
+const buildMemberDigest = (): string => {
+  const code = (localStorage.getItem('memberId') || '').toUpperCase();
+  const cOf = (r: any) => { const s = String(r?.id ?? r?.code ?? ''); return (s.includes(' ') ? s.split(' ').pop() : s || '').toUpperCase(); };
+  const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
+  const sortKey = (s: string) => { const p = String(s).trim().split(' '); const mi = KHM.indexOf(p[0]); return (Number(p[p.length - 1]) || 0) * 100 + (mi >= 0 ? mi + 1 : 0); };
+  let name = code;
+  for (const k of ['sof_member_list_data', 'sof_profile_data', 'sof_deposit_profile_data']) {
+    const l = getStoredData(k, []) || [];
+    const m = Array.isArray(l) ? l.find((x: any) => cOf(x) === code) : null;
+    if (m?.name) { name = m.name; break; }
+  }
+  const savStore = getStoredData('sof_savings_by_month', {}) || {};
+  const savLines: string[] = []; let latestSavTotal = 0;
+  Object.keys(savStore).sort((a, b) => sortKey(a) - sortKey(b)).forEach((month) => {
+    const rows = savStore[month]; if (!Array.isArray(rows)) return;
+    const r = rows.find((x: any) => cOf(x) === code); if (!r) return;
+    latestSavTotal = num(r.total);
+    savLines.push(`  ${month}: សន្សំបន្ថែម $${fmtMoney(num(r.addSaving))}, សរុប $${fmtMoney(num(r.total))}`);
+  });
+  const loanStore = getStoredData('sof_loans_by_month', {}) || {};
+  const loanLines: string[] = []; let latestRemaining = 0; let latestRate = 0;
+  Object.keys(loanStore).sort((a, b) => sortKey(a) - sortKey(b)).forEach((month) => {
+    const rows = loanStore[month]; if (!Array.isArray(rows)) return;
+    const r = rows.find((x: any) => cOf(x) === code); if (!r) return;
+    latestRemaining = num(r.remaining);
+    if (num(r.rate)) latestRate = num(r.rate); else if (num(r.loanValue) && num(r.interest)) latestRate = num(r.interest) / num(r.loanValue) * 100;
+    loanLines.push(`  ${month}: កម្ចីនៅសល់ $${fmtMoney(num(r.remaining))}, ការប្រាក់ $${fmtMoney(num(r.interest))}, បង់រំលស់ $${fmtMoney(num(r.repayment))}`);
+  });
+  const nextInterest = latestRemaining * (latestRate || 1.5) / 100;
+  return [
+    `ឈ្មោះសមាជិក៖ ${name} (លេខ ID៖ ${code})`,
+    `ទុនសន្សំសរុបចុងក្រោយ៖ $${fmtMoney(latestSavTotal)}`,
+    savLines.length ? `ប្រវត្តិសន្សំតាមខែ៖\n${savLines.join('\n')}` : 'គ្មានទិន្នន័យសន្សំ',
+    `កម្ចីនៅសល់ចុងក្រោយ៖ $${fmtMoney(latestRemaining)} (អត្រា ${(latestRate || 1.5).toFixed(2)}%/ខែ)`,
+    `ការប្រាក់ត្រូវបង់ខែបន្ទាប់ (ប៉ាន់ស្មាន)៖ $${fmtMoney(nextInterest)}`,
+    loanLines.length ? `ប្រវត្តិកម្ចីតាមខែ៖\n${loanLines.join('\n')}` : 'គ្មានទិន្នន័យកម្ចី',
+  ].join('\n');
 };
 
 // Convert ASCII digits to Khmer numerals (០–៩).
@@ -400,11 +460,101 @@ function SidebarLink({ to, label }: { to: string, label: string }) {
   );
 }
 
+// SOF Bot — in-app AI assistant. Answers the logged-in member's questions about
+// their savings/loans via Gemini, grounded in their real figures (buildMemberDigest).
+function SofBot({ onClose }: { onClose: () => void }) {
+  const [messages, setMessages] = useState<{ role: 'user' | 'bot'; text: string }[]>([
+    { role: 'bot', text: 'សួស្តី! ខ្ញុំជា SOF Bot 🤖 សួរខ្ញុំអំពីទុនសន្សំ កម្ចី ការប្រាក់ ឬការបង់ប្រាក់របស់អ្នកបានគ្រប់ពេល។' },
+  ]);
+  const [input, setInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const listRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => { const el = listRef.current; if (el) el.scrollTop = el.scrollHeight; }, [messages, busy]);
+
+  const send = async () => {
+    const q = input.trim();
+    if (!q || busy) return;
+    setInput('');
+    setMessages((m) => [...m, { role: 'user', text: q }]);
+    setBusy(true);
+    try {
+      if (!hasGemini()) throw new Error('nokey');
+      const prompt =
+        `អ្នកគឺជា «SOF Bot» ជាជំនួយការក្រុមសន្សំប្រាក់អនាគតយើង (SOF)។ ` +
+        `ឆ្លើយជាភាសាខ្មែរ ខ្លី ច្បាស់ និងសុភាព។ ប្រើតែទិន្នន័យសមាជិកខាងក្រោមដើម្បីឆ្លើយ — កុំបង្កើតលេខថ្មី។ ` +
+        `បើសំណួរនៅក្រៅវិសាលភាពទិន្នន័យ សូមណែនាំឱ្យទាក់ទងគណៈកម្មការ SOF។\n\n` +
+        `ទិន្នន័យសមាជិក៖\n${buildMemberDigest()}\n\nសំណួរ៖ ${q}`;
+      const ans = await askGemini(prompt);
+      setMessages((m) => [...m, { role: 'bot', text: ans || 'សុំទោស ខ្ញុំមិនអាចឆ្លើយបានទេ។ សូមព្យាយាមម្ដងទៀត។' }]);
+    } catch (e: any) {
+      const msg = e?.message === 'nokey'
+        ? 'SOF Bot មិនទាន់បានកំណត់រចនាសម្ព័ន្ធទេ។ សូមគណៈកម្មការបញ្ចូល Gemini API key នៅ ការកំណត់ (Settings)។'
+        : 'សុំទោស មានបញ្ហាក្នុងការភ្ជាប់ AI។ សូមព្យាយាមម្ដងទៀត។';
+      setMessages((m) => [...m, { role: 'bot', text: msg }]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4 bg-slate-900/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white w-full sm:max-w-md h-[80vh] sm:h-[600px] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-200" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-slate-100 bg-[#0a6652] text-white shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center"><Bot size={20} /></div>
+            <div>
+              <p className="font-black text-sm leading-tight">SOF Bot</p>
+              <p className="text-[10px] text-emerald-100 leading-tight">ជំនួយការ AI · សន្សំ & កម្ចី</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"><X size={16} /></button>
+        </div>
+
+        {/* Messages */}
+        <div ref={listRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
+          {messages.map((m, i) => (
+            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[82%] px-3.5 py-2 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap ${m.role === 'user' ? 'bg-[#0a6652] text-white rounded-br-md' : 'bg-white text-slate-700 border border-slate-100 rounded-bl-md shadow-sm'}`}>
+                {m.text}
+              </div>
+            </div>
+          ))}
+          {busy && (
+            <div className="flex justify-start">
+              <div className="bg-white border border-slate-100 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm flex gap-1">
+                <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Input */}
+        <div className="p-3 border-t border-slate-100 bg-white shrink-0 flex items-center gap-2">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
+            placeholder="វាយសំណួររបស់អ្នក…"
+            className="flex-1 px-4 py-2.5 rounded-full bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0a6652]"
+          />
+          <button onClick={send} disabled={busy || !input.trim()} className="w-10 h-10 rounded-full bg-[#0a6652] text-white flex items-center justify-center shadow-md active:scale-95 transition-all disabled:opacity-50 shrink-0">
+            <Send size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [userRole, setUserRole] = useState<string | null>(localStorage.getItem('userRole'));
   const [memberId, setMemberId] = useState<string | null>(localStorage.getItem('memberId'));
   const [hydrated, setHydrated] = useState(false);
   const [navOpen, setNavOpen] = useState(false);  // mobile nav drawer
+  const [botOpen, setBotOpen] = useState(false);  // SOF Bot (AI assistant) modal
 
   // Clean up bad import once based on user request
   useEffect(() => {
@@ -479,6 +629,13 @@ export default function App() {
                 </div>
               </div>
               <div className="flex gap-2 items-center shrink-0">
+                <button
+                  onClick={() => setBotOpen(true)}
+                  className="w-9 h-9 bg-[#0a6652] text-white rounded-full flex items-center justify-center shadow-sm hover:bg-[#085241] active:scale-95 transition-all"
+                  title="SOF Bot (ជំនួយការ AI)"
+                >
+                  <Bot size={16} />
+                </button>
                 <button
                   onClick={hardRefresh}
                   className="w-9 h-9 bg-white text-[#0a6652] border border-slate-100 rounded-full flex items-center justify-center shadow-sm hover:bg-emerald-50 active:scale-95 transition-all"
@@ -643,7 +800,7 @@ export default function App() {
               <Heart className="w-5 h-5" strokeWidth={2.5} />
               <span className="text-[9px] font-bold">ចំណូលចិត្ត</span>
            </div>
-           <div className="flex flex-col items-center gap-1 text-slate-400 hover:text-[#ff6b35] transition-colors cursor-pointer shrink-0">
+           <div onClick={() => setBotOpen(true)} className="flex flex-col items-center gap-1 text-slate-400 hover:text-[#ff6b35] transition-colors cursor-pointer shrink-0">
               <MessageSquare className="w-5 h-5" strokeWidth={2.5} />
               <span className="text-[9px] font-bold">សារ</span>
            </div>
@@ -652,11 +809,13 @@ export default function App() {
               <span className="text-[9px] font-bold">ម៉ឺនុយ</span>
            </div>
 
-           {/* Floating Action Bot Button (Positioned gracefully as relative to not block navigation) */}
-           <div className="w-[45px] h-[45px] bg-gradient-to-b from-green-50 to-green-200 rounded-full flex items-center justify-center shadow-md border-[3px] border-[#eef8f2] shrink-0 cursor-pointer hover:scale-105 transition-transform">
+           {/* Floating Action Bot Button — opens the SOF Bot AI assistant. */}
+           <div onClick={() => setBotOpen(true)} className="w-[45px] h-[45px] bg-gradient-to-b from-green-50 to-green-200 rounded-full flex items-center justify-center shadow-md border-[3px] border-[#eef8f2] shrink-0 cursor-pointer hover:scale-105 transition-transform">
               <Bot className="w-5 h-5 text-[#0a6652]" />
            </div>
         </nav>
+
+        {botOpen && <SofBot onClose={() => setBotOpen(false)} />}
 
         {/* Mobile nav drawer (opened by the ម៉ឺនុយ button) */}
         {navOpen && userRole && (
@@ -5045,6 +5204,19 @@ function SettingsPage() {
     setTimeout(() => setTgMsg(''), 7000);
   };
 
+  const [geminiKey, setGeminiKey] = useState(getGeminiConfig().key);
+  const [geminiMsg, setGeminiMsg] = useState('');
+  const saveGemini = () => setStoredData('sof_gemini_config', { key: geminiKey.trim() });
+  const testGemini = async () => {
+    saveGemini();
+    setGeminiMsg('⏳ កំពុងតេស្ត...');
+    try {
+      const ans = await askGemini('ឆ្លើយត្រឹមពាក្យ៖ OK');
+      setGeminiMsg(ans ? '✅ ភ្ជាប់ SOF Bot បានជោគជ័យ!' : '❌ គ្មានចម្លើយ');
+    } catch (e: any) { setGeminiMsg('❌ បរាជ័យ៖ ' + (e?.message || 'error')); }
+    setTimeout(() => setGeminiMsg(''), 8000);
+  };
+
   const [newAdminUsername, setNewAdminUsername] = useState(getAdminAuth().username);
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [passwordSuccessMsg, setPasswordSuccessMsg] = useState('');
@@ -5147,6 +5319,25 @@ function SettingsPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* SOF Bot (AI assistant) config */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-3 mb-6">
+        <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2 pb-2 border-b border-slate-100">
+          <Bot size={16} className="text-[#0a6652]" />
+          SOF Bot (ជំនួយការ AI)
+        </h3>
+        <p className="text-[10px] text-slate-400 leading-relaxed">សមាជិកអាចសួរអំពីទុនសន្សំ កម្ចី និងការប្រាក់របស់ខ្លួន (ចុចរូប 🤖)។ ត្រូវការ Gemini API key ឥតគិតថ្លៃពី Google AI Studio។</p>
+        <div>
+          <label className="block text-[10px] font-bold text-slate-500 mb-1">Gemini API Key</label>
+          <input type="password" value={geminiKey} onChange={(e) => setGeminiKey(e.target.value)} onBlur={saveGemini} placeholder="AIza..."
+            className="w-full text-xs font-mono border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:border-[#0a6652] outline-none" />
+        </div>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={testGemini} className="bg-[#0a6652] hover:bg-[#084f40] text-white font-bold text-xs px-4 py-2 rounded-xl cursor-pointer active:scale-95">តេស្តភ្ជាប់</button>
+          {geminiMsg && <span className="text-[10px] font-bold text-slate-600">{geminiMsg}</span>}
+        </div>
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-[10px] font-bold text-[#0a6652] hover:underline inline-block">🔑 យក Gemini API key ឥតគិតថ្លៃ →</a>
       </div>
 
       {/* Security Info */}
