@@ -85,6 +85,30 @@ const sendTelegramDocument = async (fileOrBlob: Blob, filename: string, caption:
   } catch { return false; }
 };
 
+// Send a private message to a SPECIFIC chat (a member's DM with the bot), used for
+// personal notifications. The chat_id ↔ member-code map (sof_member_chats) is filled
+// by the Telegram webhook when a member links their account (see api/telegram-webhook.js).
+const sendTelegramMessageTo = async (chatId: string | number, text: string): Promise<boolean> => {
+  const { token, enabled } = getTelegramConfig();
+  if (!enabled || !token || !chatId || !text) return false;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text }),
+    });
+    const j = await res.json().catch(() => ({ ok: false }));
+    return !!j.ok;
+  } catch { return false; }
+};
+
+// Look up a linked member's private chat_id by their code (reverse of the map).
+const getMemberChatId = (code: string): string => {
+  const map = getStoredData('sof_member_chats', {}) || {};
+  const want = String(code || '').toUpperCase();
+  const entry = Object.entries(map).find(([, c]) => String(c).toUpperCase() === want);
+  return entry ? entry[0] : '';
+};
+
 // Send a plain text message (e.g. an online loan request with no attachment).
 const sendTelegramMessage = async (text: string): Promise<boolean> => {
   const { token, chatId, enabled } = getTelegramConfig();
@@ -5051,6 +5075,8 @@ function LoanRequests() {
   };
   const approve = (txn: any) => {
     removeReq(txn.id);
+    const chat = getMemberChatId(txn.memberCode);
+    if (chat) sendTelegramMessageTo(chat, `✅ ពាក្យស្នើសុំកម្ចីរបស់អ្នកត្រូវបានអនុម័ត!${num(txn.amount) > 0 ? ` (ចំនួន $${fmtMoney(num(txn.amount))})` : ''}\nគណៈកម្មការ SOF នឹងទាក់ទងអ្នកអំពីជំហានបន្ទាប់។`);
     alert(`បានអនុម័តពាក្យស្នើសុំកម្ចីរបស់ ${txn.memberName || txn.memberCode}។ សូមបញ្ចូលកម្ចីទៅតារាងកម្ចី (Loans) ដោយផ្ទាល់។`);
   };
   const reject = (txn: any) => { if (window.confirm('បដិសេធពាក្យស្នើសុំកម្ចីនេះមែនទេ?')) removeReq(txn.id); };
@@ -5134,7 +5160,12 @@ function History() {
     // recorded there (and shows in the member's history, which reads those tables),
     // so drop it from the pending store to keep the synced list lean. If no matching
     // row was found we keep it pending so the admin can fix and retry.
-    if (ok) removeTxn(txn.id);
+    if (ok) {
+      removeTxn(txn.id);
+      // Personal Telegram notification to the member (if they've linked the bot).
+      const chat = getMemberChatId(txn.memberCode);
+      if (chat) sendTelegramMessageTo(chat, `✅ ការបង់ប្រាក់របស់អ្នកត្រូវបានអនុម័ត!\n${txn.type === 'loan' ? 'បង់សងកម្ចី' : 'ដាក់សន្សំ'} ខែ ${txn.monthKey} · ចំនួន $${fmtMoney(num(txn.amount))}`);
+    }
     alert(ok
       ? `បានអនុម័ត និងកត់ត្រាទៅតារាង${txn.type === 'loan' ? 'កម្ចី' : 'សន្សំ'} ខែ ${txn.monthKey} ដោយជោគជ័យ!`
       : `រកមិនឃើញជួររបស់ ${txn.memberCode} សម្រាប់ខែ ${txn.monthKey} — សូមពិនិត្យតារាង (មិនទាន់លុបចេញ)។`);
