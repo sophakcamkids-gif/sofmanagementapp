@@ -820,13 +820,13 @@ export default function App() {
               <Home className="w-5 h-5" strokeWidth={2.5} />
               <span className="text-[9px] font-black">ទំព័រដើម</span>
            </div>
-           <div className="flex flex-col items-center gap-1 text-slate-400 hover:text-[#ff6b35] transition-colors cursor-pointer shrink-0">
-              <Heart className="w-5 h-5" strokeWidth={2.5} />
-              <span className="text-[9px] font-bold">ចំណូលចិត្ត</span>
+           <div onClick={() => { window.location.href = userRole === 'admin' ? '/reports' : '/member-report'; }} className="flex flex-col items-center gap-1 text-slate-400 hover:text-[#ff6b35] transition-colors cursor-pointer shrink-0">
+              <FileText className="w-5 h-5" strokeWidth={2.5} />
+              <span className="text-[9px] font-bold">របាយការណ៍</span>
            </div>
            <div onClick={() => setBotOpen(true)} className="flex flex-col items-center gap-1 text-slate-400 hover:text-[#ff6b35] transition-colors cursor-pointer shrink-0">
               <MessageSquare className="w-5 h-5" strokeWidth={2.5} />
-              <span className="text-[9px] font-bold">សារ</span>
+              <span className="text-[9px] font-bold">SOF Bot</span>
            </div>
            <div onClick={() => setNavOpen(true)} className="flex flex-col items-center gap-1 text-slate-400 hover:text-[#ff6b35] transition-colors cursor-pointer shrink-0">
               <Menu className="w-5 h-5" strokeWidth={2.5} />
