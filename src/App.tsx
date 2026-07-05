@@ -834,7 +834,7 @@ export default function App() {
            </div>
 
            {/* Floating Action Bot Button — opens the SOF Bot AI assistant. */}
-           <div onClick={() => setBotOpen(true)} className="w-[45px] h-[45px] bg-gradient-to-b from-green-50 to-green-200 rounded-full flex items-center justify-center shadow-md border-[3px] border-[#eef8f2] shrink-0 cursor-pointer hover:scale-105 transition-transform">
+           <div onClick={() => setBotOpen(true)} className="w-[45px] h-[45px] rounded-full flex items-center justify-center shadow-md border-[3px] border-[#eef8f2] shrink-0 cursor-pointer hover:scale-105 transition-transform" style={{ background: 'linear-gradient(to bottom, #ecfdf5, #bbf7d0)' }}>
               <Bot className="w-5 h-5 text-[#0a6652]" />
            </div>
         </nav>
@@ -5414,8 +5414,8 @@ function SettingsPage() {
       </div>
 
       {/* Export & Download Section for Claude / Developers */}
-      <div className="bg-gradient-to-br from-[#0a6652] to-[#164e41] p-5 rounded-2xl text-white shadow-md space-y-4 relative overflow-hidden">
-        <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/5 rounded-full pointer-events-none" />
+      <div className="p-5 rounded-2xl text-white shadow-md space-y-4 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0a6652, #164e41)' }}>
+        <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full pointer-events-none" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} />
         
         <h3 className="text-xs font-black uppercase tracking-wider flex items-center gap-2">
           <Sparkles size={16} className="text-yellow-300 animate-pulse" />
@@ -6349,37 +6349,39 @@ function MemberReport() {
 
       {activeTab === 'dashboard' ? (
         <div className="space-y-6">
-          {/* Profile overview header card */}
-          <div className="bg-gradient-to-br from-[#0a6652] to-[#128a6f] rounded-[28px] p-5 text-white shadow-lg relative overflow-hidden text-left">
-            <div className="absolute -right-16 -bottom-16 w-48 h-48 bg-white/10 rounded-full" />
-            <div className="absolute -left-10 -top-10 w-32 h-32 bg-white/5 rounded-full" />
-            
+          {/* Profile overview header card. Uses INLINE gradient/rgba (not Tailwind's
+              `bg-gradient-to-*` / opacity utilities, which emit `in oklab` — invalid on
+              older iOS Safari, so the card rendered washed-out white there). */}
+          <div className="rounded-[28px] p-5 text-white shadow-lg relative overflow-hidden text-left" style={{ background: 'linear-gradient(135deg, #0a6652, #128a6f)' }}>
+            <div className="absolute -right-16 -bottom-16 w-48 h-48 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.10)' }} />
+            <div className="absolute -left-10 -top-10 w-32 h-32 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} />
+
             <div className="relative z-10 flex items-center gap-3">
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center font-black text-base border border-white/30 shadow-sm shrink-0">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center font-black text-base shadow-sm shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.20)', border: '1px solid rgba(255,255,255,0.30)' }}>
                 {memberInitials}
               </div>
               <div>
-                <p className="text-[9px] text-emerald-200 font-extrabold tracking-wider uppercase leading-none mb-1">ស្វាគមន៍សមាជិក</p>
-                <h3 className="text-base font-bold tracking-tight leading-none mb-1.5">{memberName}</h3>
+                <p className="text-[9px] font-extrabold tracking-wider uppercase leading-none mb-1" style={{ color: '#a7f3d0' }}>ស្វាគមន៍សមាជិក</p>
+                <h3 className="text-base font-bold tracking-tight leading-none mb-1.5" style={{ color: '#ffffff' }}>{memberName}</h3>
                 <div className="flex flex-wrap gap-1">
-                  <span className="bg-white/15 px-1.5 py-0.5 rounded-full text-[8px] font-bold">ID: {memberCode}</span>
-                  <span className="bg-emerald-900/40 px-1.5 py-0.5 rounded-full text-[8px] font-bold">សកម្មភាពជានិច្ច</span>
+                  <span className="px-1.5 py-0.5 rounded-full text-[8px] font-bold" style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}>ID: {memberCode}</span>
+                  <span className="px-1.5 py-0.5 rounded-full text-[8px] font-bold" style={{ backgroundColor: 'rgba(6,78,59,0.40)' }}>សកម្មភាពជានិច្ច</span>
                 </div>
               </div>
             </div>
 
-            <div className="relative z-10 mt-5 pt-4 border-t border-white/10 grid grid-cols-3 gap-1 divide-x divide-white/10 text-center">
+            <div className="relative z-10 mt-5 pt-4 grid grid-cols-3 gap-1 text-center" style={{ borderTop: '1px solid rgba(255,255,255,0.12)' }}>
               <div className="px-1 text-left">
-                <span className="text-[9px] text-emerald-200/90 font-bold block leading-tight">ប្រាក់សន្សំសរុប</span>
-                <p className="text-sm font-black mt-1 tracking-tight">$ {fmtMoney(memberSavingsTotal)}</p>
+                <span className="text-[9px] font-bold block leading-tight" style={{ color: '#a7f3d0' }}>ប្រាក់សន្សំសរុប</span>
+                <p className="text-sm font-black mt-1 tracking-tight" style={{ color: '#ffffff' }}>$ {fmtMoney(memberSavingsTotal)}</p>
               </div>
-              <div className="px-1 text-left pl-2">
-                <span className="text-[9px] text-emerald-200/90 font-bold block leading-tight">កម្ចីសរុប</span>
-                <p className="text-sm font-black mt-1 tracking-tight">$ {fmtMoney(memberLoanTotal)}</p>
+              <div className="px-1 text-left pl-2" style={{ borderLeft: '1px solid rgba(255,255,255,0.12)' }}>
+                <span className="text-[9px] font-bold block leading-tight" style={{ color: '#a7f3d0' }}>កម្ចីសរុប</span>
+                <p className="text-sm font-black mt-1 tracking-tight" style={{ color: '#ffffff' }}>$ {fmtMoney(memberLoanTotal)}</p>
               </div>
-              <div className="px-1 text-left pl-2">
-                <span className="text-[9px] text-emerald-200/90 font-bold block leading-tight">តុល្យការដើមទុន</span>
-                <p className="text-sm font-black mt-1 tracking-tight">$ {fmtMoney(memberSavingsTotal - memberLoanTotal)}</p>
+              <div className="px-1 text-left pl-2" style={{ borderLeft: '1px solid rgba(255,255,255,0.12)' }}>
+                <span className="text-[9px] font-bold block leading-tight" style={{ color: '#a7f3d0' }}>តុល្យការដើមទុន</span>
+                <p className="text-sm font-black mt-1 tracking-tight" style={{ color: '#ffffff' }}>$ {fmtMoney(memberSavingsTotal - memberLoanTotal)}</p>
               </div>
             </div>
           </div>
