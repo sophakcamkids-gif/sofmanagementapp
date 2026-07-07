@@ -93,9 +93,13 @@ export default async function handler(req, res) {
     const info = byCode[String(code).toUpperCase()] || {};
     const hasLoan = num(info.remaining) > 0;
     let msg = `ជម្រាបសួរ ${info.name || code}!\n\n`;
-    msg += `- សូមចូលរួមដាក់សន្សំ ប្រចាំខែ${monthName} ចាប់ពីថ្ងៃនេះតទៅ។\n`;
     if (hasLoan) {
+      // Two items → keep the dash bullets.
+      msg += `- សូមចូលរួមដាក់សន្សំ ប្រចាំខែ${monthName} ចាប់ពីថ្ងៃនេះតទៅ។\n`;
       msg += `- សូមបង់រំលស់កម្ចី និងការប្រាក់ក្នុងខែនេះ។ កម្ចីនៅសល់ $${money(info.remaining)} ការប្រាក់ត្រូវបង់ $${money(info.interest)}។ អ្នកអាចបង់តាម App របស់ក្រុមបាន។\n`;
+    } else {
+      // Savings-only member → single line, no dash.
+      msg += `សូមចូលរួមដាក់សន្សំ ប្រចាំខែ${monthName} ចាប់ពីថ្ងៃនេះតទៅ។\n`;
     }
     msg += `\nសូមអរគុណ!\nគណៈកម្មាការ`;
     if (await tgSend(chatId, msg)) sent++;
