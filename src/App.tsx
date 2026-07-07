@@ -5347,6 +5347,21 @@ function SettingsPage() {
     setAnnouncements(next);
   };
 
+  // Auto monthly reminders (Vercel cron → /api/cron-reminders).
+  const [reminderEnabled, setReminderEnabled] = useState(() => ((getStoredData('sof_reminder_config', {}) as any) || {}).enabled !== false);
+  const [reminderMsg, setReminderMsg] = useState('');
+  const saveReminderCfg = (enabled: boolean) => setStoredData('sof_reminder_config', { ...((getStoredData('sof_reminder_config', {}) as any) || {}), enabled });
+  const sendRemindersNow = async () => {
+    if (!window.confirm('ផ្ញើការរំលឹកទៅសមាជិកទាំងអស់ (ដែលបានភ្ជាប់ bot) ឥឡូវនេះមែនទេ?')) return;
+    setReminderMsg('⏳ កំពុងផ្ញើ...');
+    try {
+      const res = await fetch('/api/cron-reminders?force=1');
+      const j = await res.json().catch(() => ({}));
+      setReminderMsg(j && j.ok ? `✅ បានផ្ញើ! DM ${j.sent ?? 0} នាក់ + ក្រុម Telegram + ជូនដំណឹងក្នុងកម្មវិធី។` : '❌ បរាជ័យ (សូមប្រាកដថាបាន deploy)។');
+    } catch { setReminderMsg('❌ បរាជ័យ (មិនអាចភ្ជាប់ server — សាកនៅ Vercel)។'); }
+    setTimeout(() => setReminderMsg(''), 10000);
+  };
+
   const [newAdminUsername, setNewAdminUsername] = useState(getAdminAuth().username);
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [passwordSuccessMsg, setPasswordSuccessMsg] = useState('');
@@ -5504,6 +5519,27 @@ function SettingsPage() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Auto monthly reminders */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-3 mb-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
+            <Bell size={16} className="text-[#0a6652]" />
+            ការរំលឹកប្រចាំខែ (ស្វ័យប្រវត្តិ)
+          </h3>
+          <button type="button" onClick={() => { const v = !reminderEnabled; setReminderEnabled(v); saveReminderCfg(v); }}
+            className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 cursor-pointer ${reminderEnabled ? 'bg-[#0a6652]' : 'bg-slate-300'}`}>
+            <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-200 ${reminderEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+          </button>
+        </div>
+        <p className="text-[10px] text-slate-400 leading-relaxed">ផ្ញើ <b>១ដងក្នុងខែ</b> (ថ្ងៃទី១) ដោយស្វ័យប្រវត្តិ៖ រំលឹកសមាជិកទាំងអស់ឱ្យដាក់សន្សំ (ថ្ងៃ១–១៥) និងសមាជិកជាប់កម្ចីឱ្យបង់រំលស់ + ការប្រាក់។ ផ្ញើតាម Telegram DM + ក្រុម + ជូនដំណឹងក្នុងកម្មវិធី។</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button type="button" onClick={sendRemindersNow} className="bg-[#0a6652] hover:bg-[#084f40] text-white font-bold text-xs px-4 py-2 rounded-xl cursor-pointer active:scale-95 inline-flex items-center gap-1.5">
+            <Send size={13} /> ផ្ញើឥឡូវ (តេស្ត)
+          </button>
+          {reminderMsg && <span className="text-[10px] font-bold text-slate-600">{reminderMsg}</span>}
+        </div>
       </div>
 
       {/* Security Info */}

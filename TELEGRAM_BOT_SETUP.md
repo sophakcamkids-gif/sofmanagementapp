@@ -57,6 +57,20 @@ You should see `{"ok":true,"result":true,...}`. Check status any time with
 
 ---
 
+## Monthly reminders (automatic)
+
+`api/cron-reminders.js` runs **once a month** (Vercel Cron in `vercel.json`, `0 2 1 * *`
+= 1st of each month, 09:00 Cambodia time). It reminds every linked member to make their
+monthly savings deposit, and members with an outstanding loan to also repay (with their
+remaining balance + interest). It DMs members, posts to the SOF group, and adds an in-app
+announcement.
+
+- Toggle it and send a test on the **Settings** page → "ការរំលឹកប្រចាំខែ (ស្វ័យប្រវត្តិ)"
+  ("ផ្ញើឥឡូវ (តេស្ត)" calls `/api/cron-reminders?force=1`).
+- Uses the same env vars as the webhook. Optionally set `CRON_SECRET` in Vercel to lock the
+  endpoint (Vercel Cron passes it automatically; the "send now" button uses `?force=1`).
+- Vercel Cron requires a **production** deployment and runs only on the production domain.
+
 ## Notes
 
 - **Notifications** are sent by the app (browser) when the committee approves a payment or
