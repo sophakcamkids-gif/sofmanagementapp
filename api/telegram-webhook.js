@@ -97,6 +97,40 @@ async function buildDigest(code) {
   ].join('\n');
 }
 
+const RATES = { loan: 0.015, deposit: 0.005, fixedTerm: 0.01, reserve: 0.10, social: 0.005 };
+
+async function buildGroupDigest() {
+  const latest = (store) => {
+    const months = Object.keys(store || {}).filter((m) => Array.isArray(store[m]));
+    if (!months.length) return { month: '', rows: [] };
+    const m = months.sort((a, b) => sortKey(a) - sortKey(b)).pop();
+    return { month: m, rows: store[m] };
+  };
+  const sav = latest((await sbGet('sof_live_savings_by_month')) || {});
+  const ln = latest((await sbGet('sof_live_loans_by_month')) || {});
+  const totalSavings = sav.rows.reduce((s, r) => s + num(r.total), 0);
+  const totalLoans = ln.rows.reduce((s, r) => s + num(r.remaining), 0);
+  const borrowers = ln.rows.filter((r) => num(r.remaining) > 0).length;
+  const monthInterest = ln.rows.reduce((s, r) => s + num(r.interest), 0);
+  const roster = (await sbGet('sof_live_member_list_data')) || (await sbGet('sof_live_profile_data')) || [];
+  const memberCount = Array.isArray(roster) && roster.length
+    ? new Set(roster.map(codeOf).filter(Boolean)).size
+    : new Set(sav.rows.map(codeOf).filter(Boolean)).size;
+  const info = String((await sbGet('sof_live_group_info')) || '').trim();
+  const lines = [
+    `ព័ត៌មានក្រុម SOF — គិតត្រឹមខែ ${sav.month || ln.month || '-'}:`,
+    `- ចំនួនសមាជិក៖ ${memberCount} នាក់`,
+    `- ទុនសន្សំសរុបរបស់ក្រុម៖ $${money(totalSavings)}`,
+    `- កម្ចីសរុប (នៅសល់)៖ $${money(totalLoans)}`,
+    `- ចំនួនអ្នកខ្ចី៖ ${borrowers} នាក់`,
+    `- ការប្រាក់កម្ចីសរុប (ខែនេះ)៖ $${money(monthInterest)}`,
+    `- អត្រាការប្រាក់៖ កម្ចី ${(RATES.loan * 100).toFixed(2)}%/ខែ · សន្សំ ${(RATES.deposit * 100).toFixed(2)}%/ខែ · មានកាលកំណត់ ${(RATES.fixedTerm * 100).toFixed(2)}%/ខែ`,
+    `- ការបែងចែក៖ មូលនិធិបំរុង ${(RATES.reserve * 100).toFixed(0)}% · មូលនិធិសង្គម ${(RATES.social * 100).toFixed(2)}% នៃចំណូល`,
+  ];
+  if (info) lines.push(`ព័ត៌មាន/ច្បាប់បន្ថែម៖\n${info}`);
+  return lines.join('\n');
+}
+
 async function askGemini(prompt) {
   if (!GEMINI) return null;
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI}`, {
@@ -125,7 +159,7 @@ export default async function handler(req, res) {
 
     if (text === '/start' || text === '/help') {
       await tgSend(chatId, linked
-        ? `សួស្តី! អ្នកបានភ្ជាប់ជាមួយ ID ${linked} រួចហើយ។\nសួរខ្ញុំអំពីទុនសន្សំ ឬកម្ចីរបស់អ្នកបានគ្រប់ពេល ឬវាយ /report ដើម្បីមើលសង្ខេប។ (/unlink ដើម្បីផ្ដាច់)`
+        ? `សួស្តី! អ្នកបានភ្ជាប់ជាមួយ ID ${linked} រួចហើយ។\nសួរខ្ញុំអំពីទុនសន្សំ/កម្ចីរបស់អ្នក ឬព័ត៌មានក្រុមបានគ្រប់ពេល។\n/report = សង្ខេបផ្ទាល់ខ្លួន · /group = ព័ត៌មានក្រុម · /unlink = ផ្ដាច់`
         : HELP_UNLINKED);
     } else if (!linked) {
       const code = text.toUpperCase().replace(/\s+/g, '');
@@ -139,16 +173,19 @@ export default async function handler(req, res) {
       }
     } else if (text === '/report' || text === '/me') {
       await tgSend(chatId, await buildDigest(linked));
+    } else if (text === '/group') {
+      await tgSend(chatId, await buildGroupDigest());
     } else if (text === '/unlink') {
       delete chats[String(chatId)];
       await sbSet('sof_live_member_chats', chats);
       await tgSend(chatId, 'បានផ្ដាច់ការភ្ជាប់។ ផ្ញើលេខ ID ម្ដងទៀតដើម្បីភ្ជាប់វិញ។');
     } else {
       const digest = await buildDigest(linked);
+      const group = await buildGroupDigest();
       const ans = await askGemini(
         `អ្នកគឺជា «SOF Bot» ជាជំនួយការក្រុមសន្សំប្រាក់អនាគតយើង (SOF)។ ` +
-        `ឆ្លើយជាភាសាខ្មែរ ខ្លី ច្បាស់ និងសុភាព។ ប្រើតែទិន្នន័យសមាជិកខាងក្រោមដើម្បីឆ្លើយ — កុំបង្កើតលេខថ្មី។ ` +
-        `បើសំណួរនៅក្រៅវិសាលភាព សូមណែនាំឱ្យទាក់ទងគណៈកម្មការ SOF។\n\nទិន្នន័យ៖\n${digest}\n\nសំណួរ៖ ${text}`,
+        `ឆ្លើយជាភាសាខ្មែរ ខ្លី ច្បាស់ និងសុភាព។ ប្រើតែទិន្នន័យខាងក្រោមដើម្បីឆ្លើយ (ទាំងផ្ទាល់ខ្លួន និងទូទាំងក្រុម) — កុំបង្កើតលេខថ្មី។ ` +
+        `បើសំណួរនៅក្រៅវិសាលភាព សូមណែនាំឱ្យទាក់ទងគណៈកម្មការ SOF។\n\nទិន្នន័យសមាជិក៖\n${digest}\n\n${group}\n\nសំណួរ៖ ${text}`,
       );
       await tgSend(chatId, ans || `ទិន្នន័យរបស់អ្នក៖\n${digest}\n\n(សម្រាប់សំណួរលម្អិត សូមកំណត់ GEMINI_API_KEY)`);
     }

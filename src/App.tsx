@@ -196,6 +196,44 @@ const buildMemberDigest = (): string => {
   ].join('\n');
 };
 
+// Group-wide figures for the bot: member count, total savings, total loans,
+// borrower count, rates, plus any free-text group info the admin wrote in Settings.
+const buildGroupDigest = (): string => {
+  const cOf = (r: any) => { const s = String(r?.id ?? r?.code ?? ''); return (s.includes(' ') ? s.split(' ').pop() : s || '').toUpperCase(); };
+  const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
+  const sortKey = (s: string) => { const p = String(s).trim().split(' '); const mi = KHM.indexOf(p[0]); return (Number(p[p.length - 1]) || 0) * 100 + (mi >= 0 ? mi + 1 : 0); };
+  const latest = (store: any): { month: string; rows: any[] } => {
+    const months = Object.keys(store || {}).filter((m) => Array.isArray(store[m]));
+    if (!months.length) return { month: '', rows: [] };
+    const m = months.sort((a, b) => sortKey(a) - sortKey(b)).pop() as string;
+    return { month: m, rows: store[m] };
+  };
+  const sav = latest(getStoredData('sof_savings_by_month', {}) || {});
+  const ln = latest(getStoredData('sof_loans_by_month', {}) || {});
+  const totalSavings = sav.rows.reduce((s, r) => s + num(r.total), 0);
+  const totalLoans = ln.rows.reduce((s, r) => s + num(r.remaining), 0);
+  const borrowers = ln.rows.filter((r) => num(r.remaining) > 0).length;
+  const monthInterest = ln.rows.reduce((s, r) => s + num(r.interest), 0);
+  // Member count = the roster if present, else the members seen in the savings table.
+  const roster = (getStoredData('sof_member_list_data', []) || getStoredData('sof_profile_data', []) || []) as any[];
+  const memberCount = Array.isArray(roster) && roster.length
+    ? new Set(roster.map(cOf).filter(Boolean)).size
+    : new Set(sav.rows.map(cOf).filter(Boolean)).size;
+  const info = String(getStoredData('sof_group_info', '') || '').trim();
+  const lines = [
+    `ព័ត៌មានក្រុមសន្សំប្រាក់អនាគតយើង (SOF) — គិតត្រឹមខែ ${sav.month || ln.month || '-'}:`,
+    `- ចំនួនសមាជិក៖ ${memberCount} នាក់`,
+    `- ទុនសន្សំសរុបរបស់ក្រុម៖ $${fmtMoney(totalSavings)}`,
+    `- កម្ចីសរុប (នៅសល់)៖ $${fmtMoney(totalLoans)}`,
+    `- ចំនួនអ្នកខ្ចី៖ ${borrowers} នាក់`,
+    `- ការប្រាក់កម្ចីសរុប (ខែនេះ)៖ $${fmtMoney(monthInterest)}`,
+    `- អត្រាការប្រាក់៖ កម្ចី ${(DEFAULT_RATES.loan * 100).toFixed(2)}%/ខែ · សន្សំ ${(DEFAULT_RATES.deposit * 100).toFixed(2)}%/ខែ · មានកាលកំណត់ ${(DEFAULT_RATES.fixedTerm * 100).toFixed(2)}%/ខែ`,
+    `- ការបែងចែក៖ មូលនិធិបំរុង ${(DEFAULT_RATES.reserve * 100).toFixed(0)}% · មូលនិធិសង្គម ${(DEFAULT_RATES.social * 100).toFixed(2)}% នៃចំណូល`,
+  ];
+  if (info) lines.push(`ព័ត៌មាន/ច្បាប់បន្ថែមពីគណៈកម្មការ៖\n${info}`);
+  return lines.join('\n');
+};
+
 // Convert ASCII digits to Khmer numerals (០–៩).
 const toKhmerNum = (v: string | number): string =>
   String(v).replace(/[0-9]/g, (d) => '០១២៣៤៥៦៧៨៩'[+d]);
@@ -488,7 +526,7 @@ function SidebarLink({ to, label }: { to: string, label: string }) {
 // their savings/loans via Gemini, grounded in their real figures (buildMemberDigest).
 function SofBot({ onClose }: { onClose: () => void }) {
   const [messages, setMessages] = useState<{ role: 'user' | 'bot'; text: string }[]>([
-    { role: 'bot', text: 'សួស្តី! ខ្ញុំជា SOF Bot 🤖 សួរខ្ញុំអំពីទុនសន្សំ កម្ចី ការប្រាក់ ឬការបង់ប្រាក់របស់អ្នកបានគ្រប់ពេល។' },
+    { role: 'bot', text: 'សួស្តី! ខ្ញុំជា SOF Bot 🤖 សួរខ្ញុំអំពីទុនសន្សំ កម្ចី ការប្រាក់របស់អ្នក ឬព័ត៌មានក្រុម (ចំនួនសមាជិក ទុនសរុប កម្ចីសរុប អត្រាការប្រាក់…) បានគ្រប់ពេល។' },
   ]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -505,9 +543,9 @@ function SofBot({ onClose }: { onClose: () => void }) {
       if (!hasGemini()) throw new Error('nokey');
       const prompt =
         `អ្នកគឺជា «SOF Bot» ជាជំនួយការក្រុមសន្សំប្រាក់អនាគតយើង (SOF)។ ` +
-        `ឆ្លើយជាភាសាខ្មែរ ខ្លី ច្បាស់ និងសុភាព។ ប្រើតែទិន្នន័យសមាជិកខាងក្រោមដើម្បីឆ្លើយ — កុំបង្កើតលេខថ្មី។ ` +
+        `ឆ្លើយជាភាសាខ្មែរ ខ្លី ច្បាស់ និងសុភាព។ ប្រើតែទិន្នន័យខាងក្រោមដើម្បីឆ្លើយ (ទាំងផ្ទាល់ខ្លួន និងទូទាំងក្រុម) — កុំបង្កើតលេខថ្មី។ ` +
         `បើសំណួរនៅក្រៅវិសាលភាពទិន្នន័យ សូមណែនាំឱ្យទាក់ទងគណៈកម្មការ SOF។\n\n` +
-        `ទិន្នន័យសមាជិក៖\n${buildMemberDigest()}\n\nសំណួរ៖ ${q}`;
+        `ទិន្នន័យសមាជិក៖\n${buildMemberDigest()}\n\n${buildGroupDigest()}\n\nសំណួរ៖ ${q}`;
       const ans = await askGemini(prompt);
       setMessages((m) => [...m, { role: 'bot', text: ans || 'សុំទោស ខ្ញុំមិនអាចឆ្លើយបានទេ។ សូមព្យាយាមម្ដងទៀត។' }]);
     } catch (e: any) {
@@ -5280,6 +5318,7 @@ function SettingsPage() {
 
   const [geminiKey, setGeminiKey] = useState(getGeminiConfig().key);
   const [geminiMsg, setGeminiMsg] = useState('');
+  const [groupInfo, setGroupInfo] = useState(String(getStoredData('sof_group_info', '') || ''));
   const saveGemini = () => setStoredData('sof_gemini_config', { key: geminiKey.trim() });
   const testGemini = async () => {
     saveGemini();
@@ -5429,6 +5468,13 @@ function SettingsPage() {
           {geminiMsg && <span className="text-[10px] font-bold text-slate-600">{geminiMsg}</span>}
         </div>
         <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-[10px] font-bold text-[#0a6652] hover:underline inline-block">🔑 យក Gemini API key ឥតគិតថ្លៃ →</a>
+
+        <div className="pt-3 border-t border-dashed border-slate-100">
+          <label className="block text-[10px] font-bold text-slate-500 mb-1">ព័ត៌មានក្រុម / ច្បាប់ (សម្រាប់ Bot)</label>
+          <p className="text-[9px] text-slate-400 mb-1.5">Bot ស្គាល់ស្ថិតិក្រុមស្វ័យប្រវត្តិ (សមាជិក/ទុន/កម្ចី/អត្រា)។ បន្ថែមច្បាប់ លក្ខខណ្ឌ ឬកាលវិភាគប្រជុំនៅទីនេះ ដើម្បីឱ្យ Bot ឆ្លើយបាន។</p>
+          <textarea value={groupInfo} onChange={(e) => setGroupInfo(e.target.value)} onBlur={() => setStoredData('sof_group_info', groupInfo.trim())} rows={4} placeholder="ឧ. ប្រជុំរៀងរាល់ថ្ងៃអាទិត្យទី១ · ខ្ចីបានអតិបរមា ៣ដងនៃទុនសន្សំ · ត្រូវមានអ្នកធានា ២នាក់..."
+            className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:border-[#0a6652] outline-none resize-none" />
+        </div>
       </div>
 
       {/* Announcements (member notifications) */}
