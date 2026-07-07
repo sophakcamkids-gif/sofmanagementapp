@@ -573,12 +573,54 @@ function SofBot({ onClose }: { onClose: () => void }) {
   );
 }
 
+// Notifications / announcements panel (opened by the header bell). Shows messages
+// the committee posts from Settings, stored in the cloud-synced `sof_announcements`.
+function Notifications({ onClose }: { onClose: () => void }) {
+  const items = (((getStoredData('sof_announcements', []) as any[]) || [])
+    .slice()
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))));
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4" style={{ background: 'rgba(15,23,42,0.5)' }} onClick={onClose}>
+      <div className="bg-white w-full sm:max-w-md h-[75vh] sm:h-[560px] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-200" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between gap-2 px-4 py-3 shrink-0" style={{ background: '#0a6652', color: '#ffffff' }}>
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.15)' }}><Bell size={18} /></div>
+            <div>
+              <p className="font-black text-sm leading-tight">សេចក្តីជូនដំណឹង</p>
+              <p className="text-[10px] leading-tight" style={{ color: '#a7f3d0' }}>ព័ត៌មានពីគណៈកម្មការ SOF</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.15)' }}><X size={16} /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ background: '#f8fafc' }}>
+          {items.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center gap-2" style={{ color: '#94a3b8' }}>
+              <Bell size={40} strokeWidth={1.5} />
+              <p className="text-xs font-bold">មិនទាន់មានសេចក្តីជូនដំណឹងនៅឡើយទេ។</p>
+            </div>
+          ) : items.map((a) => (
+            <div key={a.id} className="rounded-2xl p-4 shadow-sm" style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}>
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <h4 className="text-sm font-black" style={{ color: '#0a6652' }}>{a.title}</h4>
+                <span className="text-[9px] font-bold shrink-0 mt-0.5" style={{ color: '#94a3b8' }}>{a.date}</span>
+              </div>
+              <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: '#475569' }}>{a.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [userRole, setUserRole] = useState<string | null>(localStorage.getItem('userRole'));
   const [memberId, setMemberId] = useState<string | null>(localStorage.getItem('memberId'));
   const [hydrated, setHydrated] = useState(false);
   const [navOpen, setNavOpen] = useState(false);  // mobile nav drawer
   const [botOpen, setBotOpen] = useState(false);  // SOF Bot (AI assistant) modal
+  const [notifOpen, setNotifOpen] = useState(false);  // notifications / announcements
+  const announcementCount = ((getStoredData('sof_announcements', []) as any[]) || []).length;
 
   // Clean up bad import once based on user request
   useEffect(() => {
@@ -667,12 +709,12 @@ export default function App() {
                 >
                   <RotateCw size={15} />
                 </button>
-                <div className="relative">
-                  <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm text-yellow-500 border border-slate-100">
-                    <Bell className="w-4.5 h-4.5 fill-yellow-500 text-yellow-500" />
-                  </div>
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] font-bold flex items-center justify-center rounded-full">3</span>
-                </div>
+                <button onClick={() => setNotifOpen(true)} className="relative w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm text-yellow-500 border border-slate-100 hover:bg-yellow-50 active:scale-95 transition-all" title="សេចក្តីជូនដំណឹង">
+                  <Bell className="w-4.5 h-4.5 fill-yellow-500 text-yellow-500" />
+                  {announcementCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-red-500 text-white text-[8px] font-bold flex items-center justify-center rounded-full">{announcementCount}</span>
+                  )}
+                </button>
                 {userRole && (
                   <button 
                     onClick={() => {
@@ -840,6 +882,7 @@ export default function App() {
         </nav>
 
         {botOpen && <SofBot onClose={() => setBotOpen(false)} />}
+        {notifOpen && <Notifications onClose={() => setNotifOpen(false)} />}
 
         {/* Mobile nav drawer (opened by the ម៉ឺនុយ button) */}
         {navOpen && userRole && (
@@ -5248,6 +5291,23 @@ function SettingsPage() {
     setTimeout(() => setGeminiMsg(''), 8000);
   };
 
+  // Announcements shown to members in the Notifications panel (header bell).
+  const [annTitle, setAnnTitle] = useState('');
+  const [annBody, setAnnBody] = useState('');
+  const [announcements, setAnnouncements] = useState<any[]>(() => getStoredData('sof_announcements', []) || []);
+  const postAnnouncement = () => {
+    if (!annTitle.trim() && !annBody.trim()) return;
+    const next = [{ id: Date.now(), title: annTitle.trim() || 'សេចក្តីជូនដំណឹង', body: annBody.trim(), date: new Date().toISOString().split('T')[0] }, ...announcements];
+    setStoredData('sof_announcements', next);
+    setAnnouncements(next);
+    setAnnTitle(''); setAnnBody('');
+  };
+  const deleteAnnouncement = (id: number) => {
+    const next = announcements.filter((a) => a.id !== id);
+    setStoredData('sof_announcements', next);
+    setAnnouncements(next);
+  };
+
   const [newAdminUsername, setNewAdminUsername] = useState(getAdminAuth().username);
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [passwordSuccessMsg, setPasswordSuccessMsg] = useState('');
@@ -5369,6 +5429,35 @@ function SettingsPage() {
           {geminiMsg && <span className="text-[10px] font-bold text-slate-600">{geminiMsg}</span>}
         </div>
         <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-[10px] font-bold text-[#0a6652] hover:underline inline-block">🔑 យក Gemini API key ឥតគិតថ្លៃ →</a>
+      </div>
+
+      {/* Announcements (member notifications) */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-3 mb-6">
+        <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2 pb-2 border-b border-slate-100">
+          <Bell size={16} className="text-[#0a6652]" />
+          សេចក្តីជូនដំណឹង (ដល់សមាជិក)
+        </h3>
+        <p className="text-[10px] text-slate-400 leading-relaxed">សរសេរសេចក្តីជូនដំណឹង — សមាជិកនឹងឃើញវានៅពេលចុចរូបកណ្ដឹង 🔔 ក្នុងកម្មវិធី។</p>
+        <input type="text" value={annTitle} onChange={(e) => setAnnTitle(e.target.value)} placeholder="ចំណងជើង (ឧ. ប្រជុំប្រចាំខែ)"
+          className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:border-[#0a6652] outline-none" />
+        <textarea value={annBody} onChange={(e) => setAnnBody(e.target.value)} placeholder="ខ្លឹមសារ..." rows={3}
+          className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:border-[#0a6652] outline-none resize-none" />
+        <button type="button" onClick={postAnnouncement} className="bg-[#0a6652] hover:bg-[#084f40] text-white font-bold text-xs px-4 py-2 rounded-xl cursor-pointer active:scale-95 inline-flex items-center gap-1.5">
+          <Plus size={14} /> បង្ហោះ
+        </button>
+        {announcements.length > 0 && (
+          <div className="space-y-2 pt-2 border-t border-dashed border-slate-100">
+            {announcements.map((a) => (
+              <div key={a.id} className="flex items-start justify-between gap-2 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-700 truncate">{a.title} <span className="text-[9px] text-slate-400 font-medium">· {a.date}</span></p>
+                  <p className="text-[10px] text-slate-500 line-clamp-2">{a.body}</p>
+                </div>
+                <button onClick={() => deleteAnnouncement(a.id)} className="w-7 h-7 rounded-lg bg-white text-slate-400 hover:text-red-500 border border-slate-100 hover:border-red-100 flex items-center justify-center shrink-0" title="លុប"><Trash2 size={13} /></button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Security Info */}
