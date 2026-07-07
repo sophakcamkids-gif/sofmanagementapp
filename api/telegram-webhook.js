@@ -16,10 +16,13 @@
 // After deploy, point Telegram at this URL once:
 //   https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<app>.vercel.app/api/telegram-webhook
 
+// Only TELEGRAM_BOT_TOKEN is truly new. Supabase/Gemini fall back to the app's
+// existing VITE_-prefixed vars (serverless functions can read every env var, not
+// just VITE_ ones), so you don't have to duplicate them.
 const TG = process.env.TELEGRAM_BOT_TOKEN;
-const GEMINI = process.env.GEMINI_API_KEY;
-const SB_URL = process.env.SUPABASE_URL;
-const SB_KEY = process.env.SUPABASE_ANON_KEY;
+const GEMINI = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+const SB_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const SB_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 const SECRET = process.env.WEBHOOK_SECRET || '';
 
 // ── Supabase app_state (key/value) via REST ──────────────────────────────────

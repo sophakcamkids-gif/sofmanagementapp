@@ -20,14 +20,18 @@ the `sof_live_member_chats` row of `app_state` (which the app reads to send noti
 
 ## 2. Set Vercel environment variables
 
-Vercel project → **Settings → Environment Variables** → add:
+Vercel project → **Settings → Environment Variables**.
+
+**In most cases you only need to add `TELEGRAM_BOT_TOKEN`** — the webhook reuses the
+app's existing `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` (serverless functions can
+read every env var, VITE-prefixed or not). Add the others only if they don't already exist.
 
 | Name | Value |
 |------|-------|
-| `TELEGRAM_BOT_TOKEN` | the bot token from BotFather |
-| `SUPABASE_URL` | your Supabase project URL (`https://xxxx.supabase.co`) |
-| `SUPABASE_ANON_KEY` | the project **anon** key (same one in the app's `VITE_SUPABASE_ANON_KEY`) |
-| `GEMINI_API_KEY` | *(optional)* free key from https://aistudio.google.com/app/apikey — enables AI Q&A |
+| `TELEGRAM_BOT_TOKEN` | the bot token from BotFather **(required, new)** |
+| `GEMINI_API_KEY` | *(optional)* free key from https://aistudio.google.com/app/apikey — enables AI Q&A. Falls back to `VITE_GEMINI_API_KEY` if set. |
+| `SUPABASE_URL` | *only if `VITE_SUPABASE_URL` is not already set* — `https://xxxx.supabase.co` |
+| `SUPABASE_ANON_KEY` | *only if `VITE_SUPABASE_ANON_KEY` is not already set* — the project **anon** key |
 | `WEBHOOK_SECRET` | *(optional)* any random string, for extra security (see step 3) |
 
 Then **redeploy** so the function picks up the variables.
