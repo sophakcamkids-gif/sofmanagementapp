@@ -84,6 +84,9 @@ export default async function handler(req, res) {
     byCode[c] = { ...(byCode[c] || {}), name: (byCode[c] && byCode[c].name) || r.name, remaining: rem, interest: rem * rate / 100 };
   }
 
+  // One monthly message per member: savings for everyone, plus loan repayment for
+  // loan holders. Loans have no stored receipt date, so they're reminded in the same
+  // monthly (1st–15th) window as savings — exactly like a savings reminder.
   let sent = 0;
   for (const [chatId, code] of Object.entries(chats)) {
     const info = byCode[String(code).toUpperCase()] || {};
@@ -91,7 +94,7 @@ export default async function handler(req, res) {
     let msg = `🔔 ការរំលឹកប្រចាំខែ${monthLabel}\nសួស្តី ${info.name || code}!\n`;
     msg += `• សូមកុំភ្លេចដាក់សន្សំប្រចាំខែ (ថ្ងៃទី១–១៥)។\n`;
     if (hasLoan) {
-      msg += `• សូមបង់រំលស់កម្ចីតាមកាលកំណត់៖ កម្ចីនៅសល់ $${money(info.remaining)} · ការប្រាក់ត្រូវបង់ $${money(info.interest)}។\n`;
+      msg += `• សូមបង់រំលស់កម្ចី និងការប្រាក់ក្នុងខែនេះ៖ កម្ចីនៅសល់ $${money(info.remaining)} · ការប្រាក់ត្រូវបង់ $${money(info.interest)}។\n`;
     }
     msg += `អាចបង់តាមកម្មវិធីបាន។ អរគុណ! 🙏`;
     if (await tgSend(chatId, msg)) sent++;
