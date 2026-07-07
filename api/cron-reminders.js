@@ -105,13 +105,18 @@ export default async function handler(req, res) {
     if (await tgSend(chatId, msg)) sent++;
   }
 
-  // Group post + in-app announcement (once per run).
+  // Shared message for the group + in-app announcement (not personalised).
+  const groupMsg =
+    `ជម្រាបសួរសមាជិកទាំងអស់គ្នា!\n\n` +
+    `- សូមចូលរួមដាក់សន្សំ បង់រំលស់កម្ចី និងការប្រាក់ ប្រចាំខែ${monthName} ចាប់ពីថ្ងៃនេះតទៅ។\n` +
+    `- សូមមើលកម្ចីនៅសល់ និងការប្រាក់ត្រូវបង់នៅក្នុងគណនីរបស់អ្នក។ អ្នកអាចបង់តាម App របស់ក្រុមបាន។\n\n` +
+    `សូមអរគុណ!\nគណៈកម្មាការ`;
   if (tgcfg.chatId) {
-    await tgSend(tgcfg.chatId, `🔔 ខែ${monthLabel}៖ ដល់ពេលដាក់សន្សំប្រចាំខែ (ថ្ងៃទី១–១៥) និងបង់រំលស់កម្ចីតាមកាលកំណត់ហើយ! សូមសមាជិកទាំងអស់អនុវត្តទាន់ពេលវេលា។ 🙏`);
+    await tgSend(tgcfg.chatId, groupMsg);
   }
   const anns = (await sbGet('sof_live_announcements')) || [];
   await sbSet('sof_live_announcements', [
-    { id: Date.now(), title: `ការរំលឹកប្រចាំខែ${monthLabel}`, body: 'សូមសមាជិកទាំងអស់ដាក់សន្សំប្រចាំខែ (ថ្ងៃទី១–១៥) និងបង់រំលស់កម្ចី (រួមទាំងការប្រាក់) តាមកាលកំណត់។ អាចបង់តាមកម្មវិធីបាន។ អរគុណ!', date: today },
+    { id: Date.now(), title: `ការរំលឹកប្រចាំខែ${monthName}`, body: groupMsg, date: today },
     ...anns,
   ].slice(0, 50));
 
