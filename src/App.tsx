@@ -5357,7 +5357,10 @@ function SettingsPage() {
     try {
       const res = await fetch('/api/cron-reminders?force=1');
       const j = await res.json().catch(() => ({}));
-      setReminderMsg(j && j.ok ? `✅ បានផ្ញើ! DM ${j.sent ?? 0} នាក់ + ក្រុម Telegram + ជូនដំណឹងក្នុងកម្មវិធី។` : '❌ បរាជ័យ (សូមប្រាកដថាបាន deploy)។');
+      const groupStatus = !j.groupConfigured
+        ? 'ក្រុម៖ មិនបានកំណត់ Chat ID'
+        : j.groupSent ? 'ក្រុម៖ ✓' : 'ក្រុម៖ ✗ (bot មិននៅក្នុងក្រុម?)';
+      setReminderMsg(j && j.ok ? `✅ DM ${j.sent ?? 0} នាក់ · ${groupStatus} · App៖ ✓` : '❌ បរាជ័យ (សូមប្រាកដថាបាន deploy)។');
     } catch { setReminderMsg('❌ បរាជ័យ (មិនអាចភ្ជាប់ server — សាកនៅ Vercel)។'); }
     setTimeout(() => setReminderMsg(''), 10000);
   };

@@ -111,8 +111,9 @@ export default async function handler(req, res) {
     `- សូមចូលរួមដាក់សន្សំ បង់រំលស់កម្ចី និងការប្រាក់ ប្រចាំខែ${monthName} ចាប់ពីថ្ងៃនេះតទៅ។\n` +
     `- សូមមើលកម្ចីនៅសល់ និងការប្រាក់ត្រូវបង់នៅក្នុងគណនីរបស់អ្នក។ អ្នកអាចបង់តាម App របស់ក្រុមបាន។\n\n` +
     `សូមអរគុណ!\nគណៈកម្មាការ`;
+  let groupSent = false;
   if (tgcfg.chatId) {
-    await tgSend(tgcfg.chatId, groupMsg);
+    groupSent = await tgSend(tgcfg.chatId, groupMsg);
   }
   const anns = (await sbGet('sof_live_announcements')) || [];
   await sbSet('sof_live_announcements', [
@@ -120,5 +121,5 @@ export default async function handler(req, res) {
     ...anns,
   ].slice(0, 50));
 
-  return res.status(200).json({ ok: true, monthLabel, sent });
+  return res.status(200).json({ ok: true, monthLabel, sent, groupConfigured: !!tgcfg.chatId, groupSent });
 }
