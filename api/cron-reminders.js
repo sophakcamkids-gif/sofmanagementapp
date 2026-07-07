@@ -67,7 +67,8 @@ export default async function handler(req, res) {
   if (cfg.enabled === false && !force) return res.status(200).json({ ok: true, skipped: 'disabled' });
 
   const ict = new Date(Date.now() + 7 * 3600 * 1000); // Cambodia time
-  const monthLabel = `${KHM[ict.getUTCMonth()]} ${ict.getUTCFullYear()}`;
+  const monthName = KHM[ict.getUTCMonth()];
+  const monthLabel = `${monthName} ${ict.getUTCFullYear()}`;
   const today = ict.toISOString().split('T')[0];
 
   const sav = latestRows(await sbGet('sof_live_savings_by_month'));
@@ -91,12 +92,12 @@ export default async function handler(req, res) {
   for (const [chatId, code] of Object.entries(chats)) {
     const info = byCode[String(code).toUpperCase()] || {};
     const hasLoan = num(info.remaining) > 0;
-    let msg = `🔔 ការរំលឹកប្រចាំខែ${monthLabel}\nសួស្តី ${info.name || code}!\n`;
-    msg += `• សូមកុំភ្លេចដាក់សន្សំប្រចាំខែ (ថ្ងៃទី១–១៥)។\n`;
+    let msg = `ជម្រាបសួរ ${info.name || code}!\n\n`;
+    msg += `- សូមចូលរួមដាក់សន្សំ ប្រចាំខែ${monthName} ចាប់ពីថ្ងៃនេះតទៅ។\n`;
     if (hasLoan) {
-      msg += `• សូមបង់រំលស់កម្ចី និងការប្រាក់ក្នុងខែនេះ៖ កម្ចីនៅសល់ $${money(info.remaining)} · ការប្រាក់ត្រូវបង់ $${money(info.interest)}។\n`;
+      msg += `- សូមបង់រំលស់កម្ចី និងការប្រាក់ក្នុងខែនេះ។ កម្ចីនៅសល់ $${money(info.remaining)} ការប្រាក់ត្រូវបង់ $${money(info.interest)}។ អ្នកអាចបង់តាម App របស់ក្រុមបាន។\n`;
     }
-    msg += `អាចបង់តាមកម្មវិធីបាន។ អរគុណ! 🙏`;
+    msg += `\nសូមអរគុណ!\nគណៈកម្មាការ`;
     if (await tgSend(chatId, msg)) sent++;
   }
 
