@@ -85,25 +85,39 @@ export default async function handler(req, res) {
     byCode[c] = { ...(byCode[c] || {}), name: (byCode[c] && byCode[c].name) || r.name, remaining: rem, interest: rem * rate / 100 };
   }
 
-  // One monthly message per member: savings for everyone, plus loan repayment for
-  // loan holders. Loans have no stored receipt date, so they're reminded in the same
-  // monthly (1st–15th) window as savings — exactly like a savings reminder.
-  let sent = 0;
-  for (const [chatId, code] of Object.entries(chats)) {
-    const info = byCode[String(code).toUpperCase()] || {};
+  // Build each member's PERSONAL reminder text. Savings for everyone; loan holders
+  // also get a repayment line (their remaining balance + interest). Loans have no
+  // stored receipt date, so they're reminded in the same monthly window as savings.
+  const personalMsg = (code, info) => {
     const hasLoan = num(info.remaining) > 0;
     let msg = `ជម្រាបសួរ ${info.name || code}!\n\n`;
     if (hasLoan) {
-      // Two items → keep the dash bullets.
       msg += `- សូមចូលរួមដាក់សន្សំ ប្រចាំខែ${monthName} ចាប់ពីថ្ងៃនេះតទៅ។\n`;
       msg += `- សូមបង់រំលស់កម្ចី និងការប្រាក់ក្នុងខែនេះ។ កម្ចីនៅសល់ $${money(info.remaining)} ការប្រាក់ត្រូវបង់ $${money(info.interest)}។ អ្នកអាចបង់តាម App របស់ក្រុមបាន។\n`;
     } else {
-      // Savings-only member → single line, no dash.
       msg += `សូមចូលរួមដាក់សន្សំ ប្រចាំខែ${monthName} ចាប់ពីថ្ងៃនេះតទៅ។\n`;
     }
-    msg += `\nសូមអរគុណ!\nគណៈកម្មាការ`;
-    if (await tgSend(chatId, msg)) sent++;
+    return msg + `\nសូមអរគុណ!\nគណៈកម្មាការ`;
+  };
+
+  // code → chat_id (reverse of the linked-members map) for personal Telegram DMs.
+  const codeToChat = {};
+  for (const [chatId, code] of Object.entries(chats)) codeToChat[String(code).toUpperCase()] = chatId;
+
+  // Per-member PRIVATE in-app notifications (each member sees only their own in the
+  // portal bell), plus a personal Telegram DM to members who linked the bot.
+  const notifs = (await sbGet('sof_live_member_notifications')) || {};
+  let sent = 0; let notified = 0; let idc = Date.now();
+  for (const code of Object.keys(byCode)) {
+    const info = byCode[code];
+    const msg = personalMsg(code, info);
+    const prev = Array.isArray(notifs[code]) ? notifs[code] : [];
+    notifs[code] = [{ id: idc++, title: `ការរំលឹកប្រចាំខែ${monthName}`, body: msg, date: today }, ...prev].slice(0, 12);
+    notified++;
+    const chatId = codeToChat[code];
+    if (chatId && await tgSend(chatId, msg)) sent++;
   }
+  await sbSet('sof_live_member_notifications', notifs);
 
   // Shared message for the group + in-app announcement (not personalised).
   const groupMsg =
@@ -115,11 +129,8 @@ export default async function handler(req, res) {
   if (tgcfg.chatId) {
     groupSent = await tgSend(tgcfg.chatId, groupMsg);
   }
-  const anns = (await sbGet('sof_live_announcements')) || [];
-  await sbSet('sof_live_announcements', [
-    { id: Date.now(), title: `ការរំលឹកប្រចាំខែ${monthName}`, body: groupMsg, date: today },
-    ...anns,
-  ].slice(0, 50));
+  // Note: the in-app portal message is PRIVATE per member (sof_member_notifications
+  // above) — not a shared announcement. Admin-posted announcements stay separate.
 
-  return res.status(200).json({ ok: true, monthLabel, sent, groupConfigured: !!tgcfg.chatId, groupSent });
+  return res.status(200).json({ ok: true, monthLabel, sent, notified, groupConfigured: !!tgcfg.chatId, groupSent });
 }

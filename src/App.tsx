@@ -614,9 +614,14 @@ function SofBot({ onClose }: { onClose: () => void }) {
 // Notifications / announcements panel (opened by the header bell). Shows messages
 // the committee posts from Settings, stored in the cloud-synced `sof_announcements`.
 function Notifications({ onClose }: { onClose: () => void }) {
-  const items = (((getStoredData('sof_announcements', []) as any[]) || [])
-    .slice()
-    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))));
+  // Two sources: the member's PRIVATE notifications (personal monthly reminders, only
+  // theirs) + shared announcements the committee posts. Newest first.
+  const code = (localStorage.getItem('memberId') || '').toUpperCase();
+  const privMap = (getStoredData('sof_member_notifications', {}) as any) || {};
+  const priv = (code && Array.isArray(privMap[code]) ? privMap[code] : []).map((a: any) => ({ ...a, priv: true }));
+  const shared = ((getStoredData('sof_announcements', []) as any[]) || []).map((a: any) => ({ ...a, priv: false }));
+  const items = [...priv, ...shared].sort((a, b) =>
+    String(b.date || '').localeCompare(String(a.date || '')) || (Number(b.id) - Number(a.id)));
   return (
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4" style={{ background: 'rgba(15,23,42,0.5)' }} onClick={onClose}>
       <div className="bg-white w-full sm:max-w-md h-[75vh] sm:h-[560px] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-200" onClick={(e) => e.stopPropagation()}>
@@ -639,7 +644,10 @@ function Notifications({ onClose }: { onClose: () => void }) {
           ) : items.map((a) => (
             <div key={a.id} className="rounded-2xl p-4 shadow-sm" style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}>
               <div className="flex items-start justify-between gap-2 mb-1">
-                <h4 className="text-sm font-black" style={{ color: '#0a6652' }}>{a.title}</h4>
+                <h4 className="text-sm font-black flex items-center gap-1.5" style={{ color: '#0a6652' }}>
+                  {a.title}
+                  {a.priv && <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#eff6ff', color: '#2563eb' }}>ឯកជន</span>}
+                </h4>
                 <span className="text-[9px] font-bold shrink-0 mt-0.5" style={{ color: '#94a3b8' }}>{a.date}</span>
               </div>
               <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: '#475569' }}>{a.body}</p>
@@ -658,7 +666,12 @@ export default function App() {
   const [navOpen, setNavOpen] = useState(false);  // mobile nav drawer
   const [botOpen, setBotOpen] = useState(false);  // SOF Bot (AI assistant) modal
   const [notifOpen, setNotifOpen] = useState(false);  // notifications / announcements
-  const announcementCount = ((getStoredData('sof_announcements', []) as any[]) || []).length;
+  const announcementCount = (() => {
+    const shared = ((getStoredData('sof_announcements', []) as any[]) || []).length;
+    const code = (localStorage.getItem('memberId') || '').toUpperCase();
+    const priv = code ? (((getStoredData('sof_member_notifications', {}) as any) || {})[code] || []).length : 0;
+    return shared + priv;
+  })();
 
   // Clean up bad import once based on user request
   useEffect(() => {
@@ -5360,7 +5373,7 @@ function SettingsPage() {
       const groupStatus = !j.groupConfigured
         ? 'ក្រុម៖ មិនបានកំណត់ Chat ID'
         : j.groupSent ? 'ក្រុម៖ ✓' : 'ក្រុម៖ ✗ (bot មិននៅក្នុងក្រុម?)';
-      setReminderMsg(j && j.ok ? `✅ DM ${j.sent ?? 0} នាក់ · ${groupStatus} · App៖ ✓` : '❌ បរាជ័យ (សូមប្រាកដថាបាន deploy)។');
+      setReminderMsg(j && j.ok ? `✅ DM ${j.sent ?? 0} នាក់ · ${groupStatus} · App ${j.notified ?? 0} នាក់ (ឯកជន)` : '❌ បរាជ័យ (សូមប្រាកដថាបាន deploy)។');
     } catch { setReminderMsg('❌ បរាជ័យ (មិនអាចភ្ជាប់ server — សាកនៅ Vercel)។'); }
     setTimeout(() => setReminderMsg(''), 10000);
   };
