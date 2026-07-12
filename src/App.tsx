@@ -3629,16 +3629,22 @@ function Loans() {
     const byMonth = getStoredData(byKey, {});
     const idx = months.indexOf(upto);
     let prevRemaining: Record<string, any> | null = null;
+    let prevRate: Record<string, any> | null = null;
     let result: any[] = [];
     for (let i = 0; i <= idx; i++) {
       const month = months[i];
       let rows = (byMonth[month] && byMonth[month].length) ? byMonth[month] : getStoredData(rosterKey, rosterDef) || [];
       if (prevRemaining) {
-        rows = rows.map((r: any) => (prevRemaining![r.id] !== undefined ? { ...r, loanValue: String(prevRemaining![r.id]) } : r));
+        rows = rows.map((r: any) => {
+          const upd = prevRemaining![r.id] !== undefined ? { ...r, loanValue: String(prevRemaining![r.id]) } : { ...r };
+          // Carry the interest rate forward when this month hasn't set its own.
+          if ((upd.rate == null || String(upd.rate).trim() === '') && prevRate && prevRate[r.id] != null) upd.rate = prevRate[r.id];
+          return upd;
+        });
       }
       rows = rows.map(recalcLoanRow);
-      prevRemaining = {};
-      rows.forEach((r: any) => { prevRemaining![r.id] = r.remaining; });
+      prevRemaining = {}; prevRate = {};
+      rows.forEach((r: any) => { prevRemaining![r.id] = r.remaining; if (r.rate != null && String(r.rate).trim() !== '') prevRate![r.id] = r.rate; });
       result = rows;
     }
     return result;
@@ -4036,11 +4042,15 @@ function Loans() {
                       )}
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-center">
-                      <div className="flex items-center justify-center gap-0.5">
-                        <input value={row.rate ?? '1.50'} placeholder="1.50" onChange={(e) => editLoanRaw(idx, 'rate', e.target.value)} onBlur={saveLoansMonth}
-                          className="w-14 text-right bg-transparent px-1 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
-                        <span className="text-slate-400 text-xs">%</span>
-                      </div>
+                      {(num(row.loanValue) > 0 || num(row.newLoan) > 0 || num(row.remaining) > 0) ? (
+                        <div className="flex items-center justify-center gap-0.5">
+                          <input value={row.rate ?? '1.50'} placeholder="1.50" onChange={(e) => editLoanRaw(idx, 'rate', e.target.value)} onBlur={saveLoansMonth}
+                            className="w-14 text-right bg-transparent px-1 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                          <span className="text-slate-400 text-xs">%</span>
+                        </div>
+                      ) : (
+                        <span className="block text-center text-slate-400">-</span>
+                      )}
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-indigo-600">
                       {row.interest !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
@@ -4120,11 +4130,15 @@ function Loans() {
                       )}
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-center">
-                      <div className="flex items-center justify-center gap-0.5">
-                        <input value={row.rate ?? '1.50'} placeholder="1.50" onChange={(e) => editDepositLoanRaw(idx, 'rate', e.target.value)} onBlur={saveDepositLoanMonth}
-                          className="w-14 text-right bg-transparent px-1 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
-                        <span className="text-slate-400 text-xs">%</span>
-                      </div>
+                      {(num(row.loanValue) > 0 || num(row.newLoan) > 0 || num(row.remaining) > 0) ? (
+                        <div className="flex items-center justify-center gap-0.5">
+                          <input value={row.rate ?? '1.50'} placeholder="1.50" onChange={(e) => editDepositLoanRaw(idx, 'rate', e.target.value)} onBlur={saveDepositLoanMonth}
+                            className="w-14 text-right bg-transparent px-1 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                          <span className="text-slate-400 text-xs">%</span>
+                        </div>
+                      ) : (
+                        <span className="block text-center text-slate-400">-</span>
+                      )}
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-indigo-600">
                       {row.interest !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
