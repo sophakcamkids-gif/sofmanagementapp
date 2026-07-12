@@ -7080,8 +7080,9 @@ function MemberReport() {
           { label: 'ទុនសន្សំសរុប', value: `$${fmtMoney(totalSavings)}`, color: '#0a6652' },
           { label: 'កម្ចីសរុប (នៅសល់)', value: `$${fmtMoney(totalLoans)}`, color: '#b45309' },
           { label: 'ចំនួនអ្នកខ្ចី', value: `${borrowers} នាក់`, color: '#0a6652' },
-          { label: 'អត្រាកម្ចី', value: `${(DEFAULT_RATES.loan * 100).toFixed(2)}%/ខែ`, color: '#334155' },
-          { label: 'អត្រាសន្សំ', value: `${(DEFAULT_RATES.deposit * 100).toFixed(2)}%/ខែ`, color: '#334155' },
+          { label: 'អត្រាការប្រាក់', value: `${(DEFAULT_RATES.loan * 100).toFixed(2)}%/ខែ`, color: '#334155' },
+          { label: 'អត្រាសន្សំបញ្ញើរ', value: `${(DEFAULT_RATES.deposit * 100).toFixed(2)}%/ខែ`, color: '#334155' },
+          { label: 'អត្រាសន្សំមានកាលកំណត់', value: `${(DEFAULT_RATES.fixedTerm * 100).toFixed(2)}%/ខែ`, color: '#334155' },
         ];
         return (
           <div className="max-w-3xl mx-auto space-y-5">
