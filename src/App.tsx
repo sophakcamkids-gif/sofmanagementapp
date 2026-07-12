@@ -820,6 +820,7 @@ export default function App() {
                   <SidebarLink to="/expenses" label="💸 ការចំណាយ (Expenses)" />
                   <SidebarLink to="/reports" label="📈 របាយការណ៍បិទបញ្ជី (Reports)" />
                   <SidebarLink to="/history" label="📜 ប្រវត្តិប្រតិបត្តិការ (Logs)" />
+                  <SidebarLink to="/group-info" label="🛡️ ព័ត៌មានក្រុម (Group Info)" />
                   <SidebarLink to="/settings" label="⚙️ ការកំណត់ប្រព័ន្ធ (Settings)" />
                 </>
               ) : (
@@ -896,6 +897,11 @@ export default function App() {
                   <History />
                 </AdminGuard>
               } />
+              <Route path="/group-info" element={
+                <AdminGuard userRole={userRole}>
+                  <GroupInfoAdmin />
+                </AdminGuard>
+              } />
               <Route path="/settings" element={
                 <AdminGuard userRole={userRole}>
                   <SettingsPage />
@@ -965,6 +971,7 @@ export default function App() {
                     <SidebarLink to="/expenses" label="💸 ការចំណាយ (Expenses)" />
                     <SidebarLink to="/reports" label="📈 របាយការណ៍បិទបញ្ជី (Reports)" />
                     <SidebarLink to="/history" label="📜 ប្រវត្តិប្រតិបត្តិការ (Logs)" />
+                    <SidebarLink to="/group-info" label="🛡️ ព័ត៌មានក្រុម (Group Info)" />
                     <SidebarLink to="/settings" label="⚙️ ការកំណត់ប្រព័ន្ធ (Settings)" />
                   </>
                 ) : (
@@ -5174,6 +5181,39 @@ function Reports() {
       )}
 
       {activeTab === 'expense' && <Expenses embedded month={selectedMonth} />}
+    </PageView>
+  );
+}
+
+// Admin panel: the group's policies / info text (sof_group_info). Shown to members
+// in the portal "ព័ត៌មានក្រុមសន្សំ" panel and used by SOF Bot to answer questions.
+function GroupInfoAdmin() {
+  const [text, setText] = useState(String((getStoredData('sof_group_info', '') as any) || ''));
+  const [msg, setMsg] = useState('');
+  const save = () => {
+    setStoredData('sof_group_info', text.trim());
+    setMsg('✅ បានរក្សាទុក!');
+    setTimeout(() => setMsg(''), 4000);
+  };
+  return (
+    <PageView title="ព័ត៌មានក្រុមសន្សំ" hideUpload={true} hideDownload={true} hideAdd={true}>
+      <p className="text-slate-500 font-medium mb-4 text-sm">ព័ត៌មាននេះនឹងបង្ហាញនៅ Member Portal (ផ្ទាំង «ព័ត៌មានក្រុមសន្សំ») និងឆ្លើយដោយ SOF Bot ដល់សមាជិក។</p>
+      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-3 max-w-2xl">
+        <label className="block text-xs font-bold text-slate-700">គោលការណ៍ ច្បាប់ និងព័ត៌មានក្រុម</label>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={14}
+          placeholder={'ឧទាហរណ៍៖\n- ប្រជុំរៀងរាល់ថ្ងៃអាទិត្យទី១ នៃខែ\n- ដាក់សន្សំពីថ្ងៃ១ ដល់ថ្ងៃ១៥\n- ខ្ចីបានអតិបរមា ៣ដងនៃទុនសន្សំ\n- ត្រូវមានអ្នកធានា ២នាក់\n- ការដកទុនត្រូវជូនដំណឹងជាមុន ១ខែ\n...'}
+          className="w-full text-sm border border-slate-200 rounded-xl px-3.5 py-3 bg-slate-50 focus:bg-white focus:border-[#0a6652] outline-none resize-y leading-relaxed"
+        />
+        <div className="flex items-center gap-3">
+          <button onClick={save} className="bg-[#0a6652] hover:bg-[#084f40] text-white font-bold text-xs px-5 py-2.5 rounded-xl active:scale-95 inline-flex items-center gap-1.5 transition-all">
+            <Save size={14} /> រក្សាទុក
+          </button>
+          {msg && <span className="text-xs font-bold text-emerald-600">{msg}</span>}
+        </div>
+      </div>
     </PageView>
   );
 }
