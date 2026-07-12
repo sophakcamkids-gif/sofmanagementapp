@@ -234,6 +234,14 @@ const buildGroupDigest = (): string => {
   return lines.join('\n');
 };
 
+// Current month as a "ខែ ឆ្នាំ" key (e.g. "កក្កដា 2026") — used to default the
+// month pickers to the present month instead of a hardcoded one.
+const currentMonthLabel = (): string => {
+  const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
+  const d = new Date();
+  return `${KHM[d.getMonth()]} ${d.getFullYear()}`;
+};
+
 // Convert ASCII digits to Khmer numerals (០–៩).
 const toKhmerNum = (v: string | number): string =>
   String(v).replace(/[0-9]/g, (d) => '០១២៣៤៥៦៧៨៩'[+d]);
@@ -1297,7 +1305,7 @@ function DashboardGeneral() {
 
   // 2. New Savings form
   const [sMemberId, setSMemberId] = useState('');
-  const [sMonth, setSMonth] = useState('មេសា 2026');
+  const [sMonth, setSMonth] = useState(currentMonthLabel());
   const [sAmount, setSAmount] = useState('');
 
   // 3. New Loan form
@@ -1305,13 +1313,13 @@ function DashboardGeneral() {
   const [lAmount, setLAmount] = useState('');
   const [lRate, setLRate] = useState('0.8%');
   const [lTerm, setLTerm] = useState('12');
-  const [lMonth, setLMonth] = useState('មេសា 2026');
+  const [lMonth, setLMonth] = useState(currentMonthLabel());
 
   // 4. Loan Repayment form
   const [rMemberId, setRMemberId] = useState('');
   const [rPrincipal, setRPrincipal] = useState('');
   const [rInterest, setRInterest] = useState('');
-  const [rMonth, setRMonth] = useState('មេសា 2026');
+  const [rMonth, setRMonth] = useState(currentMonthLabel());
 
   // Load existing records for dropdowns
   const membersList = getStoredData('sof_member_list_data', DEFAULT_MEMBER_LIST_DATA);
@@ -2820,7 +2828,7 @@ function Members() {
 
 function Savings() {
   const navigate = useNavigate();
-  const [selectedMonth, setSelectedMonth] = useState('មេសា 2026');
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthLabel());
   const [activeTab, setActiveTab] = useState('members');
   const months = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
 
@@ -3518,7 +3526,7 @@ function Savings() {
 
 function Loans() {
   const navigate = useNavigate();
-  const [selectedMonth, setSelectedMonth] = useState('មេសា 2026');
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthLabel());
   const [activeTab, setActiveTab] = useState('members');
   const months = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
 
@@ -4564,7 +4572,7 @@ function Expenses({ embedded = false, month }: { embedded?: boolean; month?: str
 
 function Reports() {
   const [activeTab, setActiveTab] = useState('balance');
-  const [selectedMonth, setSelectedMonth] = useState('មេសា 2026');
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthLabel());
   const months = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
 
   // Manually-entered "ផ្សេងៗ" cash-flow amounts (per month).
