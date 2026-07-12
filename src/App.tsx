@@ -5218,13 +5218,32 @@ function History() {
   const [payments, setPayments] = useState<any[]>(() => getStoredData('sof_pending_payments', []) || []);
   const codeOf = (r: any) => { const s = String(r?.id ?? r?.code ?? ''); return (s.includes(' ') ? s.split(' ').pop() : s || '').toUpperCase(); };
 
+  // A month's rows for a store: the stored month, else carried forward from the most
+  // recent month with data (so a payment for a not-yet-opened month like កក្កដា still
+  // lands — loan beginning = prior remaining, savings beginning = prior total; flows cleared).
+  const monthRowsOrCarry = (store: any, monthKey: string, isLoan: boolean): any[] | null => {
+    if (Array.isArray(store[monthKey]) && store[monthKey].length) return store[monthKey];
+    const idx = MONTHS_2026.indexOf(monthKey);
+    if (idx < 0) return null;
+    for (let i = idx - 1; i >= 0; i--) {
+      const prev = store[MONTHS_2026[i]];
+      if (Array.isArray(prev) && prev.length) {
+        store[monthKey] = prev.map((r: any) => isLoan
+          ? { ...r, loanValue: r.remaining ?? r.loanValue, newLoan: '-', repayment: '-', interestPaid: '-' }
+          : { ...r, startCapital: r.total ?? r.startCapital, addSaving: '-', withdraw: '-', deductFee: '-', actualFee: '-', profit: '0' });
+        return store[monthKey];
+      }
+    }
+    return null;
+  };
+
   // Apply an approved payment to the member's row in the by-month savings/loan table.
   const applyPayment = (txn: any): boolean => {
     const isLoan = txn.type === 'loan';
     const keys = isLoan ? ['sof_loans_by_month', 'sof_loans_deposit_by_month'] : ['sof_savings_by_month', 'sof_deposit_by_month'];
     for (const key of keys) {
       const store = getStoredData(key, {}) || {};
-      const rows = store[txn.monthKey];
+      const rows = monthRowsOrCarry(store, txn.monthKey, isLoan);
       if (!Array.isArray(rows)) continue;
       const r = rows.find((x: any) => codeOf(x) === String(txn.memberCode || '').toUpperCase());
       if (!r) continue;
@@ -5891,8 +5910,7 @@ function MemberReport() {
     reader.readAsDataURL(file);
   };
 
-  // Payment states for 'ការដាក់សន្សំ និងបង់កម្ចី' tab
-  const [paymentType, setPaymentType] = useState<'savings' | 'loan'>('savings');
+  // Payment states for 'ការដាក់សន្សំ និងបង់កម្ចី' tab (one form: savings + loan together)
   const [paymentAmount, setPaymentAmount] = useState('0.00');
   const [loanPrincipal, setLoanPrincipal] = useState('0.00');
   const [loanInterest, setLoanInterest] = useState('0.00');
@@ -6201,52 +6219,53 @@ function MemberReport() {
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // ONE form: a member can enter a savings deposit AND/OR a loan repayment together.
+    const savings = parseFloat(paymentAmount) || 0;
+    const principal = parseFloat(loanPrincipal) || 0;
+    const interest = parseFloat(loanInterest) || 0;
+    const loanTotal = principal + interest;
+    if (savings <= 0 && loanTotal <= 0) {
+      alert("សូមបញ្ចូលចំនួនទឹកប្រាក់សន្សំ ឬបង់កម្ចី យ៉ាងតិចមួយ!");
+      return;
+    }
     if (!proofImage) {
       alert("សូមភ្ជាប់មកជាមួយនូវរូបភាពភស្តុតាងនៃការបង់ប្រាក់!");
       return;
     }
-    const isLoanVal = paymentType === 'loan';
-    const principal = isLoanVal ? (parseFloat(loanPrincipal) || 0) : 0;
-    const interest = isLoanVal ? (parseFloat(loanInterest) || 0) : 0;
-    const finalAmount = isLoanVal ? principal + interest : (parseFloat(paymentAmount) || 0);
 
-    // Record the request in the shared PENDING list. It is applied to the savings/
-    // loan tables only after an admin approves it (see the admin Pending Payments page).
     const code = (localStorage.getItem('memberId') || '').toUpperCase();
     const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
     const parts = (paymentDate || '').split('-');
     const monthKey = parts.length === 3 ? `${KHM[parseInt(parts[1], 10) - 1]} ${parts[0]}` : '';
 
-    // Send the proof image to the SOF Telegram group. If it succeeds, we DON'T keep
-    // the heavy base64 image in Supabase (only its metadata) — big egress/storage win.
+    // One proof screenshot covers both lines; the caption lists whichever were entered.
     const caption =
-      `🧾 ${isLoanVal ? 'បង់កម្ចី' : 'ដាក់សន្សំ'}\n` +
+      `🧾 ការទូទាត់\n` +
       `ឈ្មោះ៖ ${memberName} (${code})\n` +
       `ខែ៖ ${monthKey}\n` +
-      `ចំនួន៖ $${finalAmount.toFixed(2)}` + (isLoanVal ? `  (ដើម $${principal.toFixed(2)} + ការ $${interest.toFixed(2)})` : '') + '\n' +
+      (savings > 0 ? `• ដាក់សន្សំ៖ $${savings.toFixed(2)}\n` : '') +
+      (loanTotal > 0 ? `• បង់កម្ចី៖ $${loanTotal.toFixed(2)}  (ដើម $${principal.toFixed(2)} + ការ $${interest.toFixed(2)})\n` : '') +
       `កាលបរិច្ឆេទ៖ ${paymentDate}   Txn៖ ${transactionId || 'N/A'}`;
     const sent = await sendTelegramPhoto(proofImage, caption);
 
-    const newTxn = {
-      id: `TXN-${Date.now()}`,
-      memberCode: code,
-      memberName,
-      type: paymentType,
-      amount: finalAmount,
-      principal: isLoanVal ? principal : undefined,
-      interest: isLoanVal ? interest : undefined,
-      date: paymentDate,
-      monthKey,
-      transactionId: transactionId || "N/A",
-      status: 'pending' as 'approved' | 'pending',
+    const base = {
+      memberCode: code, memberName, date: paymentDate, monthKey,
+      transactionId: transactionId || "N/A", status: 'pending' as 'approved' | 'pending',
       proofName: proofFilename || 'screenshot.png',
       proofImg: sent ? '' : proofImage,   // drop base64 once it's safely in Telegram
       sentToTelegram: sent,
     };
+    const newTxns: any[] = [];
+    if (savings > 0) newTxns.push({ ...base, id: `TXN-${Date.now()}-S`, type: 'savings', amount: savings });
+    if (loanTotal > 0) newTxns.push({ ...base, id: `TXN-${Date.now()}-L`, type: 'loan', amount: loanTotal, principal, interest });
+
     const all = getStoredData('sof_pending_payments', []) || [];
-    setStoredData('sof_pending_payments', [newTxn, ...all]);
-    setSubmittedPayments([newTxn, ...submittedPayments]);
+    setStoredData('sof_pending_payments', [...newTxns, ...all]);
+    setSubmittedPayments([...newTxns, ...submittedPayments]);
     // Reset form
+    setPaymentAmount('0.00');
+    setLoanPrincipal('0.00');
+    setLoanInterest('0.00');
     setTransactionId('');
     setProofImage(null);
     setProofFilename('');
@@ -7720,123 +7739,71 @@ function MemberReport() {
               </h3>
 
               <form onSubmit={handlePaymentSubmit} className="space-y-4">
-                {/* 1. Toggle Payment Type */}
+                {/* ONE form: enter savings deposit AND/OR loan repayment together. */}
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">ប្រភេទការបង់ប្រាក់</label>
-                  <div className="flex p-1 bg-slate-100 rounded-xl">
-                    <button
-                      type="button"
-                      onClick={() => setPaymentType('savings')}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all text-center ${
-                        paymentType === 'savings' 
-                          ? 'bg-[#0a6652] text-white shadow-sm' 
-                          : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      ដាក់សន្សំប្រចាំខែ
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentType('loan')}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all text-center ${
-                        paymentType === 'loan' 
-                          ? 'bg-[#0a6652] text-white shadow-sm' 
-                          : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      បង់សងប្រាក់កម្ចី
-                    </button>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">ចំនួនទឹកប្រាក់សន្សំ (USD)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(e.target.value)}
+                      className="w-full pl-7 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0a6652] text-xs font-bold text-slate-700"
+                      placeholder="0.00"
+                    />
                   </div>
                 </div>
 
-                {/* 2. Form Inputs dynamic based on Savings vs Loan */}
-                {paymentType === 'savings' ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">ចំនួនទឹកប្រាក់សន្សំ (USD)</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
-                        <input
-                          type="number"
-                          step="0.01"
-                          required
-                          value={paymentAmount}
-                          onChange={(e) => setPaymentAmount(e.target.value)}
-                          className="w-full pl-7 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0a6652] text-xs font-bold text-slate-700"
-                          placeholder="0.00"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">កាលបរិច្ឆេទបង់ប្រាក់</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">បង់រំលស់ដើមកម្ចី (USD)</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
                       <input
-                        type="date"
-                        required
-                        value={paymentDate}
-                        onChange={(e) => setPaymentDate(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0a6652] text-xs font-bold text-slate-700"
+                        type="number"
+                        step="0.01"
+                        value={loanPrincipal}
+                        onChange={(e) => setLoanPrincipal(e.target.value)}
+                        className="w-full pl-7 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0a6652] text-xs font-bold text-slate-700"
+                        placeholder="0.00"
                       />
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">បង់រំលស់ដើមប្រាក់កម្ចី (USD)</label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
-                          <input
-                            type="number"
-                            step="0.01"
-                            required
-                            value={loanPrincipal}
-                            onChange={(e) => setLoanPrincipal(e.target.value)}
-                            className="w-full pl-7 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0a6652] text-xs font-bold text-slate-700"
-                            placeholder="0.00"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">បង់ការប្រាក់ (USD)</label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
-                          <input
-                            type="number"
-                            step="0.01"
-                            required
-                            value={loanInterest}
-                            onChange={(e) => setLoanInterest(e.target.value)}
-                            className="w-full pl-7 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0a6652] text-xs font-bold text-slate-700"
-                            placeholder="0.00"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {/* Read-only Total / Sum Box */}
-                      <div className="bg-emerald-50/40 border border-emerald-100/60 rounded-2xl p-3 flex flex-col justify-center">
-                        <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">សរុបប្រាក់ត្រូវទូទាត់ជាក់ស្តែង (Total)</span>
-                        <span className="text-sm font-black text-[#0a6652] mt-1">
-                          ${((parseFloat(loanPrincipal) || 0) + (parseFloat(loanInterest) || 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                        </span>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">កាលបរិច្ឆេទបង់ប្រាក់</label>
-                        <input
-                          type="date"
-                          required
-                          value={paymentDate}
-                          onChange={(e) => setPaymentDate(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0a6652] text-xs font-bold text-slate-700"
-                        />
-                      </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">បង់ការប្រាក់កម្ចី (USD)</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={loanInterest}
+                        onChange={(e) => setLoanInterest(e.target.value)}
+                        className="w-full pl-7 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0a6652] text-xs font-bold text-slate-700"
+                        placeholder="0.00"
+                      />
                     </div>
                   </div>
-                )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-emerald-50/40 border border-emerald-100/60 rounded-2xl p-3 flex flex-col justify-center">
+                    <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">សរុបទូទាត់ (សន្សំ + កម្ចី)</span>
+                    <span className="text-sm font-black text-[#0a6652] mt-1">
+                      ${((parseFloat(paymentAmount) || 0) + (parseFloat(loanPrincipal) || 0) + (parseFloat(loanInterest) || 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </span>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">កាលបរិច្ឆេទបង់ប្រាក់</label>
+                    <input
+                      type="date"
+                      required
+                      value={paymentDate}
+                      onChange={(e) => setPaymentDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0a6652] text-xs font-bold text-slate-700"
+                    />
+                  </div>
+                </div>
 
                 {/* 4. Document screenshot upload (Proof of payment) */}
                 <div>
