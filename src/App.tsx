@@ -6703,6 +6703,15 @@ function MemberReport() {
                   icon1Class: "bg-rose-50 text-rose-500",
                   icon2: <Sparkles size={28} strokeWidth={1.5} />,
                   icon2Class: "text-amber-500 fill-amber-100/40"
+                },
+                {
+                  id: 'ព័ត៌មានក្រុម',
+                  title: "ព័ត៌មានក្រុមសន្សំ",
+                  desc: "គោលការណ៍ និងព័ត៌មានក្រុម",
+                  icon1: <ShieldCheck size={16} strokeWidth={2.5} />,
+                  icon1Class: "bg-emerald-50 text-emerald-600",
+                  icon2: <ShieldCheck size={28} strokeWidth={1.5} />,
+                  icon2Class: "text-emerald-500 fill-emerald-100/40"
                 }
               ].map((card, i) => (
                 <div
@@ -7054,6 +7063,55 @@ function MemberReport() {
         </FitToWidth>
       </>
       )}
+
+      {activeTab === 'ព័ត៌មានក្រុម' && (() => {
+        const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
+        const sortKey = (s: string) => { const p = String(s).trim().split(' '); const mi = KHM.indexOf(p[0]); return (Number(p[p.length - 1]) || 0) * 100 + (mi >= 0 ? mi + 1 : 0); };
+        const latest = (key: string) => { const store = (getStoredData(key, {}) as any) || {}; const ms = Object.keys(store).filter((m) => Array.isArray(store[m])); if (!ms.length) return { month: '', rows: [] as any[] }; const m = ms.sort((a, b) => sortKey(a) - sortKey(b)).pop() as string; return { month: m, rows: store[m] as any[] }; };
+        const sav = latest('sof_savings_by_month'); const ln = latest('sof_loans_by_month');
+        const totalSavings = sav.rows.reduce((s, r) => s + num(r.total), 0);
+        const totalLoans = ln.rows.reduce((s, r) => s + num(r.remaining), 0);
+        const borrowers = ln.rows.filter((r) => num(r.remaining) > 0).length;
+        const roster = (getStoredData('sof_member_list_data', []) as any[]) || [];
+        const members = (Array.isArray(roster) && roster.length) ? roster.length : sav.rows.length;
+        const info = String((getStoredData('sof_group_info', '') as any) || '').trim();
+        const stats = [
+          { label: 'ចំនួនសមាជិក', value: `${members} នាក់`, color: '#0a6652' },
+          { label: 'ទុនសន្សំសរុប', value: `$${fmtMoney(totalSavings)}`, color: '#0a6652' },
+          { label: 'កម្ចីសរុប (នៅសល់)', value: `$${fmtMoney(totalLoans)}`, color: '#b45309' },
+          { label: 'ចំនួនអ្នកខ្ចី', value: `${borrowers} នាក់`, color: '#0a6652' },
+          { label: 'អត្រាកម្ចី', value: `${(DEFAULT_RATES.loan * 100).toFixed(2)}%/ខែ`, color: '#334155' },
+          { label: 'អត្រាសន្សំ', value: `${(DEFAULT_RATES.deposit * 100).toFixed(2)}%/ខែ`, color: '#334155' },
+        ];
+        return (
+          <div className="max-w-3xl mx-auto space-y-5">
+            <div className="rounded-[28px] p-6 text-white shadow-lg relative overflow-hidden text-left" style={{ background: 'linear-gradient(135deg, #0a6652, #128a6f)' }}>
+              <div className="flex items-center gap-2 mb-1"><ShieldCheck size={22} /><h3 className="text-lg font-black">ព័ត៌មានក្រុមសន្សំ</h3></div>
+              <p className="text-xs" style={{ color: '#a7f3d0' }}>ក្រុមសន្សំប្រាក់អនាគតយើង (SOF){sav.month ? ` · គិតត្រឹមខែ ${sav.month}` : ''}</p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {stats.map((s, i) => (
+                <div key={i} className="rounded-2xl p-4" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <p className="text-[10px] font-bold" style={{ color: '#64748b' }}>{s.label}</p>
+                  <p className="text-base font-black mt-1" style={{ color: s.color }}>{s.value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-white rounded-[24px] p-6 shadow-sm text-left" style={{ border: '1px solid #f1f5f9' }}>
+              <h4 className="text-sm font-black mb-3">
+                <span style={{ color: '#0a6652', borderLeft: '4px solid #0a6652', paddingLeft: '8px' }}>គោលការណ៍ និងព័ត៌មានក្រុម</span>
+              </h4>
+              {info ? (
+                <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: '#475569' }}>{info}</p>
+              ) : (
+                <p className="text-xs" style={{ color: '#94a3b8' }}>មិនទាន់មានព័ត៌មានលម្អិតពីគណៈកម្មការនៅឡើយទេ។ (គណៈកម្មការអាចបញ្ចូលនៅ ការកំណត់ → SOF Bot → ព័ត៌មានក្រុម)</p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {activeTab === 'ស្នើកម្ចី' && (
        <div className="max-w-3xl mx-auto space-y-6">
