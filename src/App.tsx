@@ -6238,6 +6238,17 @@ function MemberReport() {
     const parts = (paymentDate || '').split('-');
     const monthKey = parts.length === 3 ? `${KHM[parseInt(parts[1], 10) - 1]} ${parts[0]}` : '';
 
+    // Prevent accidental duplicate payments for the same month (the treasurer once saw
+    // the identical request 3×). Warn if a matching PENDING request already exists.
+    const pendingAll = getStoredData('sof_pending_payments', []) || [];
+    const dupOf = (t: string) => pendingAll.some((p: any) => p.status === 'pending' && String(p.memberCode || '').toUpperCase() === code && p.monthKey === monthKey && p.type === t);
+    const dupSav = savings > 0 && dupOf('savings');
+    const dupLoan = loanTotal > 0 && dupOf('loan');
+    if (dupSav || dupLoan) {
+      const what = (dupSav && dupLoan) ? 'ដាក់សន្សំ និងបង់កម្ចី' : dupLoan ? 'បង់កម្ចី' : 'ដាក់សន្សំ';
+      if (!window.confirm(`⚠️ អ្នកបានផ្ញើ «${what}» សម្រាប់ខែ ${monthKey} រួចហើយ ហើយកំពុងរង់ចាំការអនុម័ត។\nផ្ញើម្តងទៀតឬ? (ដើម្បីជៀសវាងការបង់ត្រួតគ្នា)`)) return;
+    }
+
     // One proof screenshot covers both lines; the caption lists whichever were entered.
     const caption =
       `🧾 ការទូទាត់\n` +
@@ -6334,6 +6345,35 @@ function MemberReport() {
   const memberSavingsTotal = memberLatest('sof_savings_by_month', 'total') + memberLatest('sof_deposit_by_month', 'total') + memberLatest('sof_fixedterm_by_month', 'total', FIXEDTERM_BY_MONTH);
   const memberLoanTotal = memberLatest('sof_loans_by_month', 'remaining') + memberLatest('sof_loans_deposit_by_month', 'remaining');
   const memberInitials = (memberName || '').trim().split(/\s+/).map((w: string) => w[0] || '').slice(0, 2).join('') || 'JS';
+
+  // Interest DUE for this member in a given month = rate × outstanding balance, carried
+  // forward from the latest month with data so it is correct even for a not-yet-opened
+  // month. Used to AUTO-FILL the loan-interest field on the payment form (read-only).
+  const memberLoanInterestFor = (monthKey: string): number => {
+    for (const key of ['sof_loans_by_month', 'sof_loans_deposit_by_month']) {
+      const by = getStoredData(key, {}) || {};
+      let rows = by[monthKey]; let carried = false;
+      if (!Array.isArray(rows) || !rows.length) {
+        const idx = MONTHS_2026.indexOf(monthKey);
+        for (let i = idx - 1; i >= 0; i--) { const p = by[MONTHS_2026[i]]; if (Array.isArray(p) && p.length) { rows = p; carried = true; break; } }
+      }
+      if (!Array.isArray(rows)) continue;
+      const r = rows.find((x: any) => codeOf(x) === memberCode);
+      if (!r) continue;
+      const rate = (r.rate != null && String(r.rate).trim() !== '') ? num(r.rate) / 100 : DEFAULT_RATES.loan;
+      const beginning = carried ? num(r.remaining) : num(r.loanValue || r.remaining);
+      return Number((rate * beginning).toFixed(2));
+    }
+    return 0;
+  };
+  // Auto-fill the loan interest whenever the payment month changes.
+  useEffect(() => {
+    const parts = (paymentDate || '').split('-');
+    if (parts.length !== 3) return;
+    const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
+    const mk = `${KHM[parseInt(parts[1], 10) - 1]} ${parts[0]}`;
+    setLoanInterest(memberLoanInterestFor(mk).toFixed(2));
+  }, [paymentDate]);
   // Savings-report rows: this member's monthly savings for the year (active or deposit).
   const memberSavingRows = (() => {
     const active = getStoredData('sof_savings_by_month', {}) || {};
@@ -7771,15 +7811,16 @@ function MemberReport() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">បង់ការប្រាក់កម្ចី (USD)</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">បង់ការប្រាក់កម្ចី <span className="text-[#0a6652] normal-case">(បំពេញអូតូតាមខែ)</span></label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
                       <input
                         type="number"
                         step="0.01"
                         value={loanInterest}
-                        onChange={(e) => setLoanInterest(e.target.value)}
-                        className="w-full pl-7 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0a6652] text-xs font-bold text-slate-700"
+                        readOnly
+                        title="ការប្រាក់ត្រូវបានគណនាដោយស្វ័យប្រវត្តិតាមខែ (អត្រា × ប្រាក់កម្ចីនៅសល់)"
+                        className="w-full pl-7 pr-3 py-2 rounded-xl bg-emerald-50/60 border border-emerald-100 text-xs font-black text-[#0a6652] cursor-not-allowed focus:outline-none"
                         placeholder="0.00"
                       />
                     </div>
