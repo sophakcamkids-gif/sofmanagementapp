@@ -7783,7 +7783,7 @@ function MemberReport() {
             <div className="md:col-span-7 bg-white p-6 sm:p-8 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left">
               <h3 className="text-base font-extrabold text-slate-800 mb-5 flex items-center gap-2">
                 <HandCoins className="text-[#0a6652]" size={20} />
-                <span>ផ្ញើភស្តុតាងនៃការដាក់សន្សំ ឬបង់កម្ចី</span>
+                <span>ការដាក់សន្សំ និងបង់កម្ចីប្រចាំខែ</span>
               </h3>
 
               <form onSubmit={handlePaymentSubmit} className="space-y-4">
