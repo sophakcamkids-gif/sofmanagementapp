@@ -3117,14 +3117,19 @@ function Savings() {
     startCapital: '0.00', addSaving: '-', interest: '-', withdraw: '-', total: '0.00', checked: true,
   }));
   const [fixedTermData, setFixedTermData] = useState<any[]>(() => ftRoster());
-  // Interest (1%/month on the beginning balance) is paid out, not compounded —
-  // so the running total excludes it: total = beginning + addSaving − withdraw.
+  // Interest is paid out, not compounded — the running total excludes it:
+  // total = beginning + addSaving − withdraw.
+  // The rate is negotiable per account: `ratePct` holds the raw percent the user typed
+  // (so partial input like "1." survives), and `rate` is the decimal the reports read.
   const recalcFixedTerm = (rows: any[]) => rows.map((r: any) => {
     const b = num(r.startCapital);
-    const rate = r.rate != null ? Number(r.rate) : DEFAULT_RATES.fixedTerm;
+    const pctRaw = (r.ratePct !== undefined && r.ratePct !== null)
+      ? r.ratePct
+      : String((r.rate != null ? Number(r.rate) : DEFAULT_RATES.fixedTerm) * 100);
+    const rate = num(pctRaw) / 100;
     const interest = rate * b;
     const total = b + num(r.addSaving) - num(r.withdraw);
-    return { ...r, interest: interest ? interest.toFixed(2) : '-', total: total.toFixed(2) };
+    return { ...r, ratePct: pctRaw, rate, interest: interest ? interest.toFixed(2) : '-', total: total.toFixed(2) };
   });
   useEffect(() => {
     const fBy = getStoredData('sof_fixedterm_by_month', FIXEDTERM_BY_MONTH) || {};
@@ -3133,17 +3138,24 @@ function Savings() {
     // the next month's beginning. Months with no data (e.g. Jul–Dec) just carry the
     // running balance forward, so the chain never resets to zero on empty months.
     let prevTotals: Record<string, any> | null = null;
+    let prevRate: Record<string, any> | null = null;
     let computed: any[] = ftRoster();
     for (let i = 0; i <= mi; i++) {
       const m = months[i];
-      let rows = (fBy[m] && fBy[m].length) ? fBy[m] : ftRoster();
+      const hasOwn = !!(fBy[m] && fBy[m].length);
+      let rows = hasOwn ? fBy[m] : ftRoster();
       if (prevTotals) {
-        const pt = prevTotals;
-        rows = rows.map((r: any) => (pt[r.id] !== undefined ? { ...r, startCapital: String(pt[r.id]) } : r));
+        const pt = prevTotals; const pr = prevRate;
+        rows = rows.map((r: any) => {
+          const upd = pt[r.id] !== undefined ? { ...r, startCapital: String(pt[r.id]) } : { ...r };
+          // A month with no rows of its own keeps the previously negotiated rate.
+          if (!hasOwn && pr && pr[r.id] != null) upd.ratePct = pr[r.id];
+          return upd;
+        });
       }
       computed = recalcFixedTerm(rows);
-      prevTotals = {};
-      computed.forEach((r: any) => { prevTotals![r.id] = r.total; });
+      prevTotals = {}; prevRate = {};
+      computed.forEach((r: any) => { prevTotals![r.id] = r.total; prevRate![r.id] = r.ratePct; });
     }
     setFixedTermData(computed);
   }, [selectedMonth]);
@@ -3469,16 +3481,17 @@ function Savings() {
 
       {activeTab === 'fixedterm' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col p-1 px-4 md:px-6 md:p-6 mb-6">
-          <div className="text-xs text-slate-500 mb-3">គណនីមានកាលកំណត់ — ទទួលការប្រាក់ <b>1%/ខែ</b> លើទុនចាប់ផ្តើម។ ទុនចាប់ផ្តើមខែបន្ទាប់ = សរុបខែមុន (អូតូ)។</div>
+          <div className="text-xs text-slate-500 mb-3">គណនីមានកាលកំណត់ — ការប្រាក់ = <b>អត្រា × ទុនចាប់ផ្តើម</b> (អត្រាកែបាន តាមការចចារក្នុងម្នាក់ៗ)។ ទុនចាប់ផ្តើមខែបន្ទាប់ = សរុបខែមុន (អូតូ) ហើយអត្រាក៏បន្តទៅខែក្រោយដែរ។</div>
           <div className="overflow-x-auto border border-slate-300 rounded-xl">
-            <table className="w-full text-left border-collapse text-sm min-w-[900px]">
+            <table className="w-full text-left border-collapse text-sm min-w-[1000px]">
               <thead className="bg-[#eef8f2] text-[#0a6652] border-b-[3px] border-[#0a6652] text-center font-bold">
                 <tr>
                   <th className="px-3 py-3 border-r border-slate-300">លេខ ID</th>
                   <th className="px-3 py-3 border-r border-slate-300 min-w-[140px]">ឈ្មោះ</th>
                   <th className="px-3 py-3 border-r border-slate-300">ភេទ</th>
                   <th className="px-3 py-3 border-r border-slate-300">ទុនចាប់ផ្តើម</th>
-                  <th className="px-3 py-3 border-r border-slate-300">ការប្រាក់ (1%)</th>
+                  <th className="px-3 py-3 border-r border-slate-300">អត្រាការប្រាក់</th>
+                  <th className="px-3 py-3 border-r border-slate-300">ការប្រាក់</th>
                   <th className="px-3 py-3 border-r border-slate-300">ទុនសន្សំបន្ថែម</th>
                   <th className="px-3 py-3 border-r border-slate-300">ដកទុន</th>
                   <th className="px-3 py-3 text-[#084f40] bg-[#f3faf6]">ប្រាក់សន្សំសរុប</th>
@@ -3496,6 +3509,13 @@ function Savings() {
                           className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                       ) : (<span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីសរុបខែមុន">{row.startCapital}</span>)}
                     </td>
+                    <td className="px-1 py-1 border-r border-slate-300 text-center">
+                      <div className="flex items-center justify-center gap-0.5">
+                        <input value={row.ratePct ?? '1'} placeholder="1" onChange={(e) => editFixedTermRaw(idx, 'ratePct', e.target.value)} onBlur={saveFixedTermMonth}
+                          className="w-14 text-right bg-transparent px-1 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
+                        <span className="text-slate-400 text-xs">%</span>
+                      </div>
+                    </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-indigo-600">{row.interest}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
                       <input value={row.addSaving} onChange={(e) => editFixedTermRaw(idx, 'addSaving', e.target.value)} onBlur={saveFixedTermMonth}
@@ -3511,6 +3531,7 @@ function Savings() {
                 <tr className="bg-slate-50 text-slate-800 font-bold border-t-2 border-slate-800 h-12">
                   <td colSpan={3} className="px-3 py-2 border-r border-slate-300 text-center">សរុប</td>
                   <td className="px-3 py-2 border-r border-slate-300 text-right">{fmtMoney(fixedTermData.reduce((s: number, r: any) => s + num(r.startCapital), 0))}</td>
+                  <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-400">—</td>
                   <td className="px-3 py-2 border-r border-slate-300 text-right text-indigo-700">{fmtMoney(fixedTermData.reduce((s: number, r: any) => s + num(r.interest), 0))}</td>
                   <td className="px-3 py-2 border-r border-slate-300 text-right">{fmtMoney(fixedTermData.reduce((s: number, r: any) => s + num(r.addSaving), 0))}</td>
                   <td className="px-3 py-2 border-r border-slate-300 text-right text-amber-700">{fmtMoney(fixedTermData.reduce((s: number, r: any) => s + num(r.withdraw), 0))}</td>
