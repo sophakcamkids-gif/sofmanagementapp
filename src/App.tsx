@@ -2189,6 +2189,23 @@ function Members() {
   const [depositProfileData, setDepositProfileData] = useState(() => getStoredData('sof_deposit_profile_data', DEFAULT_DEPOSIT_PROFILE_DATA));
   const [memberListData, setMemberListData] = useState(() => getStoredData('sof_member_list_data', DEFAULT_MEMBER_LIST_DATA));
 
+  // Profile tables are filled in directly (inline edit): type in a cell, blur to save.
+  const editProfileCell = (idx: number, field: string, value: string) =>
+    setProfileData((prev: any[]) => prev.map((r, i) => (i === idx ? { ...r, [field]: value } : r)));
+  const saveProfiles = () => setStoredData('sof_profile_data', profileData);
+  const editDepositProfileCell = (idx: number, field: string, value: string) =>
+    setDepositProfileData((prev: any[]) => prev.map((r, i) => (i === idx ? { ...r, [field]: value } : r)));
+  const saveDepositProfiles = () => setStoredData('sof_deposit_profile_data', depositProfileData);
+  // Shared inline-input cell for the profile tables ("-" shows as empty so typing is clean).
+  const profileInput = (row: any, idx: number, field: string, onEdit: (i: number, f: string, v: string) => void, onSave: () => void, align = 'text-center') => (
+    <input
+      value={row[field] && row[field] !== '-' ? row[field] : ''}
+      onChange={(e) => onEdit(idx, field, e.target.value)}
+      onBlur={onSave}
+      className={`w-full min-w-[80px] bg-transparent px-1.5 py-1 rounded border border-dashed border-transparent hover:border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none text-xs ${align}`}
+    />
+  );
+
   const [editingListIndex, setEditingListIndex] = useState<number | null>(null);
   const [editingListData, setEditingListData] = useState<any>(null);
 
@@ -2769,19 +2786,19 @@ function Members() {
                     <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-slate-500">{row.code || (typeof row.id === 'string' ? row.id.split(' ').pop() : row.id) || '-'}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-left text-slate-600 text-xs">{row.role}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-left text-slate-600 text-xs">{row.job}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 text-xs">{row.spouse}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-left text-slate-500 text-xs whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]">{row.address}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-xs">{row.phone}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-indigo-600 text-xs">{row.email}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.facebook}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.bankName}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.bankAcc}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.dob}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.idCard}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.heir}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.relation}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'role', editProfileCell, saveProfiles, 'text-left')}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'job', editProfileCell, saveProfiles, 'text-left')}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'spouse', editProfileCell, saveProfiles)}</td>
+                    <td className="px-1 py-1 border-r border-slate-300 max-w-[170px]">{profileInput(row, i, 'address', editProfileCell, saveProfiles, 'text-left')}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'phone', editProfileCell, saveProfiles)}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'email', editProfileCell, saveProfiles)}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'facebook', editProfileCell, saveProfiles)}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'bankName', editProfileCell, saveProfiles)}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'bankAcc', editProfileCell, saveProfiles)}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'dob', editProfileCell, saveProfiles)}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'idCard', editProfileCell, saveProfiles)}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'heir', editProfileCell, saveProfiles)}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'relation', editProfileCell, saveProfiles)}</td>
                     <td className="px-3 py-2 text-center align-middle">
                       <img src={row.img} alt={row.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full mx-auto object-cover border border-slate-200" />
                     </td>
@@ -2828,17 +2845,17 @@ function Members() {
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.code || (typeof row.id === 'string' ? row.id.split(' ').pop() : row.id) || '-'}</td>
                     <td className="px-3 py-2 border-r border-slate-300 font-bold text-slate-800">{row.name}</td>
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-left text-slate-600 text-xs">{row.job}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 text-xs">{row.spouse}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-left text-slate-500 text-xs whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]">{row.address}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center font-medium text-xs">{row.phone}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.facebook}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.telegram}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.joinDate}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.dob}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.idCard}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.heir}</td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-600 text-xs">{row.relation}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'job', editDepositProfileCell, saveDepositProfiles, 'text-left')}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'spouse', editDepositProfileCell, saveDepositProfiles)}</td>
+                    <td className="px-1 py-1 border-r border-slate-300 max-w-[170px]">{profileInput(row, i, 'address', editDepositProfileCell, saveDepositProfiles, 'text-left')}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'phone', editDepositProfileCell, saveDepositProfiles)}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'facebook', editDepositProfileCell, saveDepositProfiles)}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'telegram', editDepositProfileCell, saveDepositProfiles)}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'joinDate', editDepositProfileCell, saveDepositProfiles)}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'dob', editDepositProfileCell, saveDepositProfiles)}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'idCard', editDepositProfileCell, saveDepositProfiles)}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'heir', editDepositProfileCell, saveDepositProfiles)}</td>
+                    <td className="px-1 py-1 border-r border-slate-300">{profileInput(row, i, 'relation', editDepositProfileCell, saveDepositProfiles)}</td>
                     <td className="px-3 py-2 text-center align-middle">
                       <img src={row.img} alt={row.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full mx-auto object-cover border border-slate-200" />
                     </td>
