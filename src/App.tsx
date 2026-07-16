@@ -383,10 +383,30 @@ const fixedTermBalanceOf = (month: string): number => {
 // Uses the PER-ROW rate (e.g. a closed account at 0% earns 0), NOT a flat 1% × total — and
 // never the stored `interest` field, which some months left blank. The income statement and
 // the cash-flow payout must use this SAME figure or the balance sheet drifts.
+// Carries forward like fixedTermBalanceOf: a month with no rows of its own keeps
+// earning on the last known balances (interest is paid out monthly, not compounded),
+// so the interest is computed automatically for EVERY month — not just the seeded ones.
 const fixedTermInterestOf = (month: string): number => {
-  const stored = (getStoredData('sof_fixedterm_by_month', {}) || {})[month];
-  const rows = (Array.isArray(stored) && stored.length) ? stored : (FIXEDTERM_BY_MONTH[month] || []);
-  return rows.reduce((s: number, r: any) => s + (r.rate != null ? num(r.rate) : DEFAULT_RATES.fixedTerm) * num(r.startCapital), 0);
+  const by = getStoredData('sof_fixedterm_by_month', {}) || {};
+  const rowsFor = (m: string): any[] | null => {
+    if (Array.isArray(by[m]) && by[m].length) return by[m];
+    if (Array.isArray(FIXEDTERM_BY_MONTH[m]) && FIXEDTERM_BY_MONTH[m].length) return FIXEDTERM_BY_MONTH[m];
+    return null;
+  };
+  const idx = MONTHS_2026.indexOf(month);
+  for (let i = (idx < 0 ? MONTHS_2026.length - 1 : idx); i >= 0; i--) {
+    const rows = rowsFor(MONTHS_2026[i]);
+    if (!rows) continue;
+    const own = MONTHS_2026[i] === month;
+    return rows.reduce((s: number, r: any) => {
+      const rate = r.rate != null ? num(r.rate) : DEFAULT_RATES.fixedTerm;
+      // This month's own rows → its beginning balance. A carried-forward month →
+      // that month's closing balance becomes the beginning balance.
+      const base = own ? num(r.startCapital) : (num(r.total) || (num(r.startCapital) + num(r.addSaving) - num(r.withdraw)));
+      return s + rate * base;
+    }, 0);
+  }
+  return 0;
 };
 
 // Live monthly income statement — computed from this month's own data. Shared by the
