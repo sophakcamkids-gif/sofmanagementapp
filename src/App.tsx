@@ -3863,8 +3863,8 @@ function Loans() {
     }
     return result;
   };
-  const [extReceived, setExtReceived] = useState<any[]>(() => computeExtChain('received', 'មេសា 2026'));
-  const [extProvided, setExtProvided] = useState<any[]>(() => computeExtChain('provided', 'មេសា 2026'));
+  const [extReceived, setExtReceived] = useState<any[]>(() => computeExtChain('received', selectedMonth));
+  const [extProvided, setExtProvided] = useState<any[]>(() => computeExtChain('provided', selectedMonth));
   useEffect(() => {
     setExtReceived(computeExtChain('received', selectedMonth));
     setExtProvided(computeExtChain('provided', selectedMonth));
@@ -4268,7 +4268,7 @@ function Loans() {
 }
 
 function Expenses({ embedded = false, month }: { embedded?: boolean; month?: string } = {}) {
-  const [selectedMonth, setSelectedMonth] = useState(month || 'មេសា 2026');
+  const [selectedMonth, setSelectedMonth] = useState(month || currentMonthLabel());
   const months = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
 
   // ---- Per-month expenses (each month keeps its own list) ----
@@ -4281,14 +4281,14 @@ function Expenses({ embedded = false, month }: { embedded?: boolean; month?: str
     setStoredData('sof_expenses_by_month', byMonth);
   };
 
-  const [expenses, setExpenses] = useState<any[]>(() => loadByMonth()['មេសា 2026'] || []);
+  const [expenses, setExpenses] = useState<any[]>(() => loadByMonth()[month || currentMonthLabel()] || []);
 
   const [isAdding, setIsAdding] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ទាំងអស់');
 
   // New expense form inputs
-  const [formDate, setFormDate] = useState(dateForMonth('មេសា 2026'));
+  const [formDate, setFormDate] = useState(dateForMonth(month || currentMonthLabel()));
   const [formSupplier, setFormSupplier] = useState('SOF');
   const [formDesc, setFormDesc] = useState('');
   const [formCategory, setFormCategory] = useState('ចំណាយប្រតិបត្តិការ');
