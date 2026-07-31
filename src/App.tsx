@@ -47,21 +47,26 @@ const setStoredData = (key: string, value: any) => {
 const getAdminAuth = (): { username: string; password: string } =>
   ({ username: 'sofadmin', password: 'sof2026', ...(getStoredData('sof_admin_auth', {}) || {}) });
 
-// Telegram bot config (token + chat/group id). Used to send payment proofs to a
-// Telegram group instead of storing the (heavy base64) image in Supabase.
-const getTelegramConfig = (): { token: string; chatId: string; enabled: boolean } =>
-  ({ token: '', chatId: '', enabled: true, ...(getStoredData('sof_telegram_config', {}) || {}) });
+// Telegram bot config. `chatId` = the MEMBERS' group (announcements / reminders).
+// `committeeChatId` = the committee-only group that receives payment proofs and loan
+// requests — members don't want their personal proofs in the shared group. Proofs
+// fall back to `chatId` only if no committee group is configured.
+const getTelegramConfig = (): { token: string; chatId: string; committeeChatId: string; enabled: boolean } =>
+  ({ token: '', chatId: '', committeeChatId: '', enabled: true, ...(getStoredData('sof_telegram_config', {}) || {}) });
+// Where member submissions (proofs, requests) go: the committee group if set.
+const committeeChat = (): string => { const c = getTelegramConfig(); return c.committeeChatId || c.chatId; };
 
-// Send a proof image + caption to the configured Telegram group via the Bot API
+// Send a proof image + caption to the COMMITTEE Telegram group via the Bot API
 // (api.telegram.org allows cross-origin calls from the browser). Returns true on
 // success so the caller can drop the base64 image from cloud storage.
 const sendTelegramPhoto = async (dataUrl: string, caption: string): Promise<boolean> => {
-  const { token, chatId, enabled } = getTelegramConfig();
-  if (!enabled || !token || !chatId || !dataUrl) return false;
+  const { token, enabled } = getTelegramConfig();
+  const target = committeeChat();
+  if (!enabled || !token || !target || !dataUrl) return false;
   try {
     const blob = await (await fetch(dataUrl)).blob();
     const form = new FormData();
-    form.append('chat_id', chatId);
+    form.append('chat_id', target);
     form.append('caption', caption);
     form.append('photo', blob, 'proof.jpg');
     const res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: form });
@@ -70,13 +75,14 @@ const sendTelegramPhoto = async (dataUrl: string, caption: string): Promise<bool
   } catch { return false; }
 };
 
-// Send a non-image attachment (PDF / Word / Excel) to the Telegram group.
+// Send a non-image attachment (PDF / Word / Excel) to the COMMITTEE Telegram group.
 const sendTelegramDocument = async (fileOrBlob: Blob, filename: string, caption: string): Promise<boolean> => {
-  const { token, chatId, enabled } = getTelegramConfig();
-  if (!enabled || !token || !chatId || !fileOrBlob) return false;
+  const { token, enabled } = getTelegramConfig();
+  const target = committeeChat();
+  if (!enabled || !token || !target || !fileOrBlob) return false;
   try {
     const form = new FormData();
-    form.append('chat_id', chatId);
+    form.append('chat_id', target);
     if (caption) form.append('caption', caption);
     form.append('document', fileOrBlob, filename);
     const res = await fetch(`https://api.telegram.org/bot${token}/sendDocument`, { method: 'POST', body: form });
@@ -109,14 +115,16 @@ const getMemberChatId = (code: string): string => {
   return entry ? entry[0] : '';
 };
 
-// Send a plain text message (e.g. an online loan request with no attachment).
+// Send a plain text member submission (e.g. an online loan request) to the COMMITTEE
+// group. (Announcements/reminders are sent server-side to the members' group.)
 const sendTelegramMessage = async (text: string): Promise<boolean> => {
-  const { token, chatId, enabled } = getTelegramConfig();
-  if (!enabled || !token || !chatId || !text) return false;
+  const { token, enabled } = getTelegramConfig();
+  const target = committeeChat();
+  if (!enabled || !token || !target || !text) return false;
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text }),
+      body: JSON.stringify({ chat_id: target, text }),
     });
     const j = await res.json().catch(() => ({ ok: false }));
     return !!j.ok;
@@ -5452,9 +5460,10 @@ function SettingsPage() {
   const _tg = getTelegramConfig();
   const [tgToken, setTgToken] = useState(_tg.token);
   const [tgChatId, setTgChatId] = useState(_tg.chatId);
+  const [tgCommitteeChatId, setTgCommitteeChatId] = useState(_tg.committeeChatId);
   const [tgEnabled, setTgEnabled] = useState(_tg.enabled);
   const [tgMsg, setTgMsg] = useState('');
-  const saveTg = (enabled = tgEnabled) => setStoredData('sof_telegram_config', { token: tgToken.trim(), chatId: tgChatId.trim(), enabled });
+  const saveTg = (enabled = tgEnabled) => setStoredData('sof_telegram_config', { token: tgToken.trim(), chatId: tgChatId.trim(), committeeChatId: tgCommitteeChatId.trim(), enabled });
   const testTg = async () => {
     saveTg();
     try {
@@ -5608,9 +5617,15 @@ function SettingsPage() {
                   className="w-full text-xs font-mono border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:border-[#0a6652] outline-none" />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 mb-1">Chat ID (ក្រុម SOF — លេខអវិជ្ជមាន)</label>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1">Chat ID គ្រុបសមាជិក (ជូនដំណឹង/រំលឹក — លេខអវិជ្ជមាន)</label>
                 <input type="text" value={tgChatId} onChange={(e) => setTgChatId(e.target.value)} onBlur={() => saveTg()} placeholder="-1001234567890"
                   className="w-full text-xs font-mono border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:border-[#0a6652] outline-none" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1">Chat ID គ្រុបគណៈកម្មការ (ភ័ស្តុតាង/សំណើ — លេខអវិជ្ជមាន)</label>
+                <input type="text" value={tgCommitteeChatId} onChange={(e) => setTgCommitteeChatId(e.target.value)} onBlur={() => saveTg()} placeholder="-1009876543210"
+                  className="w-full text-xs font-mono border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:border-[#0a6652] outline-none" />
+                <p className="text-[9px] text-slate-400 mt-1">ភ័ស្តុតាងបង់ប្រាក់ និងសំណើកម្ចី ផ្ញើចូលតែគ្រុបនេះ (មិនចូលគ្រុបសមាជិករួម)។ បើទទេ ប្រើគ្រុបសមាជិកខាងលើ។</p>
               </div>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={testTg} className="bg-[#0a6652] hover:bg-[#084f40] text-white font-bold text-xs px-4 py-2 rounded-xl cursor-pointer active:scale-95">តេស្តភ្ជាប់</button>
