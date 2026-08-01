@@ -5495,12 +5495,35 @@ function SettingsPage() {
   const [annTitle, setAnnTitle] = useState('');
   const [annBody, setAnnBody] = useState('');
   const [announcements, setAnnouncements] = useState<any[]>(() => getStoredData('sof_announcements', []) || []);
-  const postAnnouncement = () => {
+  const postAnnouncement = async () => {
     if (!annTitle.trim() && !annBody.trim()) return;
-    const next = [{ id: Date.now(), title: annTitle.trim() || 'សេចក្តីជូនដំណឹង', body: annBody.trim(), date: new Date().toISOString().split('T')[0] }, ...announcements];
+    const title = annTitle.trim() || 'សេចក្តីជូនដំណឹង';
+    const body = annBody.trim();
+    const next = [{ id: Date.now(), title, body, date: new Date().toISOString().split('T')[0] }, ...announcements];
     setStoredData('sof_announcements', next);
     setAnnouncements(next);
     setAnnTitle(''); setAnnBody('');
+
+    // Send to Telegram General Group
+    const { token, enabled, chatId } = getTelegramConfig();
+    if (enabled && token && chatId) {
+      const text = `🔔 <b>${title}</b>\n\n${body}`;
+      try {
+        const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!j.ok) {
+          alert('បានរក្សាទុកក្នុង App តែបរាជ័យក្នុងការផ្ញើទៅ Telegram:\n' + (j.description || 'Unknown error. Check token/chatId'));
+        }
+      } catch (e: any) {
+        alert('បរាជ័យក្នុងការផ្ញើទៅ Telegram (Network Error): ' + e.message);
+      }
+    } else if (!enabled || !token || !chatId) {
+       // Just silently skip if telegram is not fully configured, as they might just want app announcements.
+    }
   };
   const deleteAnnouncement = (id: number) => {
     const next = announcements.filter((a) => a.id !== id);

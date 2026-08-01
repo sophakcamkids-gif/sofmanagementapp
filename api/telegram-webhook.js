@@ -153,6 +153,7 @@ export default async function handler(req, res) {
   const update = req.body || {};
   const msg = update.message || update.edited_message;
   if (!msg || !msg.chat) return res.status(200).json({ ok: true });
+  if (msg.chat.type !== 'private') return res.status(200).json({ ok: true }); // មិនឆ្លើយក្នុង Group ទេ
   const chatId = msg.chat.id;
   const text = (msg.text || '').trim();
 
