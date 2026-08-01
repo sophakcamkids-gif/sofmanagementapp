@@ -6627,37 +6627,7 @@ function MemberReport() {
     return 0;
   };
   const memberSavingsTotal = memberLatest('sof_savings_by_month', 'total') + memberLatest('sof_deposit_by_month', 'total') + memberLatest('sof_fixedterm_by_month', 'total', FIXEDTERM_BY_MONTH);
-  const memberLoanTotal = memberLatest('sof_loans_by_month', 'remaining') + memberLatest('sof_loans_deposit_by_month', 'remaining');
   const memberInitials = (memberName || '').trim().split(/\s+/).map((w: string) => w[0] || '').slice(0, 2).join('') || 'JS';
-
-  // Interest DUE for this member in a given month = rate × outstanding balance, carried
-  // forward from the latest month with data so it is correct even for a not-yet-opened
-  // month. Used to AUTO-FILL the loan-interest field on the payment form (read-only).
-  const memberLoanInterestFor = (monthKey: string): number => {
-    for (const key of ['sof_loans_by_month', 'sof_loans_deposit_by_month']) {
-      const by = getStoredData(key, {}) || {};
-      let rows = by[monthKey]; let carried = false;
-      if (!Array.isArray(rows) || !rows.length) {
-        const idx = MONTHS_2026.indexOf(monthKey);
-        for (let i = idx - 1; i >= 0; i--) { const p = by[MONTHS_2026[i]]; if (Array.isArray(p) && p.length) { rows = p; carried = true; break; } }
-      }
-      if (!Array.isArray(rows)) continue;
-      const r = rows.find((x: any) => codeOf(x) === memberCode);
-      if (!r) continue;
-      const rate = (r.rate != null && String(r.rate).trim() !== '') ? num(r.rate) / 100 : DEFAULT_RATES.loan;
-      const beginning = carried ? num(r.remaining) : num(r.loanValue || r.remaining);
-      return Number((rate * beginning).toFixed(2));
-    }
-    return 0;
-  };
-  // Auto-fill the loan interest whenever the payment month changes.
-  useEffect(() => {
-    const parts = (paymentDate || '').split('-');
-    if (parts.length !== 3) return;
-    const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
-    const mk = `${KHM[parseInt(parts[1], 10) - 1]} ${parts[0]}`;
-    setLoanInterest(memberLoanInterestFor(mk).toFixed(2));
-  }, [paymentDate]);
   // Savings-report rows: this member's monthly savings for the year (active or deposit).
   const memberSavingRows = (() => {
     const active = getStoredData('sof_savings_by_month', {}) || {};
@@ -6681,19 +6651,82 @@ function MemberReport() {
   const memberSavingClosing = memberSavingRows.length ? num(memberSavingRows[memberSavingRows.length - 1].total) : 0;
   // Loan-report rows: this member's monthly loan progression (active or deposit-member loans).
   const memberLoanRows = (() => {
-    const a = getStoredData('sof_loans_by_month', {}) || {};
-    const d = getStoredData('sof_loans_deposit_by_month', {}) || {};
+    const aByMonth = getStoredData('sof_loans_by_month', {}) || {};
+    const dByMonth = getStoredData('sof_loans_deposit_by_month', {}) || {};
+    
+    const aKeys = Object.keys(aByMonth).filter(m => Array.isArray(aByMonth[m]) && aByMonth[m].length > 0);
+    const dKeys = Object.keys(dByMonth).filter(m => Array.isArray(dByMonth[m]) && dByMonth[m].length > 0);
+    const allKeys = [...new Set([...aKeys, ...dKeys])];
+    const maxIdx = allKeys.length > 0 ? Math.max(...allKeys.map(k => memberMonths.indexOf(k))) : -1;
+    
     const out: any[] = [];
-    memberMonths.forEach((m, i) => {
-      const ra = Array.isArray(a[m]) ? a[m].find((x: any) => codeOf(x) === memberCode) : null;
-      const rd = (!ra && Array.isArray(d[m])) ? d[m].find((x: any) => codeOf(x) === memberCode) : null;
-      const r = ra || rd;
-      if (r && (num(r.loanValue) || num(r.remaining) || num(r.newLoan) || num(r.repayment) || num(r.interest))) {
-        out.push({ seq: String(i + 1).padStart(2, '0'), mi: i, monthName: m.split(' ')[0], ...r });
+    let prevRemaining = 0;
+    let prevRate: any = null;
+    let hasStarted = false;
+
+    const limit = maxIdx >= 0 ? maxIdx : memberMonths.length - 1;
+    for (let i = 0; i <= limit; i++) {
+      const m = memberMonths[i];
+      const ra = Array.isArray(aByMonth[m]) ? aByMonth[m].find((x: any) => codeOf(x) === memberCode) : null;
+      const rd = (!ra && Array.isArray(dByMonth[m])) ? dByMonth[m].find((x: any) => codeOf(x) === memberCode) : null;
+      let r = ra || rd;
+      
+      if (!r && hasStarted && prevRemaining > 0) {
+        r = { id: memberCode, loanValue: prevRemaining.toFixed(2), newLoan: '0', repayment: '0', interestPaid: '0' };
       }
-    });
+
+      if (r) {
+         const beginning = hasStarted ? prevRemaining : num(r.loanValue);
+         let rate = r.rate;
+         if ((rate == null || String(rate).trim() === '') && prevRate != null) rate = prevRate;
+         
+         const rateNum = (rate !== undefined && rate !== null && String(rate).trim() !== '') ? num(rate) / 100 : DEFAULT_RATES.loan;
+         const interestDue = Number((rateNum * beginning).toFixed(2));
+         const unpaid = Math.max(0, Number((interestDue - num(r.interestPaid)).toFixed(2)));
+         const newLoanVal = r.newLoanEdited ? num(r.newLoan) : unpaid;
+         const remaining = beginning + newLoanVal - num(r.repayment);
+         
+         r = {
+           ...r,
+           loanValue: beginning.toFixed(2),
+           interest: interestDue.toFixed(2),
+           newLoan: r.newLoanEdited ? r.newLoan : unpaid.toFixed(2),
+           remaining: remaining.toFixed(2)
+         };
+         
+         prevRemaining = remaining;
+         if (r.rate != null && String(r.rate).trim() !== '') prevRate = r.rate;
+         hasStarted = true;
+         
+         if (num(r.loanValue) || num(r.remaining) || num(r.newLoan) || num(r.repayment) || num(r.interest)) {
+           out.push({ seq: String(i + 1).padStart(2, '0'), mi: i, monthName: m.split(' ')[0], ...r });
+         }
+      }
+    }
     return out;
   })();
+
+  const memberLoanTotal = memberLoanRows.length ? num(memberLoanRows[memberLoanRows.length - 1].remaining) : 0;
+
+  // Auto-fill the loan interest whenever the payment month changes.
+  useEffect(() => {
+    const parts = (paymentDate || '').split('-');
+    if (parts.length !== 3) return;
+    const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
+    const mk = `${KHM[parseInt(parts[1], 10) - 1]} ${parts[0]}`;
+    
+    const row = memberLoanRows.find((r) => `${r.monthName} ${selectedReportYear}` === mk);
+    if (row) {
+      setLoanInterest(Number(row.interest).toFixed(2));
+    } else if (memberLoanRows.length > 0) {
+      const lastRow = memberLoanRows[memberLoanRows.length - 1];
+      const rateNum = (lastRow.rate !== undefined && lastRow.rate !== null && String(lastRow.rate).trim() !== '') ? num(lastRow.rate) / 100 : DEFAULT_RATES.loan;
+      setLoanInterest(Number((rateNum * num(lastRow.remaining)).toFixed(2)).toFixed(2));
+    } else {
+      setLoanInterest('0.00');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentDate, selectedReportYear]);
   const memberLoanSum = (f: string) => memberLoanRows.reduce((s, r) => s + num(r[f]), 0);
   // Loan-info-card figures. Start = first month the loan was disbursed (else first activity).
   const loanStartRow = memberLoanRows.find((r) => num(r.newLoan) > 0) || memberLoanRows[0] || null;
