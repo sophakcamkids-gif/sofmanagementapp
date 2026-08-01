@@ -6517,6 +6517,11 @@ function MemberReport() {
       alert("សូមបញ្ចូលចំនួនទឹកប្រាក់សន្សំ ឬបង់កម្ចី យ៉ាងតិចមួយ!");
       return;
     }
+    // Can't repay more principal than the loan still owes.
+    if (principal > memberLoanTotal + 0.005) {
+      alert(`ការបង់រំលស់ដើម ($${fmtMoney(principal)}) លើសពីកម្ចីនៅសល់ ($${fmtMoney(memberLoanTotal)})។ សូមកែឱ្យតិចជាង ឬស្មើ។`);
+      return;
+    }
     if (!proofImage) {
       alert("សូមភ្ជាប់មកជាមួយនូវរូបភាពភស្តុតាងនៃការបង់ប្រាក់!");
       return;
@@ -8174,6 +8179,8 @@ function MemberReport() {
                   </div>
                 </div>
 
+                {/* Loan repayment fields — hidden once the loan is fully paid (no remaining balance). */}
+                {memberLoanTotal > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">បង់រំលស់ដើមកម្ចី (USD)</label>
@@ -8182,12 +8189,16 @@ function MemberReport() {
                       <input
                         type="number"
                         step="0.01"
+                        min="0"
+                        max={memberLoanTotal}
                         value={loanPrincipal}
                         onChange={(e) => setLoanPrincipal(e.target.value)}
+                        onBlur={(e) => { const v = parseFloat(e.target.value) || 0; if (v > memberLoanTotal) setLoanPrincipal(memberLoanTotal.toFixed(2)); }}
                         className="w-full pl-7 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0a6652] text-xs font-bold text-slate-700"
                         placeholder="0.00"
                       />
                     </div>
+                    <p className="text-[9px] font-bold text-slate-400 mt-1">អតិបរមា៖ ${fmtMoney(memberLoanTotal)} (កម្ចីនៅសល់)</p>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">បង់ការប្រាក់កម្ចី <span className="text-[#0a6652] normal-case">(បំពេញអូតូតាមខែ)</span></label>
@@ -8205,6 +8216,7 @@ function MemberReport() {
                     </div>
                   </div>
                 </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="bg-emerald-50/40 border border-emerald-100/60 rounded-2xl p-3 flex flex-col justify-center">
