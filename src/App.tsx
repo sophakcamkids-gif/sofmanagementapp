@@ -3022,11 +3022,41 @@ function Savings() {
   // Column totals for the footer "សរុប" row.
   const sumOf = (rows: any[], field: string) => rows.reduce((s, r) => s + num(r[field]), 0);
   const n2 = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  // Persist the current month's savings + group + deposit to the cloud (called on blur).
+  // Persist the current month's savings + group + deposit to the cloud and sync future months.
+  const syncAllSavings = (act: any[], grp: any[], dep: any[]) => {
+    const sBy = getStoredData('sof_savings_by_month', {}) || {};
+    const gBy = getStoredData('sof_group_by_month', {}) || {};
+    const dBy = getStoredData('sof_deposit_by_month', {}) || {};
+    sBy[selectedMonth] = act;
+    gBy[selectedMonth] = grp;
+    dBy[selectedMonth] = dep;
+    setStoredData('sof_savings_by_month', sBy);
+    setStoredData('sof_group_by_month', gBy);
+    setStoredData('sof_deposit_by_month', dBy);
+
+    const colTotals = (arr: any[]) => { const m: Record<string, any> = {}; (arr || []).forEach((r: any) => { m[r.id] = r.total; }); return m; };
+    let prevTotals: any = null;
+    let result: any = null;
+    const currentIdx = months.indexOf(selectedMonth);
+
+    for (let i = 0; i < months.length; i++) {
+      const month = months[i];
+      if (i > currentIdx && (!sBy[month] || !sBy[month].length)) continue;
+      
+      result = computeSavingsMonthLive(month, prevTotals);
+      prevTotals = { active: colTotals(result.active), group: colTotals(result.group), deposit: colTotals(result.deposit) };
+      
+      sBy[month] = result.active;
+      gBy[month] = result.group;
+      dBy[month] = result.deposit;
+      setStoredData('sof_savings_by_month', sBy);
+      setStoredData('sof_group_by_month', gBy);
+      setStoredData('sof_deposit_by_month', dBy);
+    }
+  };
+
   const saveSavingsMonth = () => {
-    const sBy = getStoredData('sof_savings_by_month', {}); sBy[selectedMonth] = savingData; setStoredData('sof_savings_by_month', sBy);
-    const gBy = getStoredData('sof_group_by_month', {}); gBy[selectedMonth] = groupData; setStoredData('sof_group_by_month', gBy);
-    const dBy = getStoredData('sof_deposit_by_month', {}); dBy[selectedMonth] = depositData; setStoredData('sof_deposit_by_month', dBy);
+    syncAllSavings(savingData, groupData, depositData);
   };
   // Beginning capital is editable only in the first month (opening); later months carry forward.
   const isFirstMonth = selectedMonth === months[0];
@@ -3740,8 +3770,33 @@ function Loans() {
       return recalcLoanRow(merged);
     }));
   };
+  const syncAllLoans = (updatedCurrentMonthData: any[], byKey: string, rosterKey: string, rosterDef: any[]) => {
+    const byMonth = getStoredData(byKey, {}) || {};
+    byMonth[selectedMonth] = updatedCurrentMonthData;
+    let prevRemaining: Record<string, any> | null = null;
+    let prevRate: Record<string, any> | null = null;
+    const currentIdx = months.indexOf(selectedMonth);
+    for (let i = 0; i < months.length; i++) {
+      const month = months[i];
+      if (i > currentIdx && (!byMonth[month] || !byMonth[month].length)) continue;
+      let rows = (byMonth[month] && byMonth[month].length) ? byMonth[month] : getStoredData(rosterKey, rosterDef) || [];
+      if (prevRemaining) {
+        rows = rows.map((r: any) => {
+          const upd = prevRemaining![r.id] !== undefined ? { ...r, loanValue: String(prevRemaining![r.id]) } : { ...r };
+          if ((upd.rate == null || String(upd.rate).trim() === '') && prevRate && prevRate[r.id] != null) upd.rate = prevRate[r.id];
+          return upd;
+        });
+      }
+      rows = rows.map(recalcLoanRow);
+      prevRemaining = {}; prevRate = {};
+      rows.forEach((r: any) => { prevRemaining![r.id] = r.remaining; if (r.rate != null && String(r.rate).trim() !== '') prevRate![r.id] = r.rate; });
+      byMonth[month] = rows;
+    }
+    setStoredData(byKey, byMonth);
+  };
+
   const saveLoansMonth = () => {
-    const by = getStoredData('sof_loans_by_month', {}); by[selectedMonth] = loanData; setStoredData('sof_loans_by_month', by);
+    syncAllLoans(loanData, 'sof_loans_by_month', 'sof_loans_data', DEFAULT_LOAN_DATA);
   };
   // Deposit-member loans: same engine, separate dataset/storage.
   const editDepositLoanRaw = (idx: number, field: string, value: string) => {
@@ -3753,7 +3808,7 @@ function Loans() {
     }));
   };
   const saveDepositLoanMonth = () => {
-    const by = getStoredData('sof_loans_deposit_by_month', {}); by[selectedMonth] = depositLoanData; setStoredData('sof_loans_deposit_by_month', by);
+    syncAllLoans(depositLoanData, 'sof_loans_deposit_by_month', 'sof_loans_deposit_data', DEFAULT_DEPOSIT_LOAN_DATA);
   };
 
   // First-month (មករា) paste import: one line per member → set the opening loan.
