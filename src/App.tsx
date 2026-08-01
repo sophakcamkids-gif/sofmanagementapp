@@ -6262,9 +6262,14 @@ function MemberReport() {
         proofImg: t.proofImg || '',
       }));
 
-    // Show every pending request (awaiting review) plus ONLY the single most
-    // recent approved/recorded transaction — the member keeps just their last one.
-    const latestApproved = recorded.sort((a, b) => sortKey(b.date) - sortKey(a.date)).slice(0, 1);
+    // Show every pending request (awaiting review), plus the most recent recorded
+    // transaction of EACH type — the latest savings deposit AND the latest loan
+    // payment (which itself breaks down into principal + interest) — so the member
+    // sees each kind of activity, not just whichever happened last.
+    const byType = recorded.sort((a, b) => sortKey(b.date) - sortKey(a.date));
+    const latestApproved = ['savings', 'loan']
+      .map((t) => byType.find((r) => r.type === t))
+      .filter(Boolean) as any[];
     return [...pending, ...latestApproved].sort((a, b) => sortKey(b.date) - sortKey(a.date));
   });
 
@@ -8330,12 +8335,15 @@ function MemberReport() {
                           </span>
                           <span className="font-mono text-[10px] text-slate-400 font-extrabold">{txn.id}</span>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2 mt-1">
-                          <span className="text-xs font-black text-slate-800">${txn.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                          {txn.principal !== undefined && txn.interest !== undefined && (
-                            <span className="text-[9px] font-bold text-slate-500 bg-slate-200/60 px-2 py-0.5 rounded-md">
-                              (រំលស់ដើម៖ ${txn.principal.toLocaleString(undefined, {minimumFractionDigits: 2})} + ការប្រាក់៖ ${txn.interest.toLocaleString(undefined, {minimumFractionDigits: 2})})
-                            </span>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                          {txn.type === 'savings' ? (
+                            <span className="text-[10px] font-bold text-[#0a6652] bg-emerald-50 px-2 py-0.5 rounded-md">ដាក់សន្សំ ${(txn.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                          ) : (
+                            <>
+                              {Number(txn.principal) > 0 && <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">បង់រំលស់កម្ចី ${Number(txn.principal).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>}
+                              {Number(txn.interest) > 0 && <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md">បង់ការប្រាក់ ${Number(txn.interest).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>}
+                              <span className="text-[10px] font-black text-slate-800">សរុប ${(txn.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                            </>
                           )}
                         </div>
                         <p className="text-[9px] font-bold text-slate-400 mt-0.5 font-sans">
