@@ -762,6 +762,77 @@ export default function App() {
     );
   }
 
+  // Heal database on mount to fix any existing out-of-sync month data
+  useEffect(() => {
+    const hasHealed = sessionStorage.getItem('sof_db_healed_v2');
+    if (!hasHealed) {
+      const recalcLoanRowGlobal = (merged: any) => {
+        const fmt = (v: number) => (v ? v.toFixed(2) : '-');
+        const beginning = num(merged.loanValue);
+        const hasRate = merged.rate !== undefined && merged.rate !== null && String(merged.rate).trim() !== '';
+        const rate = hasRate ? num(merged.rate) / 100 : undefined;
+        const interestDue = Number(((rate ?? DEFAULT_RATES.loan) * beginning).toFixed(2));
+        const unpaid = Math.max(0, Number((interestDue - num(merged.interestPaid)).toFixed(2)));
+        const newLoanVal = merged.newLoanEdited ? num(merged.newLoan) : unpaid;
+        const res = computeLoan({
+          id: merged.id, beginning, newLoan: newLoanVal, repayment: num(merged.repayment), rate,
+        }, DEFAULT_RATES);
+        return {
+          ...merged,
+          interest: fmt(interestDue),
+          newLoan: merged.newLoanEdited ? merged.newLoan : fmt(unpaid),
+          remaining: fmt(res.remaining),
+        };
+      };
+
+      const healLoans = (byKey: string, rosterKey: string, rosterDef: any[]) => {
+        const byMonth = getStoredData(byKey, {}) || {};
+        let prevRemaining: Record<string, any> | null = null;
+        let prevRate: Record<string, any> | null = null;
+        for (let i = 0; i < MONTHS_2026.length; i++) {
+          const month = MONTHS_2026[i];
+          if (!byMonth[month] || !byMonth[month].length) continue;
+          let rows = byMonth[month];
+          if (prevRemaining) {
+            rows = rows.map((r: any) => {
+              const upd = prevRemaining![r.id] !== undefined ? { ...r, loanValue: String(prevRemaining![r.id]) } : { ...r };
+              if ((upd.rate == null || String(upd.rate).trim() === '') && prevRate && prevRate[r.id] != null) upd.rate = prevRate[r.id];
+              return upd;
+            });
+          }
+          rows = rows.map(recalcLoanRowGlobal);
+          prevRemaining = {}; prevRate = {};
+          rows.forEach((r: any) => { prevRemaining![r.id] = r.remaining; if (r.rate != null && String(r.rate).trim() !== '') prevRate![r.id] = r.rate; });
+          byMonth[month] = rows;
+        }
+        setStoredData(byKey, byMonth);
+      };
+      healLoans('sof_loans_by_month', 'sof_loans_data', DEFAULT_LOAN_DATA);
+      healLoans('sof_loans_deposit_by_month', 'sof_loans_deposit_data', DEFAULT_DEPOSIT_LOAN_DATA);
+      sessionStorage.setItem('sof_db_healed_v2', 'true');
+      
+      // Also heal savings
+      const sBy = getStoredData('sof_savings_by_month', {}) || {};
+      const gBy = getStoredData('sof_group_by_month', {}) || {};
+      const dBy = getStoredData('sof_deposit_by_month', {}) || {};
+      let prevTotals: any = null;
+      let result: any = null;
+      const colTotals = (arr: any[]) => { const m: Record<string, any> = {}; (arr || []).forEach((r: any) => { m[r.id] = r.total; }); return m; };
+      for (let i = 0; i < MONTHS_2026.length; i++) {
+        const month = MONTHS_2026[i];
+        if (!sBy[month] || !sBy[month].length) continue;
+        result = computeSavingsMonthLive(month, prevTotals);
+        prevTotals = { active: colTotals(result.active), group: colTotals(result.group), deposit: colTotals(result.deposit) };
+        sBy[month] = result.active;
+        gBy[month] = result.group;
+        dBy[month] = result.deposit;
+      }
+      setStoredData('sof_savings_by_month', sBy);
+      setStoredData('sof_group_by_month', gBy);
+      setStoredData('sof_deposit_by_month', dBy);
+    }
+  }, []);
+
   return (
     <Router>
       <div className="min-h-screen bg-[#eef8f2] text-slate-800 font-sans flex flex-col">
