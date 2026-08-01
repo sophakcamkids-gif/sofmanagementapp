@@ -763,7 +763,7 @@ export default function App() {
   }
 
   // Heal database on mount to fix any existing out-of-sync month data
-  useEffect(() => {
+  /* useEffect(() => {
     const hasHealed = sessionStorage.getItem('sof_db_healed_v2');
     if (!hasHealed) {
       const recalcLoanRowGlobal = (merged: any) => {
@@ -831,7 +831,7 @@ export default function App() {
       setStoredData('sof_group_by_month', gBy);
       setStoredData('sof_deposit_by_month', dBy);
     }
-  }, []);
+  }, []); */
 
   return (
     <Router>
