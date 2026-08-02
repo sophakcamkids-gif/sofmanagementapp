@@ -8157,6 +8157,17 @@ function MemberReport() {
               <p className="mt-4 text-[10px] text-slate-400 font-bold leading-relaxed">
                 💡 ណែនាំ៖ បន្ទាប់ពីស្កេន និងបង់ប្រាក់តាមរយៈ ABA App រួចរាល់ សូមធ្វើការថតរូបស្គ្រីនសត (Screenshot) នៃប្រតិបត្តិការរបស់អ្នក ដើម្បីផ្ញើជាភស្តុតាងនៅខាងស្តាំដៃនេះ។
               </p>
+
+              {/* Security reminder — verify amount & account before sending, in case a QR is tampered with. */}
+              <div className="mt-3 rounded-2xl p-3" style={{ background: '#fff7ed', border: '1px solid #fed7aa' }}>
+                <p className="text-[10px] font-black" style={{ color: '#c2410c' }}>⚠️ សូមប្រុងប្រយ័ត្ន មុនចុចផ្ទេរប្រាក់</p>
+                <p className="text-[10px] font-bold leading-relaxed mt-1" style={{ color: '#9a3412' }}>
+                  សូមពិនិត្យឱ្យបានច្បាស់នៅក្នុង ABA App៖<br />
+                  ✅ <b>ឈ្មោះគណនី</b>៖ LAUV V. &amp; PHORN S.<br />
+                  ✅ <b>លេខគណនី</b> និង <b>ចំនួនទឹកប្រាក់</b> ត្រឹមត្រូវ<br />
+                  បើឈ្មោះ/លេខគណនីខុសពីនេះ សូម <b>កុំផ្ទេរ</b> ហើយជូនដំណឹងគណៈកម្មការភ្លាម (QR អាចត្រូវបានក្លែងបន្លំ)។
+                </p>
+              </div>
             </div>
 
             {/* Right side: Interactive payment submission form */}
