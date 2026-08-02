@@ -8146,7 +8146,7 @@ function MemberReport() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400 font-bold">ឈ្មោះគណនី៖</span>
-                  <span className="font-black text-slate-700">LAUV V. & PHORN S.</span>
+                  <span className="font-black text-slate-700">LAUV VY AND PHORN SOPHAK</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400 font-bold">លេខគណនី៖</span>
@@ -8167,7 +8167,7 @@ function MemberReport() {
                 <p className="text-[10px] font-black" style={{ color: '#c2410c' }}>⚠️ សូមប្រុងប្រយ័ត្ន មុនចុចផ្ទេរប្រាក់</p>
                 <p className="text-[10px] font-bold leading-relaxed mt-1" style={{ color: '#9a3412' }}>
                   សូមពិនិត្យឱ្យបានច្បាស់នៅក្នុង ABA App៖<br />
-                  ✅ <b>ឈ្មោះគណនី</b>៖ LAUV V. &amp; PHORN S.<br />
+                  ✅ <b>ឈ្មោះគណនី</b>៖ LAUV VY AND PHORN SOPHAK<br />
                   ✅ <b>លេខគណនី</b> និង <b>ចំនួនទឹកប្រាក់</b> ត្រឹមត្រូវ<br />
                   បើឈ្មោះ/លេខគណនីខុសពីនេះ សូម <b>កុំផ្ទេរ</b> ហើយជូនដំណឹងគណៈកម្មការភ្លាម (QR អាចត្រូវបានក្លែងបន្លំ)។
                 </p>
