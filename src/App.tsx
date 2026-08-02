@@ -857,6 +857,13 @@ export default function App() {
         {/* Top Header Wrapper */}
         <div className="w-full bg-[#eef8f2] border-b border-slate-200/40">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+            {/* Nudge the admin to change the default password (full access = biggest risk). */}
+            {userRole === 'admin' && getAdminAuth().password === 'sof2026' && (
+              <div className="mt-2 rounded-xl px-3 py-2 text-[11px] font-bold flex items-start gap-2" style={{ background: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412' }}>
+                <span>⚠️</span>
+                <span>អ្នកកំពុងប្រើពាក្យសម្ងាត់ admin លំនាំដើម (sof2026)។ សូមប្តូរវានៅ «ការកំណត់ (Settings)» ដើម្បីសុវត្ថិភាព។</span>
+              </div>
+            )}
             {/* Header */}
             <header className="py-4 flex justify-between items-center shrink-0 w-full">
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
