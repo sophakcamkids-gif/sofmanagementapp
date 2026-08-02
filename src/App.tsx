@@ -753,6 +753,24 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
+  // Auto-logout after 20 minutes of inactivity — so a signed-in account left open on
+  // a shared/lost phone doesn't stay accessible. Any interaction resets the timer.
+  useEffect(() => {
+    if (!userRole) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const logout = () => {
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('memberId');
+      alert('អ្នកត្រូវបានចេញពីគណនីដោយស្វ័យប្រវត្តិ ដោយសារអសកម្មភាពយូរ។ សូមចូលម្តងទៀត។');
+      window.location.href = '/login';
+    };
+    const reset = () => { clearTimeout(timer); timer = setTimeout(logout, 20 * 60 * 1000); };
+    const events = ['click', 'keydown', 'touchstart', 'scroll', 'mousemove'];
+    events.forEach((e) => window.addEventListener(e, reset, { passive: true }));
+    reset();
+    return () => { clearTimeout(timer); events.forEach((e) => window.removeEventListener(e, reset)); };
+  }, [userRole]);
+
   if (!hydrated) {
     return (
       <div className="min-h-screen bg-[#eef8f2] flex flex-col items-center justify-center gap-3 text-[#0a6652]">
