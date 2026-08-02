@@ -8149,6 +8149,10 @@ function MemberReport() {
                   <span className="font-black text-slate-700">LAUV V. & PHORN S.</span>
                 </div>
                 <div className="flex justify-between items-center">
+                  <span className="text-slate-400 font-bold">លេខគណនី៖</span>
+                  <span className="font-black text-slate-700 tracking-wider">001 299 202</span>
+                </div>
+                <div className="flex justify-between items-center">
                   <span className="text-slate-400 font-bold">ចំណាំការផ្ញើ៖</span>
                   <span className="font-extrabold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">ឈ្មោះសមាជិក</span>
                 </div>
