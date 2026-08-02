@@ -5432,7 +5432,7 @@ function LoanRequests() {
 
   return (
     <PageView title="សំណើសុំកម្ចី (Loan Requests)" hideUpload={true} hideDownload={true} hideAdd={true}>
-      <p className="text-slate-500 font-medium mb-6">ពាក្យស្នើសុំកម្ចីពីសមាជិក ដែលរង់ចាំការពិនិត្យ។ ឯកសារ/រូបថតពាក្យស្នើសុំ ត្រូវបានផ្ញើទៅ Telegram ក្រុម SOF។</p>
+      <p className="text-slate-500 font-medium mb-6">ពាក្យស្នើសុំកម្ចីពីសមាជិក ដែលរង់ចាំការពិនិត្យ។ ឯកសារ/រូបថតពាក្យស្នើសុំ ត្រូវបានផ្ញើទៅ Telegram ក្រុម SOF Committee។</p>
 
       {requests.length === 0 ? (
         <div className="flex items-center justify-center h-40 bg-slate-50 text-slate-400 rounded-2xl font-bold border border-slate-100">
@@ -6434,7 +6434,7 @@ function MemberReport() {
     setLoanFiles([]);
     setLoanReqBusy(false);
     alert(sent
-      ? 'បានផ្ញើពាក្យស្នើសុំកម្ចីចូល Telegram ក្រុម SOF! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។'
+      ? 'បានផ្ញើពាក្យស្នើសុំកម្ចីចូល Telegram ក្រុម SOF Committee! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។'
       : 'ពាក្យស្នើសុំកម្ចីត្រូវបានកត់ត្រា! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។');
   };
 
@@ -6490,7 +6490,7 @@ function MemberReport() {
     setStoredData('sof_pending_loan_requests', [txn, ...all]);
     setLoanReqBusy(false);
     alert(sent
-      ? 'បានផ្ញើពាក្យស្នើសុំកម្ចីចូល Telegram ក្រុម SOF! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។'
+      ? 'បានផ្ញើពាក្យស្នើសុំកម្ចីចូល Telegram ក្រុម SOF Committee! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។'
       : 'ពាក្យស្នើសុំកម្ចីត្រូវបានកត់ត្រា! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។');
   };
 
@@ -6579,7 +6579,7 @@ function MemberReport() {
     setProofFilename('');
     setPaymentDate(new Date().toISOString().split('T')[0]);
     alert(sent
-      ? "បានផ្ញើភស្តុតាងចូល Telegram ក្រុម SOF! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។"
+      ? "បានផ្ញើភស្តុតាងចូល Telegram ក្រុម SOF Committee! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។"
       : "ការផ្ញើភស្តុតាងបានជោគជ័យ! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។");
   };
   
@@ -7142,7 +7142,7 @@ function MemberReport() {
               setDigitalAmount('');
               setDigitalPurpose('');
               alert(sent
-                ? "បានផ្ញើពាក្យស្នើសុំកម្ចីអនឡាញចូល Telegram ក្រុម SOF! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។"
+                ? "បានផ្ញើពាក្យស្នើសុំកម្ចីអនឡាញចូល Telegram ក្រុម SOF Committee! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។"
                 : "ពាក្យស្នើសុំកម្ចីត្រូវបានកត់ត្រា! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។");
             }} className="space-y-4">
               <div>
