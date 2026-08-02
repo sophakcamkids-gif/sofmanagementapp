@@ -6528,8 +6528,11 @@ function MemberReport() {
     }
 
     const code = (localStorage.getItem('memberId') || '').toUpperCase();
+    // The payment date is stamped automatically at submit time (the day the member
+    // sends the proof) — not an editable field the member could set wrongly.
+    const today = new Date().toISOString().split('T')[0];
     const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
-    const parts = (paymentDate || '').split('-');
+    const parts = today.split('-');
     const monthKey = parts.length === 3 ? `${KHM[parseInt(parts[1], 10) - 1]} ${parts[0]}` : '';
 
     // Prevent accidental duplicate payments for the same month (the treasurer once saw
@@ -6550,11 +6553,11 @@ function MemberReport() {
       `ខែ៖ ${monthKey}\n` +
       (savings > 0 ? `• ដាក់សន្សំ៖ $${savings.toFixed(2)}\n` : '') +
       (loanTotal > 0 ? `• បង់កម្ចី៖ $${loanTotal.toFixed(2)}  (ដើម $${principal.toFixed(2)} + ការ $${interest.toFixed(2)})\n` : '') +
-      `កាលបរិច្ឆេទ៖ ${paymentDate}   Txn៖ ${transactionId || 'N/A'}`;
+      `កាលបរិច្ឆេទ៖ ${today}   Txn៖ ${transactionId || 'N/A'}`;
     const sent = await sendTelegramPhoto(proofImage, caption);
 
     const base = {
-      memberCode: code, memberName, date: paymentDate, monthKey,
+      memberCode: code, memberName, date: today, monthKey,
       transactionId: transactionId || "N/A", status: 'pending' as 'approved' | 'pending',
       proofName: proofFilename || 'screenshot.png',
       proofImg: sent ? '' : proofImage,   // drop base64 once it's safely in Telegram
@@ -6574,6 +6577,7 @@ function MemberReport() {
     setTransactionId('');
     setProofImage(null);
     setProofFilename('');
+    setPaymentDate(new Date().toISOString().split('T')[0]);
     alert(sent
       ? "បានផ្ញើភស្តុតាងចូល Telegram ក្រុម SOF! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។"
       : "ការផ្ញើភស្តុតាងបានជោគជ័យ! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។");
@@ -8226,13 +8230,13 @@ function MemberReport() {
                     </span>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">កាលបរិច្ឆេទបង់ប្រាក់</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">កាលបរិច្ឆេទបង់ប្រាក់ <span className="text-[#0a6652] normal-case">(អូតូ ថ្ងៃនេះ)</span></label>
                     <input
                       type="date"
-                      required
                       value={paymentDate}
-                      onChange={(e) => setPaymentDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0a6652] text-xs font-bold text-slate-700"
+                      readOnly
+                      title="កាលបរិច្ឆេទត្រូវបានកំណត់ដោយស្វ័យប្រវត្តិ ជាថ្ងៃដែលអ្នកបញ្ជូនភស្តុតាង"
+                      className="w-full px-3 py-2 rounded-xl bg-emerald-50/60 border border-emerald-100 text-xs font-black text-[#0a6652] cursor-not-allowed focus:outline-none"
                     />
                   </div>
                 </div>
