@@ -144,6 +144,18 @@ const hardRefresh = async (): Promise<void> => {
   window.location.replace(url.toString());
 };
 
+// ── Install-to-home-screen (PWA) ─────────────────────────────────────────────
+// Android Chrome fires `beforeinstallprompt` — capture it so we can offer a one-tap
+// install button. iOS Safari never fires it (manual Share → Add to Home Screen).
+let deferredInstallPrompt: any = null;
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e: any) => { e.preventDefault(); deferredInstallPrompt = e; });
+}
+// True when the app is already running as an installed PWA (so we hide install hints).
+const isAppInstalled = (): boolean =>
+  (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+  (typeof navigator !== 'undefined' && (navigator as any).standalone === true);
+
 // ── SOF Bot (Gemini) ────────────────────────────────────────────────────────
 // AI assistant that answers a member's questions about their own savings/loans.
 // The key comes from the Settings page (cloud-synced, like the Telegram token) or
@@ -695,6 +707,51 @@ function Notifications({ onClose }: { onClose: () => void }) {
   );
 }
 
+// Step-by-step guide to install the app on a phone's home screen. On Android Chrome
+// it offers a one-tap install; on iOS it shows the manual Share → Add to Home Screen steps.
+function InstallGuide({ onClose }: { onClose: () => void }) {
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const doInstall = async () => { try { deferredInstallPrompt.prompt(); await deferredInstallPrompt.userChoice; deferredInstallPrompt = null; } catch { /* ignore */ } onClose(); };
+  const Step = ({ n, children }: { n: number; children: React.ReactNode }) => (
+    <div className="flex items-start gap-2.5">
+      <span className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black shrink-0" style={{ background: '#0a6652', color: '#ffffff' }}>{n}</span>
+      <span className="text-xs leading-relaxed" style={{ color: '#334155' }}>{children}</span>
+    </div>
+  );
+  return (
+    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center sm:p-4" style={{ background: 'rgba(15,23,42,0.5)' }} onClick={onClose}>
+      <div className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-200" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-3" style={{ background: '#0a6652', color: '#ffffff' }}>
+          <p className="font-black text-sm">📲 ដំឡើងកម្មវិធីលើទូរស័ព្ទ</p>
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.15)' }}><X size={16} /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <p className="text-xs font-bold" style={{ color: '#64748b' }}>ដំឡើងទុកលើអេក្រង់ដើម ដើម្បីបើកលឿន ដូចកម្មវិធីធម្មតា (មិនចាំបាច់វាយ URL)។</p>
+          {deferredInstallPrompt && !isIOS && (
+            <button onClick={doInstall} className="w-full py-3 rounded-xl text-white font-black text-sm active:scale-95 transition-all" style={{ background: '#0a6652' }}>📲 ដំឡើងឥឡូវ (Install)</button>
+          )}
+          {isIOS ? (
+            <div className="space-y-3">
+              <p className="text-[11px] font-black" style={{ color: '#0a6652' }}>លើ iPhone (Safari)៖</p>
+              <Step n={1}>ចុចរូប <b>Share</b> (ប្រអប់មានព្រួញឡើងលើ ⬆️) នៅរបារខាងក្រោមអេក្រង់</Step>
+              <Step n={2}>រំកិលចុះ រួចចុច <b>«Add to Home Screen»</b> (បន្ថែមទៅអេក្រង់ដើម)</Step>
+              <Step n={3}>ចុច <b>«Add»</b> នៅខាងស្តាំលើ → រូបកម្មវិធីនឹងលេចលើអេក្រង់ដើម</Step>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-[11px] font-black" style={{ color: '#0a6652' }}>លើ Android (Chrome)៖</p>
+              <Step n={1}>ចុចប៊ូតុង <b>«ដំឡើងឥឡូវ»</b> ខាងលើ (បើមាន) — ឬ​ធ្វើ​តាម​ជំហាន​ខាងក្រោម</Step>
+              <Step n={2}>ចុច <b>⋮</b> (បីចំណុច) នៅជ្រុងខាងស្តាំលើ</Step>
+              <Step n={3}>ចុច <b>«Install app»</b> ឬ <b>«Add to Home screen»</b> → ចុច <b>«Install»</b></Step>
+            </div>
+          )}
+          <p className="text-[10px] font-bold text-center" style={{ color: '#94a3b8' }}>បន្ទាប់ពីដំឡើង សូមបើកកម្មវិធីពីរូបនៅអេក្រង់ដើម។</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [userRole, setUserRole] = useState<string | null>(localStorage.getItem('userRole'));
   const [memberId, setMemberId] = useState<string | null>(localStorage.getItem('memberId'));
@@ -702,6 +759,7 @@ export default function App() {
   const [navOpen, setNavOpen] = useState(false);  // mobile nav drawer
   const [botOpen, setBotOpen] = useState(false);  // SOF Bot (AI assistant) modal
   const [notifOpen, setNotifOpen] = useState(false);  // notifications / announcements
+  const [installOpen, setInstallOpen] = useState(false);  // "install to home screen" guide
   const announcementCount = (() => {
     const shared = ((getStoredData('sof_announcements', []) as any[]) || []).length;
     const code = (localStorage.getItem('memberId') || '').toUpperCase();
@@ -1072,6 +1130,7 @@ export default function App() {
 
         {botOpen && <SofBot onClose={() => setBotOpen(false)} />}
         {notifOpen && <Notifications onClose={() => setNotifOpen(false)} />}
+        {installOpen && <InstallGuide onClose={() => setInstallOpen(false)} />}
 
         {/* Mobile nav drawer (opened by the ម៉ឺនុយ button) */}
         {navOpen && userRole && (
@@ -1105,6 +1164,16 @@ export default function App() {
                   </>
                 )}
               </div>
+              {!isAppInstalled() && (
+                <button
+                  onClick={() => { setNavOpen(false); setInstallOpen(true); }}
+                  className="w-full mt-2 flex items-center gap-2 px-3 py-2 rounded-xl text-left font-black text-xs transition-colors cursor-pointer"
+                  style={{ background: '#eef8f2', color: '#0a6652' }}
+                >
+                  <span>📲</span>
+                  <span>ដំឡើងកម្មវិធីលើទូរស័ព្ទ</span>
+                </button>
+              )}
               <button
                 onClick={() => {
                   localStorage.removeItem('userRole');
@@ -1114,7 +1183,7 @@ export default function App() {
                   setNavOpen(false);
                   window.location.href = '/login';
                 }}
-                className="w-full mt-4 flex items-center gap-2 px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-xl text-left font-black text-xs transition-colors cursor-pointer"
+                className="w-full mt-2 flex items-center gap-2 px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-xl text-left font-black text-xs transition-colors cursor-pointer"
               >
                 <LogIn size={14} className="rotate-180" />
                 <span>ចាកចេញ (Logout)</span>
@@ -5983,6 +6052,7 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
   const [loginType, setLoginType] = useState<'member' | 'admin'>(isInitiallyMember ? 'member' : 'admin');
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
+  const [installOpen, setInstallOpen] = useState(false);
   const [adminUsername, setAdminUsername] = useState(getAdminAuth().username);
   const [adminPassword, setAdminPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -6034,6 +6104,18 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
 
   return (
     <PageView title="ច្រកចូលប្រព័ន្ធ (System Login)" hideUpload hideAdd hideBack hideDownload>
+      {installOpen && <InstallGuide onClose={() => setInstallOpen(false)} />}
+      {!isAppInstalled() && (
+        <button
+          type="button"
+          onClick={() => setInstallOpen(true)}
+          className="max-w-md mx-auto w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl font-black text-xs active:scale-95 transition-all"
+          style={{ background: '#eef8f2', border: '1px solid #a7f3d0', color: '#0a6652' }}
+        >
+          <span>📲</span>
+          <span>ដំឡើងកម្មវិធីនេះលើទូរស័ព្ទ (ចុចមើលរបៀប)</span>
+        </button>
+      )}
       <div className="max-w-md mx-auto bg-white p-5 sm:p-8 rounded-[24px] border border-slate-200 shadow-sm mt-4">
         {/* The member portal is a dedicated members-only entrance (link sent by the
             committee) — it must NOT expose any path to the admin console. */}
