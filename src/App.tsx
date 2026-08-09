@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Database, Download, RefreshCw, BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { exportElementToPdf, exportElementToImage, renderElementToPngDataUrl } from './utils/exportPdf';
 import FitToWidth from './FitToWidth';
@@ -5814,6 +5814,84 @@ function SettingsPage() {
     }
   };
 
+  
+  const handleExportExcel = () => {
+    try {
+      const wb = XLSX.utils.book_new();
+
+      // Get datasets
+      const profiles = getStoredData('sof_profile_data', []);
+      const savings = getStoredData('sof_savings_by_month', {});
+      const loans = getStoredData('sof_loans_by_month', {});
+      const depositSavings = getStoredData('sof_savings_deposit_by_month', {});
+      const fixedSavings = getStoredData('sof_savings_fixed_by_month', {});
+      
+      // Function to map nested to flat
+      const flatMap = (dataObj) => {
+        const arr = [];
+        Object.keys(dataObj).forEach(month => {
+          dataObj[month].forEach(r => {
+             arr.push({ Month: month, ...r });
+          });
+        });
+        return arr;
+      };
+
+      if (profiles.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(profiles), "Members Profile");
+      
+      const sArr = flatMap(savings);
+      if (sArr.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sArr), "Active Savings");
+      
+      const dsArr = flatMap(depositSavings);
+      if (dsArr.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dsArr), "Deposit Savings");
+
+      const fsArr = flatMap(fixedSavings);
+      if (fsArr.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(fsArr), "Fixed Term");
+
+      const lArr = flatMap(loans);
+      if (lArr.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(lArr), "Active Loans");
+
+      XLSX.writeFile(wb, `SOF_Backup_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch (e) {
+      alert("Error exporting to Excel: " + e.message);
+    }
+  };
+
+  const [googleWebhook, setGoogleWebhook] = useState(() => (getStoredData('sof_google_webhook', '')));
+  const [syncStatus, setSyncStatus] = useState('');
+  
+  const handleSyncGoogle = async () => {
+    if (!googleWebhook.trim()) {
+      alert("សូមបញ្ចូល URL របស់ Google Apps Script សិន!");
+      return;
+    }
+    setSyncStatus('កំពុងបញ្ជូន...⏳');
+    try {
+      const payload = {
+        profiles: getStoredData('sof_profile_data', []),
+        savings: getStoredData('sof_savings_by_month', {}),
+        loans: getStoredData('sof_loans_by_month', {}),
+        depositSavings: getStoredData('sof_savings_deposit_by_month', {}),
+        fixedSavings: getStoredData('sof_savings_fixed_by_month', {})
+      };
+      
+      // Because Google Apps Script requires simple CORS handling or form data
+      // For simple JSON POST, no-cors mode might be needed, but we can't read response.
+      // We will use standard POST, the Apps Script must return proper CORS headers or we just ignore the error.
+      await fetch(googleWebhook, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        mode: 'no-cors' // Allows sending POST without preflight CORS issues
+      });
+      // no-cors doesn't allow reading response, so we just assume success if it didn't throw network error.
+      setSyncStatus('✅ ជោគជ័យ (សាកល្បងមើល Google Sheet)');
+    } catch (e) {
+      setSyncStatus('❌ បរាជ័យ Network: ' + e.message);
+    }
+    setTimeout(() => setSyncStatus(''), 8000);
+  };
+
+
   const handleExportJSON = () => {
     const data: Record<string, any> = {};
     for (let i = 0; i < localStorage.length; i++) {
@@ -5978,6 +6056,39 @@ function SettingsPage() {
             <Send size={13} /> ផ្ញើឥឡូវ (តេស្ត)
           </button>
           {reminderMsg && <span className="text-[10px] font-bold text-slate-600">{reminderMsg}</span>}
+        </div>
+      </div>
+
+      
+      {/* Backup and Sync Section */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4 mb-6">
+        <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2 pb-2 border-b border-slate-100">
+          <Database size={16} className="text-blue-600" />
+          <span>ទាញយក និងរក្សាទុកទិន្នន័យ (Backup & Sync)</span>
+        </h3>
+        
+        <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl space-y-3">
+          <p className="text-[10px] font-bold text-blue-800">ជម្រើសទី ១: ទាញយកឯកសារ Excel (គាំទ្រ Google Sheets)</p>
+          <p className="text-[9px] text-blue-600">ឯកសារនេះផ្ទុកទិន្នន័យទាំងអស់ (សមាជិក សន្សំ កម្ចី) ហើយអ្នកអាចអូសវាចូល Google Drive ដើម្បីបើកជា Google Sheets បាន។</p>
+          <button type="button" onClick={handleExportExcel} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-xl cursor-pointer shadow-sm active:scale-95 inline-flex items-center gap-2">
+            <Download size={14} /> ទាញយកជា Excel (.xlsx)
+          </button>
+        </div>
+
+        <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl space-y-3">
+          <p className="text-[10px] font-bold text-emerald-800">ជម្រើសទី ២: បញ្ជូនទៅ Google Sheets ស្វ័យប្រវត្តិ (Web App)</p>
+          <p className="text-[9px] text-emerald-600">អ្នកត្រូវដាក់ Google Apps Script URL នៅទីនេះ ដើម្បីឱ្យកម្មវិធីអាចបញ្ជូនទិន្នន័យទៅ Sheet របស់អ្នកផ្ទាល់។</p>
+          <div>
+            <label className="block text-[9px] font-bold text-emerald-700 mb-1">Google Apps Script Webhook URL</label>
+            <input type="text" value={googleWebhook} onChange={(e) => setGoogleWebhook(e.target.value)} onBlur={() => setStoredData('sof_google_webhook', googleWebhook.trim())} placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+              className="w-full text-[10px] font-mono border border-emerald-200 rounded-lg px-2 py-1.5 bg-white focus:border-emerald-500 outline-none" />
+          </div>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={handleSyncGoogle} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl cursor-pointer shadow-sm active:scale-95 inline-flex items-center gap-2">
+              <RefreshCw size={14} /> ធ្វើបច្ចុប្បន្នភាពឥឡូវនេះ (Sync)
+            </button>
+            {syncStatus && <span className="text-[10px] font-bold text-emerald-700">{syncStatus}</span>}
+          </div>
         </div>
       </div>
 
