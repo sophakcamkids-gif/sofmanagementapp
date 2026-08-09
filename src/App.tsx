@@ -279,6 +279,32 @@ const sumField = (arr: any[], field: string): number =>
 // Format a number as money with two decimals and thousands separators.
 const fmtMoney = (n: number): string =>
   n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Format a stored cell value for DISPLAY: keep "-" for empty cells, otherwise show
+// the number as "1,000.00" (2 decimals + thousands separators). Do NOT use on inputs.
+const fmtNum = (v: any): string =>
+  (v === '-' || v === null || v === undefined || v === '') ? '-' : fmtMoney(num(v));
+
+
+const FormattedInput = ({ value, onBlur, className, ...props }: any) => {
+  const [isFocused, setIsFocused] = React.useState(false);
+  const displayValue = isFocused 
+    ? (value === '-' || value == null ? '' : value) 
+    : (value === '-' || value === null || value === undefined || value === '' ? '' : fmtMoney(num(value)));
+  
+  return (
+    <input
+      {...props}
+      type="text"
+      className={className}
+      value={displayValue}
+      onFocus={() => setIsFocused(true)}
+      onBlur={(e) => {
+        setIsFocused(false);
+        if (onBlur) onBlur(e);
+      }}
+    />
+  );
+};
 
 const DEFAULT_PROFILE_DATA = [];
 
@@ -3493,31 +3519,31 @@ function Savings() {
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
                       {isFirstMonth ? (
-                        <input value={showVal(row.startCapital)} onChange={(e) => editSavingRaw(idx, 'startCapital', e.target.value)} onBlur={saveSavingsMonth}
+                        <FormattedInput value={row.startCapital} onChange={(e) => editSavingRaw(idx, 'startCapital', e.target.value)} onBlur={saveSavingsMonth}
                           className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                       ) : (
-                        <span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីសរុបខែមុន">{row.startCapital}</span>
+                        <span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីសរុបខែមុន">{fmtNum(row.startCapital)}</span>
                       )}
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right text-slate-500 text-xs">{row.share}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={showVal(row.addSaving)} onChange={(e) => editSavingRaw(idx, 'addSaving', e.target.value)} onBlur={saveSavingsMonth}
+                      <FormattedInput value={row.addSaving} onChange={(e) => editSavingRaw(idx, 'addSaving', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.profit}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={showVal(row.withdraw)} onChange={(e) => editSavingRaw(idx, 'withdraw', e.target.value)} onBlur={saveSavingsMonth}
+                      <FormattedInput value={row.withdraw} onChange={(e) => editSavingRaw(idx, 'withdraw', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={showVal(row.deductFee)} onChange={(e) => editSavingRaw(idx, 'deductFee', e.target.value)} onBlur={saveSavingsMonth}
+                      <FormattedInput value={row.deductFee} onChange={(e) => editSavingRaw(idx, 'deductFee', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={showVal(row.actualFee)} onChange={(e) => editSavingRaw(idx, 'actualFee', e.target.value)} onBlur={saveSavingsMonth}
+                      <FormattedInput value={row.actualFee} onChange={(e) => editSavingRaw(idx, 'actualFee', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">{row.total}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">{fmtNum(row.total)}</td>
                     <td className="px-3 py-2 text-center text-green-600 font-bold">{row.checked ? '✓' : ''}</td>
                   </tr>
                 ))}
@@ -3572,35 +3598,35 @@ function Savings() {
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
                       {isFirstMonth ? (
-                        <input value={showVal(row.startCapital)} onChange={(e) => editGroupRaw(idx, 'startCapital', e.target.value)} onBlur={saveSavingsMonth}
+                        <FormattedInput value={row.startCapital} onChange={(e) => editGroupRaw(idx, 'startCapital', e.target.value)} onBlur={saveSavingsMonth}
                           className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                       ) : (
-                        <span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីសរុបខែមុន">{row.startCapital}</span>
+                        <span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីសរុបខែមុន">{fmtNum(row.startCapital)}</span>
                       )}
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right text-slate-500 text-xs">{row.share}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={showVal(row.addSaving)} onChange={(e) => editGroupRaw(idx, 'addSaving', e.target.value)} onBlur={saveSavingsMonth}
+                      <FormattedInput value={row.addSaving} onChange={(e) => editGroupRaw(idx, 'addSaving', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={showVal(row.manualAdd)} onChange={(e) => editGroupRaw(idx, 'manualAdd', e.target.value)} onBlur={saveSavingsMonth}
+                      <FormattedInput value={row.manualAdd} onChange={(e) => editGroupRaw(idx, 'manualAdd', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.profit}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={showVal(row.withdraw)} onChange={(e) => editGroupRaw(idx, 'withdraw', e.target.value)} onBlur={saveSavingsMonth}
+                      <FormattedInput value={row.withdraw} onChange={(e) => editGroupRaw(idx, 'withdraw', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={showVal(row.deductFee)} onChange={(e) => editGroupRaw(idx, 'deductFee', e.target.value)} onBlur={saveSavingsMonth}
+                      <FormattedInput value={row.deductFee} onChange={(e) => editGroupRaw(idx, 'deductFee', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={showVal(row.actualFee)} onChange={(e) => editGroupRaw(idx, 'actualFee', e.target.value)} onBlur={saveSavingsMonth}
+                      <FormattedInput value={row.actualFee} onChange={(e) => editGroupRaw(idx, 'actualFee', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">{row.total}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">{fmtNum(row.total)}</td>
                     <td className="px-3 py-2 text-center text-green-600 font-bold">{row.checked ? '✓' : ''}</td>
                   </tr>
                 ))}
@@ -3655,30 +3681,30 @@ function Savings() {
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.village}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
                       {isFirstMonth ? (
-                        <input value={showVal(row.startCapital)} onChange={(e) => editDepositRaw(idx, 'startCapital', e.target.value)} onBlur={saveSavingsMonth}
+                        <FormattedInput value={row.startCapital} onChange={(e) => editDepositRaw(idx, 'startCapital', e.target.value)} onBlur={saveSavingsMonth}
                           className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                       ) : (
-                        <span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីសរុបខែមុន">{row.startCapital}</span>
+                        <span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីសរុបខែមុន">{fmtNum(row.startCapital)}</span>
                       )}
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={showVal(row.addSaving)} onChange={(e) => editDepositRaw(idx, 'addSaving', e.target.value)} onBlur={saveSavingsMonth}
+                      <FormattedInput value={row.addSaving} onChange={(e) => editDepositRaw(idx, 'addSaving', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium">{row.profit}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={showVal(row.withdraw)} onChange={(e) => editDepositRaw(idx, 'withdraw', e.target.value)} onBlur={saveSavingsMonth}
+                      <FormattedInput value={row.withdraw} onChange={(e) => editDepositRaw(idx, 'withdraw', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={showVal(row.deductFee)} onChange={(e) => editDepositRaw(idx, 'deductFee', e.target.value)} onBlur={saveSavingsMonth}
+                      <FormattedInput value={row.deductFee} onChange={(e) => editDepositRaw(idx, 'deductFee', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={showVal(row.actualFee)} onChange={(e) => editDepositRaw(idx, 'actualFee', e.target.value)} onBlur={saveSavingsMonth}
+                      <FormattedInput value={row.actualFee} onChange={(e) => editDepositRaw(idx, 'actualFee', e.target.value)} onBlur={saveSavingsMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                     </td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">{row.total}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-bold text-[#0a6652] bg-[#fafdfa] shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">{fmtNum(row.total)}</td>
                     <td className="px-3 py-2 text-center text-green-600 font-bold">{row.checked ? '✓' : ''}</td>
                   </tr>
                 ))}
@@ -3727,7 +3753,7 @@ function Savings() {
                       {isFirstMonth ? (
                         <input value={row.startCapital} onChange={(e) => editFixedTermRaw(idx, 'startCapital', e.target.value)} onBlur={saveFixedTermMonth}
                           className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
-                      ) : (<span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីសរុបខែមុន">{row.startCapital}</span>)}
+                      ) : (<span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីសរុបខែមុន">{fmtNum(row.startCapital)}</span>)}
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-center">
                       <div className="flex items-center justify-center gap-0.5">
@@ -3736,7 +3762,7 @@ function Savings() {
                         <span className="text-slate-400 text-xs">%</span>
                       </div>
                     </td>
-                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-indigo-600">{row.interest}</td>
+                    <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-indigo-600">{fmtNum(row.interest)}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
                       <input value={row.addSaving} onChange={(e) => editFixedTermRaw(idx, 'addSaving', e.target.value)} onBlur={saveFixedTermMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
@@ -3745,7 +3771,7 @@ function Savings() {
                       <input value={row.withdraw} onChange={(e) => editFixedTermRaw(idx, 'withdraw', e.target.value)} onBlur={saveFixedTermMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-amber-600 focus:bg-amber-50 outline-none font-medium text-amber-700" />
                     </td>
-                    <td className="px-3 py-2 text-right font-bold text-[#0a6652] bg-[#fafdfa]">{row.total}</td>
+                    <td className="px-3 py-2 text-right font-bold text-[#0a6652] bg-[#fafdfa]">{fmtNum(row.total)}</td>
                   </tr>
                 ))}
                 <tr className="bg-slate-50 text-slate-800 font-bold border-t-2 border-slate-800 h-12">
@@ -4134,7 +4160,7 @@ function Loans() {
   const renderExtTable = (which: 'received' | 'provided') => {
     const c = extConf[which];
     const inp = (row: any, idx: number, field: string, align = 'text-right') =>
-      <input value={showVal(row[field])} onChange={(e) => editExt(which, idx, field, e.target.value)} onBlur={() => saveExt(which)}
+      <FormattedInput value={row[field]} onChange={(e) => editExt(which, idx, field, e.target.value)} onBlur={() => saveExt(which)}
         className={`w-full min-w-[70px] bg-transparent ${align} px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium`} />;
     // Read-only computed/carried cell.
     const ro = (row: any, field: string, align = 'text-right') =>
@@ -4328,10 +4354,10 @@ function Loans() {
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
                       {isFirstMonth ? (
-                        <input value={showVal(row.loanValue)} onChange={(e) => editLoanRaw(idx, 'loanValue', e.target.value)} onBlur={saveLoansMonth}
+                        <FormattedInput value={row.loanValue} onChange={(e) => editLoanRaw(idx, 'loanValue', e.target.value)} onBlur={saveLoansMonth}
                           className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                       ) : (
-                        <span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីកម្ចីនៅសល់ខែមុន">{row.loanValue}</span>
+                        <span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីកម្ចីនៅសល់ខែមុន">{fmtNum(row.loanValue)}</span>
                       )}
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-center">
@@ -4347,23 +4373,23 @@ function Loans() {
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-indigo-600">
                       {row.interest !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
-                      {row.interest}
+                      {fmtNum(row.interest)}
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={showVal(row.repayment)} onChange={(e) => editLoanRaw(idx, 'repayment', e.target.value)} onBlur={saveLoansMonth}
+                      <FormattedInput value={row.repayment} onChange={(e) => editLoanRaw(idx, 'repayment', e.target.value)} onBlur={saveLoansMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-amber-600 focus:bg-amber-50 outline-none font-medium text-amber-700" />
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right bg-[#f3faf6]">
-                      <input value={showVal(row.interestPaid)} onChange={(e) => editLoanRaw(idx, 'interestPaid', e.target.value)} onBlur={saveLoansMonth}
+                      <FormattedInput value={row.interestPaid} onChange={(e) => editLoanRaw(idx, 'interestPaid', e.target.value)} onBlur={saveLoansMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-white outline-none font-bold text-[#0a6652]" />
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={showVal(row.newLoan)} onChange={(e) => editLoanRaw(idx, 'newLoan', e.target.value)} onBlur={saveLoansMonth}
+                      <FormattedInput value={row.newLoan} onChange={(e) => editLoanRaw(idx, 'newLoan', e.target.value)} onBlur={saveLoansMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-emerald-600 focus:bg-emerald-50 outline-none font-medium text-emerald-700" />
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium bg-slate-50">
                       {row.remaining !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
-                      {row.remaining}
+                      {fmtNum(row.remaining)}
                     </td>
                   </tr>
                 ))}
@@ -4416,10 +4442,10 @@ function Loans() {
                     <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500">{row.gender}</td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
                       {isFirstMonth ? (
-                        <input value={showVal(row.loanValue)} onChange={(e) => editDepositLoanRaw(idx, 'loanValue', e.target.value)} onBlur={saveDepositLoanMonth}
+                        <FormattedInput value={row.loanValue} onChange={(e) => editDepositLoanRaw(idx, 'loanValue', e.target.value)} onBlur={saveDepositLoanMonth}
                           className="w-24 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium" />
                       ) : (
-                        <span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីកម្ចីនៅសល់ខែមុន">{row.loanValue}</span>
+                        <span className="block px-2 py-1 text-right font-medium text-slate-600" title="អូតូពីកម្ចីនៅសល់ខែមុន">{fmtNum(row.loanValue)}</span>
                       )}
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-center">
@@ -4435,23 +4461,23 @@ function Loans() {
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium text-indigo-600">
                       {row.interest !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
-                      {row.interest}
+                      {fmtNum(row.interest)}
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={showVal(row.repayment)} onChange={(e) => editDepositLoanRaw(idx, 'repayment', e.target.value)} onBlur={saveDepositLoanMonth}
+                      <FormattedInput value={row.repayment} onChange={(e) => editDepositLoanRaw(idx, 'repayment', e.target.value)} onBlur={saveDepositLoanMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-amber-600 focus:bg-amber-50 outline-none font-medium text-amber-700" />
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right bg-[#f3faf6]">
-                      <input value={showVal(row.interestPaid)} onChange={(e) => editDepositLoanRaw(idx, 'interestPaid', e.target.value)} onBlur={saveDepositLoanMonth}
+                      <FormattedInput value={row.interestPaid} onChange={(e) => editDepositLoanRaw(idx, 'interestPaid', e.target.value)} onBlur={saveDepositLoanMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-white outline-none font-bold text-[#0a6652]" />
                     </td>
                     <td className="px-1 py-1 border-r border-slate-300 text-right">
-                      <input value={showVal(row.newLoan)} onChange={(e) => editDepositLoanRaw(idx, 'newLoan', e.target.value)} onBlur={saveDepositLoanMonth}
+                      <FormattedInput value={row.newLoan} onChange={(e) => editDepositLoanRaw(idx, 'newLoan', e.target.value)} onBlur={saveDepositLoanMonth}
                         className="w-20 text-right bg-transparent px-2 py-1 rounded border border-dashed border-slate-300 focus:border-emerald-600 focus:bg-emerald-50 outline-none font-medium text-emerald-700" />
                     </td>
                     <td className="px-3 py-2 border-r border-slate-300 text-right font-medium bg-slate-50">
                       {row.remaining !== '-' ? <span className="text-slate-400 mr-1">$</span> : null}
-                      {row.remaining}
+                      {fmtNum(row.remaining)}
                     </td>
                   </tr>
                 ))}
@@ -7256,7 +7282,7 @@ function MemberReport() {
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">ចំនួនទឹកប្រាក់ស្នើសុំ (USD)</label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">$</span>
-                  <input 
+                  <FormattedInput 
                     type="number" 
                     value={digitalAmount}
                     onChange={(e) => setDigitalAmount(e.target.value)}
@@ -7739,7 +7765,7 @@ function MemberReport() {
                   <div className="space-y-2.5" style={boxSt}>
                     <div className="flex justify-between items-center text-xs" style={{ borderBottom: '1px dashed #e2e8f0', paddingBottom: '6px' }}>
                       <span className="text-slate-500 font-bold">ទំហំកម្ចី (Loan Size)</span>
-                      <span className="flex items-center"><span className="text-slate-400 mr-0.5">$</span><input type="number" value={repLoanAmt} onChange={(e) => setRepLoanAmt(e.target.value)} className={inputCls + ' w-24'} /></span>
+                      <span className="flex items-center"><span className="text-slate-400 mr-0.5">$</span><FormattedInput type="number" value={repLoanAmt} onChange={(e) => setRepLoanAmt(e.target.value)} className={inputCls + ' w-24'} /></span>
                     </div>
                     <div className="flex justify-between items-center text-xs" style={{ borderBottom: '1px dashed #e2e8f0', paddingBottom: '6px' }}>
                       <span className="text-slate-500 font-semibold">រយៈពេលនៃកម្ចី (ខែ)</span>
@@ -8294,7 +8320,7 @@ function MemberReport() {
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">ចំនួនទឹកប្រាក់សន្សំ (USD)</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
-                    <input
+                    <FormattedInput
                       type="number"
                       step="0.01"
                       value={paymentAmount}
@@ -8312,7 +8338,7 @@ function MemberReport() {
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">បង់រំលស់ដើមកម្ចី (USD)</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
-                      <input
+                      <FormattedInput
                         type="number"
                         step="0.01"
                         min="0"
@@ -8330,7 +8356,7 @@ function MemberReport() {
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">បង់ការប្រាក់កម្ចី <span className="text-[#0a6652] normal-case">(បំពេញអូតូតាមខែ)</span></label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
-                      <input
+                      <FormattedInput
                         type="number"
                         step="0.01"
                         value={loanInterest}
