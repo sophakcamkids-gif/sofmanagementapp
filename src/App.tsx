@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Database, Download, RefreshCw, BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { exportElementToPdf, exportElementToImage, renderElementToPngDataUrl } from './utils/exportPdf';
 import FitToWidth from './FitToWidth';
@@ -16,7 +16,9 @@ import {
   FileText, PieChart, Home, Heart, MessageSquare, 
   Menu, Bot, BarChart3, Receipt, HandCoins, 
   ShieldCheck, Calendar, BookOpen, Sparkles, TrendingUp,
-  ChevronLeft, Plus, Download, Search, Upload, LogIn, UserCheck, Key, Lock, Eye, EyeOff, Save, X, Trash2, Edit, RotateCw, Send
+  ChevronLeft, Plus, Download, Search, Upload, LogIn, UserCheck, Key, Lock, Eye, EyeOff, Save, X, Trash2, Edit, RotateCw, Send,
+  Calculator, Banknote, UserPlus, Cog, Info, Activity,
+  LineChart as LineChartIcon, RefreshCw, Smartphone, Monitor, Link2, Database
 } from 'lucide-react';
 
 const getStoredData = (key: string, defaultValue: any) => {
