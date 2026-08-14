@@ -177,11 +177,19 @@ const askGemini = async (prompt: string): Promise<string> => {
   return (j?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
 };
 
+const codeOf = (r: any) => {
+  let s = String(r?.id ?? r?.code ?? '').toUpperCase();
+  s = s.replace(/SOF\s*/g, '').replace(/\s+/g, '');
+  const match = s.match(/[A-Z]*\d+/);
+  if (match) return match[0].replace(/([A-Z]|^)0+/g, '$1');
+  return s;
+};
+
 // Summarise the logged-in member's real figures (from the by-month stores) into a
 // text digest for the bot prompt, so answers use actual data — never invented.
 const buildMemberDigest = (): string => {
   const code = (localStorage.getItem('memberId') || '').toUpperCase();
-  const cOf = (r: any) => { const s = String(r?.id ?? r?.code ?? ''); return (s.includes(' ') ? s.split(' ').pop() : s || '').toUpperCase(); };
+  const cOf = codeOf;
   const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
   const sortKey = (s: string) => { const p = String(s).trim().split(' '); const mi = KHM.indexOf(p[0]); return (Number(p[p.length - 1]) || 0) * 100 + (mi >= 0 ? mi + 1 : 0); };
   let name = code;
@@ -5637,7 +5645,12 @@ function History() {
       if (!Array.isArray(rows)) continue;
       const r = rows.find((x: any) => {
         const rowId = String(x.id || x.code || '').toUpperCase();
-        return rowId === rawTxnCode || codeOf(x) === canonicalCode;
+        const codeX = codeOf(x);
+        if (rowId === rawTxnCode || codeX === canonicalCode) return true;
+        // Ultra-robust fallback: compare just the digits
+        const digitsX = codeX.replace(/\D/g, '');
+        const digitsCanonical = canonicalCode.replace(/\D/g, '');
+        return digitsX && digitsCanonical && digitsX === digitsCanonical;
       });
       if (!r) continue;
       if (isLoan) {
