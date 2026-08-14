@@ -3268,7 +3268,7 @@ function Savings() {
   // Paste-import monthly savings: one line per member → engine recomputes for the month.
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState('');
-  const codeOf = (r: any) => (typeof r.id === 'string' && r.id.includes(' ') ? r.id.split(' ').pop() : r.id);
+
   const handlePasteImport = () => {
     const lines = importText.split('\n').map((l) => l.trim()).filter(Boolean);
     const next = [...savingData];
@@ -5603,7 +5603,7 @@ function LoanRequests() {
 
 function History() {
   const [payments, setPayments] = useState<any[]>(() => getStoredData('sof_pending_payments', []) || []);
-  const codeOf = (r: any) => { const s = String(r?.id ?? r?.code ?? ''); return (s.includes(' ') ? s.split(' ').pop() : s || '').toUpperCase(); };
+
 
   // A month's rows for a store: the stored month, else carried forward from the most
   // recent month with data (so a payment for a not-yet-opened month like កក្កដា still
@@ -6874,7 +6874,7 @@ function MemberReport() {
 
   // ---- Live data for the logged-in member ----
   const memberCode = (localStorage.getItem('memberId') || '').toUpperCase();
-  const codeOf = (r: any) => { const s = String(r?.id ?? r?.code ?? ''); return (s.includes(' ') ? s.split(' ').pop() : s || '').toUpperCase(); };
+
   // Month keys for the selected report year (so the year selector filters the data).
   const memberMonths = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'].map((m) => `${m} ${selectedReportYear}`);
   const memberProfile = (() => {
