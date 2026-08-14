@@ -1048,7 +1048,7 @@ export default function App() {
                   <SidebarLink to="/loan-requests" label="📝 សំណើសុំកម្ចី (Loan Requests)" />
                   <SidebarLink to="/expenses" label="💸 ការចំណាយ (Expenses)" />
                   <SidebarLink to="/reports" label="📈 របាយការណ៍បិទបញ្ជី (Reports)" />
-                  <SidebarLink to="/history" label="📜 ប្រវត្តិប្រតិបត្តិការ (Logs)" />
+                  <SidebarLink to="/history" label="📜 ការស្នើដាក់សន្សំ និងបង់កម្ចី" />
                   <SidebarLink to="/group-info" label="🛡️ ព័ត៌មានក្រុម (Group Info)" />
                   <SidebarLink to="/settings" label="⚙️ ការកំណត់ប្រព័ន្ធ (Settings)" />
                 </>
@@ -1200,7 +1200,7 @@ export default function App() {
                     <SidebarLink to="/loan-requests" label="📝 សំណើសុំកម្ចី (Loan Requests)" />
                     <SidebarLink to="/expenses" label="💸 ការចំណាយ (Expenses)" />
                     <SidebarLink to="/reports" label="📈 របាយការណ៍បិទបញ្ជី (Reports)" />
-                    <SidebarLink to="/history" label="📜 ប្រវត្តិប្រតិបត្តិការ (Logs)" />
+                    <SidebarLink to="/history" label="📜 ការស្នើដាក់សន្សំ និងបង់កម្ចី" />
                     <SidebarLink to="/group-info" label="🛡️ ព័ត៌មានក្រុម (Group Info)" />
                     <SidebarLink to="/settings" label="⚙️ ការកំណត់ប្រព័ន្ធ (Settings)" />
                   </>
