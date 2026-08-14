@@ -597,7 +597,7 @@ const resolveMemberCode = (input: string): string => {
   return codeOf({ id: u });
 };
 
-function SidebarLink({ to, label }: { to: string, label: string }) {
+function SidebarLink({ to, label, badge }: { to: string, label: string, badge?: number }) {
   const navigate = useNavigate();
   const location = useLocation();
   const isActive = location.pathname === to || (to === '/admin' && location.pathname === '/dashboard');
@@ -611,7 +611,14 @@ function SidebarLink({ to, label }: { to: string, label: string }) {
           : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
       }`}
     >
-      <span>{label}</span>
+      <div className="flex items-center gap-2">
+        <span>{label}</span>
+        {!!badge && badge > 0 && (
+          <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none min-w-[18px] text-center">
+            {badge > 99 ? '99+' : badge}
+          </span>
+        )}
+      </div>
       {isActive && <span className="w-1.5 h-1.5 rounded-full bg-[#0a6652]"></span>}
     </button>
   );
@@ -813,6 +820,18 @@ export default function App() {
     const priv = code ? (((getStoredData('sof_member_notifications', {}) as any) || {})[code] || []).length : 0;
     return shared + priv;
   })();
+
+  const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
+  useEffect(() => {
+    if (userRole !== 'admin') return;
+    const check = () => {
+      const arr = getStoredData('sof_pending_payments', []);
+      setPendingPaymentsCount(Array.isArray(arr) ? arr.length : 0);
+    };
+    check();
+    const interval = setInterval(check, 3000);
+    return () => clearInterval(interval);
+  }, [userRole]);
 
   // Clean up bad import once based on user request
   useEffect(() => {
@@ -1048,7 +1067,7 @@ export default function App() {
                   <SidebarLink to="/loan-requests" label="📝 សំណើសុំកម្ចី (Loan Requests)" />
                   <SidebarLink to="/expenses" label="💸 ការចំណាយ (Expenses)" />
                   <SidebarLink to="/reports" label="📈 របាយការណ៍បិទបញ្ជី (Reports)" />
-                  <SidebarLink to="/history" label="📜 ការស្នើដាក់សន្សំ និងបង់កម្ចី" />
+                  <SidebarLink to="/history" label="📜 ការស្នើដាក់សន្សំ និងបង់កម្ចី" badge={pendingPaymentsCount} />
                   <SidebarLink to="/group-info" label="🛡️ ព័ត៌មានក្រុម (Group Info)" />
                   <SidebarLink to="/settings" label="⚙️ ការកំណត់ប្រព័ន្ធ (Settings)" />
                 </>
@@ -1200,7 +1219,7 @@ export default function App() {
                     <SidebarLink to="/loan-requests" label="📝 សំណើសុំកម្ចី (Loan Requests)" />
                     <SidebarLink to="/expenses" label="💸 ការចំណាយ (Expenses)" />
                     <SidebarLink to="/reports" label="📈 របាយការណ៍បិទបញ្ជី (Reports)" />
-                    <SidebarLink to="/history" label="📜 ការស្នើដាក់សន្សំ និងបង់កម្ចី" />
+                    <SidebarLink to="/history" label="📜 ការស្នើដាក់សន្សំ និងបង់កម្ចី" badge={pendingPaymentsCount} />
                     <SidebarLink to="/group-info" label="🛡️ ព័ត៌មានក្រុម (Group Info)" />
                     <SidebarLink to="/settings" label="⚙️ ការកំណត់ប្រព័ន្ធ (Settings)" />
                   </>
