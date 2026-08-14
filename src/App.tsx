@@ -578,6 +578,17 @@ const memberExists = (code: string): boolean => {
   return FIXEDTERM_ROSTER.some((r) => String(r.id).toUpperCase() === u);
 };
 
+const resolveMemberCode = (input: string): string => {
+  const u = (input || '').toUpperCase();
+  if (!u) return '';
+  const list = getStoredData('sof_member_list_data', []) || [];
+  const m = list.find((x: any) => String(x.code || '').toUpperCase() === u || String(x.id || '').toUpperCase().endsWith(' ' + u) || String(x.id || '').toUpperCase() === u);
+  if (m) return codeOf(m);
+  const f = FIXEDTERM_ROSTER.find((r) => String(r.id).toUpperCase() === u || String(r.id).toUpperCase().endsWith(' ' + u));
+  if (f) return codeOf(f);
+  return codeOf({ id: u });
+};
+
 function SidebarLink({ to, label }: { to: string, label: string }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -5617,14 +5628,16 @@ function History() {
   const applyPayment = (txn: any): boolean => {
     const isLoan = txn.type === 'loan';
     const keys = isLoan ? ['sof_loans_by_month', 'sof_loans_deposit_by_month'] : ['sof_savings_by_month', 'sof_deposit_by_month'];
+    const canonicalCode = resolveMemberCode(txn.memberCode);
+    const rawTxnCode = String(txn.memberCode || '').toUpperCase();
+
     for (const key of keys) {
       const store = getStoredData(key, {}) || {};
       const rows = monthRowsOrCarry(store, txn.monthKey, isLoan);
       if (!Array.isArray(rows)) continue;
-      const txnCode = String(txn.memberCode || '').toUpperCase();
       const r = rows.find((x: any) => {
         const rowId = String(x.id || x.code || '').toUpperCase();
-        return rowId === txnCode || codeOf(x) === codeOf({ id: txnCode });
+        return rowId === rawTxnCode || codeOf(x) === canonicalCode;
       });
       if (!r) continue;
       if (isLoan) {
