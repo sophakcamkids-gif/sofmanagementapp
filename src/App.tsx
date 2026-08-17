@@ -46,8 +46,10 @@ const setStoredData = (key: string, value: any) => {
 };
 
 // Admin login credentials, synced across devices via the cloud (sof_ → sof_live_).
+// The admin identifier is an email; a stored sof_admin_auth (if the admin changed
+// their credentials) overrides these defaults.
 const getAdminAuth = (): { username: string; password: string } =>
-  ({ username: 'sofadmin', password: 'sof2026', ...(getStoredData('sof_admin_auth', {}) || {}) });
+  ({ username: 'phornsophak@mail.com', password: 'sof2026', ...(getStoredData('sof_admin_auth', {}) || {}) });
 
 // Telegram bot config. `chatId` = the MEMBERS' group (announcements / reminders).
 // `committeeChatId` = the committee-only group that receives payment proofs and loan
@@ -6108,13 +6110,13 @@ function SettingsPage() {
             </div>
           )}
           <div>
-            <label className="block text-[10px] font-bold text-slate-500 mb-1">ឈ្មោះគណនីអ្នកគ្រប់គ្រង (Admin Username)</label>
+            <label className="block text-[10px] font-bold text-slate-500 mb-1">អ៊ីម៉ែលអ្នកគ្រប់គ្រង (Admin Email)</label>
             <input
-              type="text"
+              type="email"
               value={newAdminUsername}
               onChange={(e) => setNewAdminUsername(e.target.value)}
               className="w-full text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:border-rose-500 outline-none"
-              placeholder="admin"
+              placeholder="phornsophak@mail.com"
             />
           </div>
           <div>
@@ -6320,12 +6322,12 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
           ) : (
             <>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">ឈ្មោះគណនីអ្នកគ្រប់គ្រង</label>
-                <input 
-                  type="text" 
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">អ៊ីម៉ែលអ្នកគ្រប់គ្រង (Admin Email)</label>
+                <input
+                  type="email"
                   value={adminUsername}
                   onChange={(e) => setAdminUsername(e.target.value)}
-                  placeholder="admin" 
+                  placeholder="phornsophak@mail.com"
                   className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent font-black text-xs sm:text-sm text-slate-800 placeholder:font-normal placeholder:text-slate-400"
                   required
                 />
