@@ -188,11 +188,19 @@ const askGemini = async (prompt: string): Promise<string> => {
   return (j?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
 };
 
+const codeOf = (r: any) => {
+  let s = String(r?.id ?? r?.code ?? '').toUpperCase();
+  s = s.replace(/SOF\s*/g, '').replace(/\s+/g, '');
+  const match = s.match(/[A-Z]*\d+/);
+  if (match) return match[0].replace(/([A-Z]|^)0+/g, '$1');
+  return s;
+};
+
 // Summarise the logged-in member's real figures (from the by-month stores) into a
 // text digest for the bot prompt, so answers use actual data — never invented.
 const buildMemberDigest = (): string => {
   const code = (localStorage.getItem('memberId') || '').toUpperCase();
-  const cOf = (r: any) => { const s = String(r?.id ?? r?.code ?? ''); return (s.includes(' ') ? s.split(' ').pop() : s || '').toUpperCase(); };
+  const cOf = codeOf;
   const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
   const sortKey = (s: string) => { const p = String(s).trim().split(' '); const mi = KHM.indexOf(p[0]); return (Number(p[p.length - 1]) || 0) * 100 + (mi >= 0 ? mi + 1 : 0); };
   let name = code;
@@ -589,7 +597,18 @@ const memberExists = (code: string): boolean => {
   return FIXEDTERM_ROSTER.some((r) => String(r.id).toUpperCase() === u);
 };
 
-function SidebarLink({ to, label }: { to: string, label: string }) {
+const resolveMemberCode = (input: string): string => {
+  const u = (input || '').toUpperCase();
+  if (!u) return '';
+  const list = getStoredData('sof_member_list_data', []) || [];
+  const m = list.find((x: any) => String(x.code || '').toUpperCase() === u || String(x.id || '').toUpperCase().endsWith(' ' + u) || String(x.id || '').toUpperCase() === u);
+  if (m) return codeOf(m);
+  const f = FIXEDTERM_ROSTER.find((r) => String(r.id).toUpperCase() === u || String(r.id).toUpperCase().endsWith(' ' + u));
+  if (f) return codeOf(f);
+  return codeOf({ id: u });
+};
+
+function SidebarLink({ to, label, badge }: { to: string, label: string, badge?: number }) {
   const navigate = useNavigate();
   const location = useLocation();
   const isActive = location.pathname === to || (to === '/admin' && location.pathname === '/dashboard');
@@ -603,7 +622,14 @@ function SidebarLink({ to, label }: { to: string, label: string }) {
           : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
       }`}
     >
-      <span>{label}</span>
+      <div className="flex items-center gap-2">
+        <span>{label}</span>
+        {!!badge && badge > 0 && (
+          <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none min-w-[18px] text-center">
+            {badge > 99 ? '99+' : badge}
+          </span>
+        )}
+      </div>
       {isActive && <span className="w-1.5 h-1.5 rounded-full bg-[#0a6652]"></span>}
     </button>
   );
@@ -805,6 +831,18 @@ export default function App() {
     const priv = code ? (((getStoredData('sof_member_notifications', {}) as any) || {})[code] || []).length : 0;
     return shared + priv;
   })();
+
+  const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
+  useEffect(() => {
+    if (userRole !== 'admin') return;
+    const check = () => {
+      const arr = getStoredData('sof_pending_payments', []);
+      setPendingPaymentsCount(Array.isArray(arr) ? arr.length : 0);
+    };
+    check();
+    const interval = setInterval(check, 3000);
+    return () => clearInterval(interval);
+  }, [userRole]);
 
   // Clean up bad import once based on user request
   useEffect(() => {
@@ -1042,7 +1080,7 @@ export default function App() {
                   <SidebarLink to="/loan-requests" label="📝 សំណើសុំកម្ចី (Loan Requests)" />
                   <SidebarLink to="/expenses" label="💸 ការចំណាយ (Expenses)" />
                   <SidebarLink to="/reports" label="📈 របាយការណ៍បិទបញ្ជី (Reports)" />
-                  <SidebarLink to="/history" label="📜 ប្រវត្តិប្រតិបត្តិការ (Logs)" />
+                  <SidebarLink to="/history" label="📜 ការស្នើដាក់សន្សំ និងបង់កម្ចី" badge={pendingPaymentsCount} />
                   <SidebarLink to="/group-info" label="🛡️ ព័ត៌មានក្រុម (Group Info)" />
                   <SidebarLink to="/settings" label="⚙️ ការកំណត់ប្រព័ន្ធ (Settings)" />
                 </>
@@ -1195,7 +1233,7 @@ export default function App() {
                     <SidebarLink to="/loan-requests" label="📝 សំណើសុំកម្ចី (Loan Requests)" />
                     <SidebarLink to="/expenses" label="💸 ការចំណាយ (Expenses)" />
                     <SidebarLink to="/reports" label="📈 របាយការណ៍បិទបញ្ជី (Reports)" />
-                    <SidebarLink to="/history" label="📜 ប្រវត្តិប្រតិបត្តិការ (Logs)" />
+                    <SidebarLink to="/history" label="📜 ការស្នើដាក់សន្សំ និងបង់កម្ចី" badge={pendingPaymentsCount} />
                     <SidebarLink to="/group-info" label="🛡️ ព័ត៌មានក្រុម (Group Info)" />
                     <SidebarLink to="/settings" label="⚙️ ការកំណត់ប្រព័ន្ធ (Settings)" />
                   </>
@@ -3272,7 +3310,7 @@ function Savings() {
   // Paste-import monthly savings: one line per member → engine recomputes for the month.
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState('');
-  const codeOf = (r: any) => (typeof r.id === 'string' && r.id.includes(' ') ? r.id.split(' ').pop() : r.id);
+
   const handlePasteImport = () => {
     const lines = importText.split('\n').map((l) => l.trim()).filter(Boolean);
     const next = [...savingData];
@@ -5607,7 +5645,7 @@ function LoanRequests() {
 
 function History() {
   const [payments, setPayments] = useState<any[]>(() => getStoredData('sof_pending_payments', []) || []);
-  const codeOf = (r: any) => { const s = String(r?.id ?? r?.code ?? ''); return (s.includes(' ') ? s.split(' ').pop() : s || '').toUpperCase(); };
+
 
   // A month's rows for a store: the stored month, else carried forward from the most
   // recent month with data (so a payment for a not-yet-opened month like កក្កដា still
@@ -5632,11 +5670,22 @@ function History() {
   const applyPayment = (txn: any): boolean => {
     const isLoan = txn.type === 'loan';
     const keys = isLoan ? ['sof_loans_by_month', 'sof_loans_deposit_by_month'] : ['sof_savings_by_month', 'sof_deposit_by_month'];
+    const canonicalCode = resolveMemberCode(txn.memberCode);
+    const rawTxnCode = String(txn.memberCode || '').toUpperCase();
+
     for (const key of keys) {
       const store = getStoredData(key, {}) || {};
       const rows = monthRowsOrCarry(store, txn.monthKey, isLoan);
       if (!Array.isArray(rows)) continue;
-      const r = rows.find((x: any) => codeOf(x) === String(txn.memberCode || '').toUpperCase());
+      const r = rows.find((x: any) => {
+        const rowId = String(x.id || x.code || '').toUpperCase();
+        const codeX = codeOf(x);
+        if (rowId === rawTxnCode || codeX === canonicalCode) return true;
+        // Ultra-robust fallback: compare just the digits
+        const digitsX = codeX.replace(/\D/g, '');
+        const digitsCanonical = canonicalCode.replace(/\D/g, '');
+        return digitsX && digitsCanonical && digitsX === digitsCanonical;
+      });
       if (!r) continue;
       if (isLoan) {
         r.repayment = (num(r.repayment) + (txn.principal || 0)).toFixed(2);
@@ -6905,7 +6954,7 @@ function MemberReport() {
 
   // ---- Live data for the logged-in member ----
   const memberCode = (localStorage.getItem('memberId') || '').toUpperCase();
-  const codeOf = (r: any) => { const s = String(r?.id ?? r?.code ?? ''); return (s.includes(' ') ? s.split(' ').pop() : s || '').toUpperCase(); };
+
   // Month keys for the selected report year (so the year selector filters the data).
   const memberMonths = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'].map((m) => `${m} ${selectedReportYear}`);
   const memberProfile = (() => {
@@ -6916,7 +6965,7 @@ function MemberReport() {
       FIXEDTERM_ROSTER,  // fixed-term account holders (F-codes)
     ];
     for (const list of lists) {
-      const m = list.find((x: any) => codeOf(x) === memberCode || String(x.code || '').toUpperCase() === memberCode);
+      const m = list.find((x: any) => String(x.id || x.code || '').toUpperCase() === memberCode || codeOf(x) === codeOf({ id: memberCode }));
       if (m) return m;
     }
     return null;
@@ -6928,7 +6977,7 @@ function MemberReport() {
     for (let i = memberMonths.length - 1; i >= 0; i--) {
       const rows = by[memberMonths[i]];
       if (Array.isArray(rows)) {
-        const r = rows.find((x: any) => codeOf(x) === memberCode);
+        const r = rows.find((x: any) => String(x.id || x.code || '').toUpperCase() === memberCode || codeOf(x) === codeOf({ id: memberCode }));
         if (r) return num(r[field]);
       }
     }
@@ -6943,9 +6992,10 @@ function MemberReport() {
     const fixedterm = getStoredData('sof_fixedterm_by_month', FIXEDTERM_BY_MONTH) || {};
     const out: any[] = [];
     memberMonths.forEach((m, i) => {
-      const a = Array.isArray(active[m]) ? active[m].find((x: any) => codeOf(x) === memberCode) : null;
-      const d = (!a && Array.isArray(deposit[m])) ? deposit[m].find((x: any) => codeOf(x) === memberCode) : null;
-      const f = (!a && !d && Array.isArray(fixedterm[m])) ? fixedterm[m].find((x: any) => codeOf(x) === memberCode) : null;
+      const matchFn = (x: any) => String(x.id || x.code || '').toUpperCase() === memberCode || codeOf(x) === codeOf({ id: memberCode });
+      const a = Array.isArray(active[m]) ? active[m].find(matchFn) : null;
+      const d = (!a && Array.isArray(deposit[m])) ? deposit[m].find(matchFn) : null;
+      const f = (!a && !d && Array.isArray(fixedterm[m])) ? fixedterm[m].find(matchFn) : null;
       const r = a || d || f;
       if (r) {
         const row: any = { seq: String(i + 1).padStart(2, '0'), mi: i, monthName: m.split(' ')[0], ...r };
@@ -6975,8 +7025,9 @@ function MemberReport() {
     const limit = maxIdx >= 0 ? maxIdx : memberMonths.length - 1;
     for (let i = 0; i <= limit; i++) {
       const m = memberMonths[i];
-      const ra = Array.isArray(aByMonth[m]) ? aByMonth[m].find((x: any) => codeOf(x) === memberCode) : null;
-      const rd = (!ra && Array.isArray(dByMonth[m])) ? dByMonth[m].find((x: any) => codeOf(x) === memberCode) : null;
+      const matchFn = (x: any) => String(x.id || x.code || '').toUpperCase() === memberCode || codeOf(x) === codeOf({ id: memberCode });
+      const ra = Array.isArray(aByMonth[m]) ? aByMonth[m].find(matchFn) : null;
+      const rd = (!ra && Array.isArray(dByMonth[m])) ? dByMonth[m].find(matchFn) : null;
       let r = ra || rd;
       
       if (!r && hasStarted && prevRemaining > 0) {
