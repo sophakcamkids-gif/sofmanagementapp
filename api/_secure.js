@@ -58,12 +58,15 @@ export async function sbSet(key, value) {
 }
 
 // ── Access rules ─────────────────────────────────────────────────────────────
-// Keys the browser must NEVER receive (credentials + secrets stay on the server).
+// Keys a logged-in MEMBER must never receive. The crown jewels: everyone's
+// passwords, the admin login, and the private chat-id ↔ member map. NOTE: the
+// Telegram/Gemini configs are intentionally NOT here — members read the Telegram
+// bot token to send their own payment proofs, and may use the AI bot. After the
+// RLS lockdown these are unreachable by anon (strangers) anyway; only an
+// authenticated member can see them, which is acceptable.
 export const SENSITIVE_KEYS = new Set([
   'sof_live_member_credentials',
   'sof_live_admin_auth',
-  'sof_live_telegram_config',
-  'sof_live_gemini_config',
   'sof_live_member_chats',
 ]);
 // Keys a logged-in MEMBER may write (everything else is admin-only). NOTE: these are

@@ -10,6 +10,7 @@ import { exportElementToPdf, exportElementToImage, renderElementToPngDataUrl } f
 import FitToWidth from './FitToWidth';
 import { db } from './lib/db';
 import { loadAllCloudState, saveCloudState } from './lib/cloudStore';
+import { apiLogin, apiLoadState, apiMemberAppend, apiMemberPassword, clearToken } from './lib/secureApi';
 import { computeSavings, computeLoan, DEFAULT_RATES } from './lib/calcEngine';
 import { 
   Bell, Settings, Users, Wallet, 
@@ -42,6 +43,14 @@ const setStoredData = (key: string, value: any) => {
     localStorage.setItem(mappedKey, JSON.stringify(value));
     // Mirror to Supabase cloud (fire-and-forget; local cache stays the working copy).
     saveCloudState(mappedKey, value).catch(err => console.error('Cloud sync error:', err));
+  }
+};
+
+// Write a cloud state snapshot into LocalStorage (the synchronous working copy the
+// app reads from). Keys are already in sof_live_ form as stored in the cloud.
+const hydrateLocalCache = (state: Record<string, any>) => {
+  for (const [k, v] of Object.entries(state || {})) {
+    try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* skip unstorable key */ }
   }
 };
 
@@ -849,6 +858,7 @@ export default function App() {
     const logout = () => {
       localStorage.removeItem('userRole');
       localStorage.removeItem('memberId');
+      clearToken();
       alert('អ្នកត្រូវបានចេញពីគណនីដោយស្វ័យប្រវត្តិ ដោយសារអសកម្មភាពយូរ។ សូមចូលម្តងទៀត។');
       window.location.href = '/login';
     };
@@ -991,6 +1001,7 @@ export default function App() {
                     onClick={() => {
                       localStorage.removeItem('userRole');
                       localStorage.removeItem('memberId');
+                      clearToken();
                       setUserRole(null);
                       setMemberId(null);
                       window.location.href = '/login';
@@ -1046,6 +1057,7 @@ export default function App() {
                 onClick={() => {
                   localStorage.removeItem('userRole');
                   localStorage.removeItem('memberId');
+                  clearToken();
                   setUserRole(null);
                   setMemberId(null);
                   window.location.href = '/login';
@@ -1208,6 +1220,7 @@ export default function App() {
                 onClick={() => {
                   localStorage.removeItem('userRole');
                   localStorage.removeItem('memberId');
+                  clearToken();
                   setUserRole(null);
                   setMemberId(null);
                   setNavOpen(false);
@@ -6194,9 +6207,10 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [installOpen, setInstallOpen] = useState(false);
-  const [adminUsername, setAdminUsername] = useState(getAdminAuth().username);
+  const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loginBusy, setLoginBusy] = useState(false);
 
   // Already signed in? Skip the login form and go straight to the right home page
   // (prevents the confusing "logged-in sidebar + login form" state).
@@ -6214,32 +6228,54 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
     }
   }, [location.search]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Credentials are verified SERVER-SIDE (/api/auth-login) — the browser no longer
+  // holds the password list. On success we pull the caller's allowed state through
+  // the token-gated API and seed LocalStorage before entering the app.
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loginBusy) return;
+
     if (loginType === 'member') {
       const code = loginId.trim().toUpperCase();
       if (!code) return;
-      if (!memberExists(code)) {
-        alert('រកមិនឃើញលេខ ID សមាជិកនេះទេ! សូមពិនិត្យ ID របស់អ្នកម្ដងទៀត។');
+      setLoginBusy(true);
+      const res = await apiLogin('member', code, password);
+      if (!res.ok) {
+        setLoginBusy(false);
+        alert(
+          res.error === 'nomember'
+            ? 'រកមិនឃើញលេខ ID សមាជិកនេះទេ! សូមពិនិត្យ ID របស់អ្នកម្ដងទៀត។'
+            : res.error === 'network'
+            ? 'ការតភ្ជាប់បណ្ដាញមានបញ្ហា។ សូមព្យាយាមម្ដងទៀត។'
+            : 'ពាក្យសម្ងាត់មិនត្រឹមត្រូវទេ!'
+        );
         return;
       }
-      if (password !== getMemberPassword(code)) {
-        alert('ពាក្យសម្ងាត់មិនត្រឹមត្រូវទេ!');
-        return;
-      }
+      hydrateLocalCache(await apiLoadState());
       localStorage.setItem('userRole', 'member');
       localStorage.setItem('memberId', code);
+      setLoginBusy(false);
       onLogin('member', code);
       navigate(`/member-report?id=${code}`);
     } else {
-      const { username: storedAdminUsername, password: storedAdminPassword } = getAdminAuth();
-      if (adminUsername.trim() === storedAdminUsername && adminPassword === storedAdminPassword) {
-        localStorage.setItem('userRole', 'admin');
-        onLogin('admin', '');
-        navigate('/admin');
-      } else {
-        alert(`គណនីអ្នកគ្រប់គ្រងមិនត្រឹមត្រូវទេ! (គណនីសាកល្បង៖ ${storedAdminUsername} / ${storedAdminPassword})`);
+      const uname = adminUsername.trim();
+      if (!uname) return;
+      setLoginBusy(true);
+      const res = await apiLogin('admin', uname, adminPassword);
+      if (!res.ok) {
+        setLoginBusy(false);
+        alert(
+          res.error === 'network'
+            ? 'ការតភ្ជាប់បណ្ដាញមានបញ្ហា។ សូមព្យាយាមម្ដងទៀត។'
+            : 'គណនីអ្នកគ្រប់គ្រងមិនត្រឹមត្រូវទេ!'
+        );
+        return;
       }
+      hydrateLocalCache(await apiLoadState());
+      localStorage.setItem('userRole', 'admin');
+      setLoginBusy(false);
+      onLogin('admin', '');
+      navigate('/admin');
     }
   };
 
@@ -6312,8 +6348,8 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
                   </button>
                 </div>
               </div>
-              <button type="submit" className="w-full h-11 bg-[#0a6652] text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-teal-900/20 hover:bg-[#084f40] transition-colors flex items-center justify-center gap-2 mt-2 text-xs sm:text-sm cursor-pointer">
-                <LogIn size={16} /> ចូលគណនីសមាជិក
+              <button type="submit" disabled={loginBusy} className="w-full h-11 bg-[#0a6652] text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-teal-900/20 hover:bg-[#084f40] transition-colors flex items-center justify-center gap-2 mt-2 text-xs sm:text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+                <LogIn size={16} /> {loginBusy ? 'កំពុងចូល...' : 'ចូលគណនីសមាជិក'}
               </button>
               <p className="text-[10px] text-slate-400 text-center font-medium leading-normal mt-1">
                 ពាក្យសម្ងាត់ដើមរួម៖ <span className="font-extrabold text-[#0a6652]">sof2026</span> — សូមដូរវានៅពេលចូលលើកដំបូង (ប៊ូតុង «ដូរពាក្យសម្ងាត់» ក្នុងទំព័ររបាយការណ៍)។
@@ -6322,12 +6358,12 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
           ) : (
             <>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">អ៊ីម៉ែលអ្នកគ្រប់គ្រង (Admin Email)</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">គណនីអ្នកគ្រប់គ្រង (Admin Username)</label>
                 <input
-                  type="email"
+                  type="text"
                   value={adminUsername}
                   onChange={(e) => setAdminUsername(e.target.value)}
-                  placeholder="phornsophak@gmail.com"
+                  placeholder="sofadmin"
                   className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent font-black text-xs sm:text-sm text-slate-800 placeholder:font-normal placeholder:text-slate-400"
                   required
                 />
@@ -6353,8 +6389,8 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
                 </div>
               </div>
 
-              <button type="submit" className="w-full h-11 bg-rose-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-rose-950/20 hover:bg-rose-700 transition-colors flex items-center justify-center gap-2 mt-2 text-xs sm:text-sm cursor-pointer">
-                <LogIn size={16} /> ចូលគណនីគណៈកម្មការ
+              <button type="submit" disabled={loginBusy} className="w-full h-11 bg-rose-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-rose-950/20 hover:bg-rose-700 transition-colors flex items-center justify-center gap-2 mt-2 text-xs sm:text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+                <LogIn size={16} /> {loginBusy ? 'កំពុងចូល...' : 'ចូលគណនីគណៈកម្មការ'}
               </button>
             </>
           )}
@@ -6679,6 +6715,7 @@ function MemberReport() {
     };
     const all = getStoredData('sof_pending_loan_requests', []) || [];
     setStoredData('sof_pending_loan_requests', [txn, ...all]);
+    await apiMemberAppend('sof_live_pending_loan_requests', txn);
     setLoanFiles([]);
     setLoanReqBusy(false);
     alert(sent
@@ -6736,6 +6773,7 @@ function MemberReport() {
     };
     const all = getStoredData('sof_pending_loan_requests', []) || [];
     setStoredData('sof_pending_loan_requests', [txn, ...all]);
+    await apiMemberAppend('sof_live_pending_loan_requests', txn);
     setLoanReqBusy(false);
     alert(sent
       ? 'បានផ្ញើពាក្យស្នើសុំកម្ចីចូល Telegram ក្រុម SOF Committee! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។'
@@ -6817,6 +6855,7 @@ function MemberReport() {
 
     const all = getStoredData('sof_pending_payments', []) || [];
     setStoredData('sof_pending_payments', [...newTxns, ...all]);
+    for (const t of newTxns) await apiMemberAppend('sof_live_pending_payments', t);
     setSubmittedPayments([...newTxns, ...submittedPayments]);
     // Reset form
     setPaymentAmount('0.00');
@@ -6834,13 +6873,9 @@ function MemberReport() {
   const tabs = ['របាយការណ៍ផ្ទាល់ខ្លួន', 'ស្នើកម្ចី', 'របាយការណ៍កម្ចី', 'របាយការណ៍សន្សំ', 'ការដាក់សន្សំ និងបង់កម្ចី'];
   const months = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
 
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = (localStorage.getItem('memberId') || '').toUpperCase();
-    if (currentPassword !== getMemberPassword(code)) {
-      alert("ពាក្យសម្ងាត់បច្ចុប្បន្នមិនត្រឹមត្រូវទេ!");
-      return;
-    }
     if (!newPassword || newPassword.length < 4) {
       alert("ពាក្យសម្ងាត់ថ្មីត្រូវមានយ៉ាងតិច ៤ តួអក្សរ!");
       return;
@@ -6849,7 +6884,18 @@ function MemberReport() {
       alert("ពាក្យសម្ងាត់ថ្មី និងផ្ទៀងផ្ទាត់មិនត្រូវគ្នាទេ!");
       return;
     }
-    setMemberPassword(code, newPassword);
+    // The password list is no longer readable by the browser, so verify the
+    // CURRENT password server-side by re-authenticating, then set the new one.
+    const check = await apiLogin('member', code, currentPassword);
+    if (!check.ok) {
+      alert("ពាក្យសម្ងាត់បច្ចុប្បន្នមិនត្រឹមត្រូវទេ!");
+      return;
+    }
+    const ok = await apiMemberPassword(newPassword);
+    if (!ok) {
+      alert("មានបញ្ហាក្នុងការផ្លាស់ប្តូរពាក្យសម្ងាត់។ សូមព្យាយាមម្ដងទៀត។");
+      return;
+    }
     alert("បានផ្លាស់ប្តូរពាក្យសម្ងាត់ដោយជោគជ័យ!");
     setShowChangePassword(false);
     setCurrentPassword('');
@@ -7311,6 +7357,7 @@ function MemberReport() {
                onClick={() => {
                  localStorage.removeItem('userRole');
                  localStorage.removeItem('memberId');
+                 clearToken();
                  window.location.href = '/login';
                }} 
                className="flex-1 bg-rose-50 hover:bg-rose-100 active:scale-95 transition-all py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 text-rose-600 border border-rose-100 shadow-sm"
@@ -7386,6 +7433,7 @@ function MemberReport() {
               };
               const all = getStoredData('sof_pending_loan_requests', []) || [];
               setStoredData('sof_pending_loan_requests', [txn, ...all]);
+              await apiMemberAppend('sof_live_pending_loan_requests', txn);
               setShowDigitalForm(false);
               setDigitalAmount('');
               setDigitalPurpose('');
