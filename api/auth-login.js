@@ -19,24 +19,15 @@ export default async function handler(req, res) {
     const all = await sbGetAll();
 
     if (role === 'admin') {
-      const okResponse = () => res.status(200).json({
-        ok: true, role: 'admin',
-        token: signToken({ role: 'admin', code: 'ADMIN' }),
-        state: allowedFrom(all, 'admin'),
-      });
-
-      // 1) Preferred: Supabase Auth (email + hashed password).
+      // Admin authenticates against Supabase Auth (email + hashed password). The old
+      // plaintext sof_live_admin_auth fallback has been removed now that this works.
       const signed = await supabaseSignIn(norm(id), pw);
-      if (signed) return okResponse();
-
-      // 2) Legacy fallback: the plaintext credentials in sof_live_admin_auth — so the
-      //    admin is never locked out before the Supabase Auth user exists. Remove this
-      //    block once Supabase Auth login is confirmed working.
-      const cfg = all['sof_live_admin_auth'] || {};
-      const username = cfg.username || 'phornsophak@gmail.com';
-      const adminPw = cfg.password || 'sof2026';
-      if (norm(id).toLowerCase() === String(username).toLowerCase() && pw === adminPw) {
-        return okResponse();
+      if (signed) {
+        return res.status(200).json({
+          ok: true, role: 'admin',
+          token: signToken({ role: 'admin', code: 'ADMIN' }),
+          state: allowedFrom(all, 'admin'),
+        });
       }
       return res.status(401).json({ ok: false, error: 'invalid' });
     }
