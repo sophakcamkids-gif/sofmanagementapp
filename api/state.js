@@ -10,7 +10,7 @@
 //           • member (self)   { key: 'password', value } — changes only their own
 //             password (server merges into sof_live_member_credentials).
 
-import { bearer, verifyToken, sbGet, sbSet, getAllowedState, MEMBER_WRITABLE, codeOf } from './_secure.js';
+import { bearer, verifyToken, sbGet, sbSet, getAllowedState, SENSITIVE_KEYS, MEMBER_WRITABLE, codeOf } from './_secure.js';
 
 export default async function handler(req, res) {
   const auth = verifyToken(bearer(req));
@@ -18,6 +18,15 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
+      // Single-key fetch (used to lazy-load heavy keys like the report signature).
+      const one = req.query && req.query.key;
+      if (one) {
+        if (auth.role !== 'admin' && SENSITIVE_KEYS.has(String(one))) {
+          return res.status(403).json({ ok: false, error: 'forbidden' });
+        }
+        const value = await sbGet(String(one));
+        return res.status(200).json({ ok: true, key: one, value });
+      }
       const state = await getAllowedState(auth.role);
       return res.status(200).json({ ok: true, state });
     }

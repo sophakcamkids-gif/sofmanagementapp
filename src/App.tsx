@@ -10,7 +10,7 @@ import { exportElementToPdf, exportElementToImage, renderElementToPngDataUrl } f
 import FitToWidth from './FitToWidth';
 import { db } from './lib/db';
 import { loadAllCloudState, saveCloudState } from './lib/cloudStore';
-import { apiLogin, apiLoadState, apiMemberAppend, apiMemberPassword, clearToken } from './lib/secureApi';
+import { apiLogin, apiLoadState, apiMemberAppend, apiMemberPassword, apiGetKey, clearToken } from './lib/secureApi';
 import { computeSavings, computeLoan, DEFAULT_RATES } from './lib/calcEngine';
 import { 
   Bell, Settings, Users, Wallet, 
@@ -51,6 +51,18 @@ const setStoredData = (key: string, value: any) => {
 const hydrateLocalCache = (state: Record<string, any>) => {
   for (const [k, v] of Object.entries(state || {})) {
     try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* skip unstorable key */ }
+  }
+};
+
+// Heavy keys the server leaves out of the initial load (see LAZY_KEYS in _secure.js);
+// fetch them into the local cache in the background so login stays fast and they're
+// ready by the time a report is printed. Fire-and-forget.
+const LAZY_KEYS = ['sof_live_report_signature'];
+const prefetchLazyKeys = () => {
+  for (const k of LAZY_KEYS) {
+    apiGetKey(k)
+      .then((v) => { if (v !== null && v !== undefined) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore */ } } })
+      .catch(() => { /* ignore */ });
   }
 };
 
@@ -875,6 +887,8 @@ export default function App() {
         for (const [k, v] of Object.entries(cloud)) {
           localStorage.setItem(k, JSON.stringify(v));
         }
+        // Heavy keys (report signature) come separately in the background.
+        if (localStorage.getItem('userRole')) prefetchLazyKeys();
         // First-time migration: push any local-only keys up to the cloud.
         const localKeys: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
@@ -6311,6 +6325,7 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
         return;
       }
       hydrateLocalCache(res.state || await apiLoadState());
+      prefetchLazyKeys();
       localStorage.setItem('userRole', 'member');
       localStorage.setItem('memberId', code);
       setLoginBusy(false);
@@ -6331,6 +6346,7 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
         return;
       }
       hydrateLocalCache(res.state || await apiLoadState());
+      prefetchLazyKeys();
       localStorage.setItem('userRole', 'admin');
       setLoginBusy(false);
       onLogin('admin', '');

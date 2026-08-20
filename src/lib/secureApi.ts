@@ -110,6 +110,23 @@ export async function apiMemberAppend(key: string, item: any): Promise<boolean> 
   }
 }
 
+// Fetch one key on demand — used for heavy keys excluded from the initial snapshot
+// (e.g. the report-signature image), so login stays fast.
+export async function apiGetKey(key: string): Promise<any> {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    const r = await fetch('/api/state?key=' + encodeURIComponent(key), {
+      headers: { Authorization: 'Bearer ' + token },
+    });
+    if (r.status === 401) { clearToken(); return null; }
+    const j = await r.json();
+    return j && j.ok ? j.value : null;
+  } catch {
+    return null;
+  }
+}
+
 // Member: change only their own password (server merges into member_credentials).
 export async function apiMemberPassword(value: string): Promise<boolean> {
   const token = getToken();

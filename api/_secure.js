@@ -79,12 +79,20 @@ export const MEMBER_WRITABLE = new Set([
 
 export const codeOf = (r) => { const s = String((r && (r.id ?? r.code)) || ''); return (s.includes(' ') ? s.split(' ').pop() : s || '').toUpperCase(); };
 
-// The subset of a full state snapshot the given role may receive (members lose the
-// sensitive keys). Takes an already-fetched object so callers can reuse one sbGetAll.
+// Heavy keys that are NOT needed to render the app on load (large base64 blobs used
+// only when printing reports). Excluded from the initial snapshot for both roles and
+// fetched on demand via GET /api/state?key=... — keeps login fast.
+export const LAZY_KEYS = new Set([
+  'sof_live_report_signature',
+]);
+
+// The subset of a full state snapshot the given role may receive on load: heavy
+// lazy keys are dropped for everyone; members also lose the sensitive keys. Takes an
+// already-fetched object so callers can reuse one sbGetAll.
 export function allowedFrom(all, role) {
-  if (role === 'admin') return all || {};
   const out = { ...(all || {}) };
-  for (const k of SENSITIVE_KEYS) delete out[k];
+  for (const k of LAZY_KEYS) delete out[k];
+  if (role !== 'admin') { for (const k of SENSITIVE_KEYS) delete out[k]; }
   return out;
 }
 // Convenience: fetch everything and return only what the role may see.
