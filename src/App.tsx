@@ -820,7 +820,17 @@ function InstallGuide({ onClose }: { onClose: () => void }) {
 export default function App() {
   const [userRole, setUserRole] = useState<string | null>(localStorage.getItem('userRole'));
   const [memberId, setMemberId] = useState<string | null>(localStorage.getItem('memberId'));
-  const [hydrated, setHydrated] = useState(false);
+  // If we already hold a local cache, render immediately and refresh from the cloud
+  // in the background (no blocking spinner); only the very first load with an empty
+  // cache waits. Makes refresh / re-entry feel instant.
+  const hasLocalCache = (() => {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('sof_live_')) return true;
+    }
+    return false;
+  })();
+  const [hydrated, setHydrated] = useState(hasLocalCache);
   const [navOpen, setNavOpen] = useState(false);  // mobile nav drawer
   const [botOpen, setBotOpen] = useState(false);  // SOF Bot (AI assistant) modal
   const [notifOpen, setNotifOpen] = useState(false);  // notifications / announcements
@@ -6300,7 +6310,7 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
         );
         return;
       }
-      hydrateLocalCache(await apiLoadState());
+      hydrateLocalCache(res.state || await apiLoadState());
       localStorage.setItem('userRole', 'member');
       localStorage.setItem('memberId', code);
       setLoginBusy(false);
@@ -6320,7 +6330,7 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
         );
         return;
       }
-      hydrateLocalCache(await apiLoadState());
+      hydrateLocalCache(res.state || await apiLoadState());
       localStorage.setItem('userRole', 'admin');
       setLoginBusy(false);
       onLogin('admin', '');

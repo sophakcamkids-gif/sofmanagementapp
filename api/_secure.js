@@ -78,3 +78,16 @@ export const MEMBER_WRITABLE = new Set([
 ]);
 
 export const codeOf = (r) => { const s = String((r && (r.id ?? r.code)) || ''); return (s.includes(' ') ? s.split(' ').pop() : s || '').toUpperCase(); };
+
+// The subset of a full state snapshot the given role may receive (members lose the
+// sensitive keys). Takes an already-fetched object so callers can reuse one sbGetAll.
+export function allowedFrom(all, role) {
+  if (role === 'admin') return all || {};
+  const out = { ...(all || {}) };
+  for (const k of SENSITIVE_KEYS) delete out[k];
+  return out;
+}
+// Convenience: fetch everything and return only what the role may see.
+export async function getAllowedState(role) {
+  return allowedFrom(await sbGetAll(), role);
+}

@@ -33,7 +33,7 @@ export function clearToken(): void {
   } catch { /* ignore */ }
 }
 
-type LoginResult = { ok: boolean; token?: string; role?: string; code?: string; error?: string };
+type LoginResult = { ok: boolean; token?: string; role?: string; code?: string; error?: string; state?: Record<string, any> };
 
 // Verify credentials server-side and, on success, store the session token.
 export async function apiLogin(role: 'admin' | 'member', id: string, password: string): Promise<LoginResult> {
