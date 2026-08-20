@@ -6433,12 +6433,12 @@ function MemberLogin({ onLogin }: { onLogin: (role: string, id: string) => void 
           ) : (
             <>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">គណនីអ្នកគ្រប់គ្រង (Admin Username)</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">អ៊ីម៉ែលអ្នកគ្រប់គ្រង (Admin Email)</label>
                 <input
-                  type="text"
+                  type="email"
                   value={adminUsername}
                   onChange={(e) => setAdminUsername(e.target.value)}
-                  placeholder="sofadmin"
+                  placeholder="phornsophak@gmail.com"
                   className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent font-black text-xs sm:text-sm text-slate-800 placeholder:font-normal placeholder:text-slate-400"
                   required
                 />

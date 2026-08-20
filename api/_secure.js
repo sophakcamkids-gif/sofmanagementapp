@@ -8,7 +8,27 @@ import crypto from 'crypto';
 
 const SB_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SB_SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SB_ANON = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
 const AUTH_SECRET = process.env.AUTH_SECRET || '';
+
+// Verify an email + password against Supabase Auth (GoTrue). Returns the token
+// response on success, null on bad credentials / any error. Used for the admin
+// login so the admin password is stored HASHED by Supabase, not in app_state.
+export async function supabaseSignIn(email, password) {
+  if (!SB_URL || !SB_ANON) return null;
+  try {
+    const r = await fetch(`${SB_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SB_ANON },
+      body: JSON.stringify({ email: String(email || '').trim(), password: String(password || '') }),
+    });
+    if (!r.ok) return null;
+    const d = await r.json().catch(() => null);
+    return d && d.access_token ? d : null;
+  } catch {
+    return null;
+  }
+}
 
 // ── Session tokens (minimal HMAC-signed, no dependency) ──────────────────────
 const b64url = (buf) => Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
