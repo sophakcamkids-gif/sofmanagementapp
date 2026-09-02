@@ -77,6 +77,26 @@ export async function sbSet(key, value) {
   });
 }
 
+// Atomically prepend `item` to the JSONB array at `key` via the append_to_state
+// SQL function. The DB serialises concurrent calls with a row lock, so two members
+// submitting at the same instant never clobber each other (the read-modify-write in
+// sbSet did). Falls back to a non-atomic read-modify-write if the function is not
+// installed yet, so it keeps working before the migration is run.
+export async function sbAppend(key, item) {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/rpc/append_to_state`, {
+      method: 'POST',
+      headers: { ...H, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_key: key, p_item: item }),
+    });
+    if (r.ok) return true;
+  } catch { /* fall through to the fallback */ }
+  const arr = (await sbGet(key)) || [];
+  const next = Array.isArray(arr) ? [item, ...arr] : [item];
+  await sbSet(key, next);
+  return true;
+}
+
 // ── Access rules ─────────────────────────────────────────────────────────────
 // Keys a logged-in MEMBER must never receive. The crown jewels: everyone's
 // passwords, the admin login, and the private chat-id ↔ member map. NOTE: the

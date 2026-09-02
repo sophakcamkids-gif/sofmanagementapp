@@ -10,7 +10,7 @@
 //           • member (self)   { key: 'password', value } — changes only their own
 //             password (server merges into sof_live_member_credentials).
 
-import { bearer, verifyToken, sbGet, sbSet, getAllowedState, SENSITIVE_KEYS, MEMBER_WRITABLE, codeOf } from './_secure.js';
+import { bearer, verifyToken, sbGet, sbSet, sbAppend, getAllowedState, SENSITIVE_KEYS, MEMBER_WRITABLE, codeOf } from './_secure.js';
 
 export default async function handler(req, res) {
   const auth = verifyToken(bearer(req));
@@ -51,12 +51,13 @@ export default async function handler(req, res) {
 
       // Member: append their own submission to a whitelisted shared array.
       if (MEMBER_WRITABLE.has(key) && appendItem && typeof appendItem === 'object') {
-        if (codeOf({ code: appendItem.memberCode }) !== auth.code) {
+        // Normalise BOTH sides through codeOf so a login code that carries a name or
+        // spaces still matches (previously the raw token code was compared, which
+        // silently 403'd some members and dropped their submission).
+        if (codeOf({ code: appendItem.memberCode }) !== codeOf({ code: auth.code })) {
           return res.status(403).json({ ok: false, error: 'not-your-item' });
         }
-        const arr = (await sbGet(key)) || [];
-        const next = Array.isArray(arr) ? [appendItem, ...arr] : [appendItem];
-        await sbSet(key, next);
+        await sbAppend(key, appendItem); // atomic — concurrent submits never clobber
         return res.status(200).json({ ok: true });
       }
 

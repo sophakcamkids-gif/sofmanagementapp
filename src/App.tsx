@@ -6790,9 +6790,10 @@ function MemberReport() {
     };
     const all = getStoredData('sof_pending_loan_requests', []) || [];
     setStoredData('sof_pending_loan_requests', [txn, ...all]);
-    await apiMemberAppend('sof_live_pending_loan_requests', txn);
+    const okSync = await apiMemberAppend('sof_live_pending_loan_requests', txn);
     setLoanFiles([]);
     setLoanReqBusy(false);
+    if (!okSync) { alert('⚠️ ភ្ជាប់ប្រព័ន្ធមិនបានសម្រេច! ពាក្យស្នើមិនទាន់ចូលដល់គណៈកម្មការទេ។ សូមចេញ/ចូល (Logout/Login) ម្តងទៀត រួចផ្ញើសាថ្មី។'); return; }
     alert(sent
       ? 'បានផ្ញើពាក្យស្នើសុំកម្ចីចូល Telegram ក្រុម SOF Committee! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។'
       : 'ពាក្យស្នើសុំកម្ចីត្រូវបានកត់ត្រា! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។');
@@ -6848,8 +6849,9 @@ function MemberReport() {
     };
     const all = getStoredData('sof_pending_loan_requests', []) || [];
     setStoredData('sof_pending_loan_requests', [txn, ...all]);
-    await apiMemberAppend('sof_live_pending_loan_requests', txn);
+    const okSync = await apiMemberAppend('sof_live_pending_loan_requests', txn);
     setLoanReqBusy(false);
+    if (!okSync) { alert('⚠️ ភ្ជាប់ប្រព័ន្ធមិនបានសម្រេច! ពាក្យស្នើមិនទាន់ចូលដល់គណៈកម្មការទេ។ សូមចេញ/ចូល (Logout/Login) ម្តងទៀត រួចផ្ញើសាថ្មី។'); return; }
     alert(sent
       ? 'បានផ្ញើពាក្យស្នើសុំកម្ចីចូល Telegram ក្រុម SOF Committee! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។'
       : 'ពាក្យស្នើសុំកម្ចីត្រូវបានកត់ត្រា! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។');
@@ -6930,7 +6932,10 @@ function MemberReport() {
 
     const all = getStoredData('sof_pending_payments', []) || [];
     setStoredData('sof_pending_payments', [...newTxns, ...all]);
-    for (const t of newTxns) await apiMemberAppend('sof_live_pending_payments', t);
+    // Save each line to the server and CHECK it landed — a silent failure here is
+    // what let some members see "success" while the committee never got the request.
+    let synced = true;
+    for (const t of newTxns) { if (!(await apiMemberAppend('sof_live_pending_payments', t))) synced = false; }
     setSubmittedPayments([...newTxns, ...submittedPayments]);
     // Reset form
     setPaymentAmount('0.00');
@@ -6940,6 +6945,10 @@ function MemberReport() {
     setProofImage(null);
     setProofFilename('');
     setPaymentDate(new Date().toISOString().split('T')[0]);
+    if (!synced) {
+      alert("⚠️ ភ្ជាប់ប្រព័ន្ធមិនបានសម្រេច! ការស្នើមិនទាន់ចូលដល់គណៈកម្មការទេ។\n\nសូមចេញ (Logout) ហើយចូល (Login) ម្តងទៀត រួចផ្ញើសាថ្មី។ (បើនៅតែមិនបាន សូមប្រាប់គណៈកម្មការ។)");
+      return;
+    }
     alert(sent
       ? "បានផ្ញើភស្តុតាងចូល Telegram ក្រុម SOF Committee! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។"
       : "ការផ្ញើភស្តុតាងបានជោគជ័យ! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។");
@@ -7510,10 +7519,11 @@ function MemberReport() {
               };
               const all = getStoredData('sof_pending_loan_requests', []) || [];
               setStoredData('sof_pending_loan_requests', [txn, ...all]);
-              await apiMemberAppend('sof_live_pending_loan_requests', txn);
+              const okSync = await apiMemberAppend('sof_live_pending_loan_requests', txn);
               setShowDigitalForm(false);
               setDigitalAmount('');
               setDigitalPurpose('');
+              if (!okSync) { alert('⚠️ ភ្ជាប់ប្រព័ន្ធមិនបានសម្រេច! ពាក្យស្នើមិនទាន់ចូលដល់គណៈកម្មការទេ។ សូមចេញ/ចូល (Logout/Login) ម្តងទៀត រួចផ្ញើសាថ្មី។'); return; }
               alert(sent
                 ? "បានផ្ញើពាក្យស្នើសុំកម្ចីអនឡាញចូល Telegram ក្រុម SOF Committee! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។"
                 : "ពាក្យស្នើសុំកម្ចីត្រូវបានកត់ត្រា! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។");
