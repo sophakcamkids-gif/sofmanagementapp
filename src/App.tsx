@@ -6502,6 +6502,7 @@ function MemberReport() {
   const [loanFiles, setLoanFiles] = useState<{name: string; size: string; date: string; type: string; raw?: File}[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [loanReqBusy, setLoanReqBusy] = useState(false);
+  const [paymentBusy, setPaymentBusy] = useState(false);
   
   // Digital loan form states
   const [showDigitalForm, setShowDigitalForm] = useState(false);
@@ -6871,6 +6872,7 @@ function MemberReport() {
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (paymentBusy) return;  // guard against double-clicks while a submit is in flight
     // ONE form: a member can enter a savings deposit AND/OR a loan repayment together.
     const savings = parseFloat(paymentAmount) || 0;
     const principal = parseFloat(loanPrincipal) || 0;
@@ -6910,6 +6912,8 @@ function MemberReport() {
     }
 
     // One proof screenshot covers both lines; the caption lists whichever were entered.
+    setPaymentBusy(true);
+    try {
     const caption =
       `🧾 ការទូទាត់\n` +
       `ឈ្មោះ៖ ${memberName} (${code})\n` +
@@ -6952,6 +6956,9 @@ function MemberReport() {
     alert(sent
       ? "បានផ្ញើភស្តុតាងចូល Telegram ក្រុម SOF Committee! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។"
       : "ការផ្ញើភស្តុតាងបានជោគជ័យ! គណៈកម្មការនឹងពិនិត្យ និងអនុម័តជូន។");
+    } finally {
+      setPaymentBusy(false);
+    }
   };
   
   const tabs = ['របាយការណ៍ផ្ទាល់ខ្លួន', 'ស្នើកម្ចី', 'របាយការណ៍កម្ចី', 'របាយការណ៍សន្សំ', 'ការដាក់សន្សំ និងបង់កម្ចី'];
@@ -8693,10 +8700,20 @@ function MemberReport() {
                 {/* Submit button */}
                 <button
                   type="submit"
-                  className="w-full py-3 px-4 rounded-xl bg-[#0a6652] hover:bg-[#085241] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-900/10 transition-all active:scale-95 duration-200 mt-2"
+                  disabled={paymentBusy}
+                  className="w-full py-3 px-4 rounded-xl bg-[#0a6652] hover:bg-[#085241] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-900/10 transition-all active:scale-95 duration-200 mt-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100"
                 >
-                  <ShieldCheck size={16} />
-                  <span>ផ្ញើភស្តុតាងបង់ប្រាក់ផ្លូវការ</span>
+                  {paymentBusy ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      <span>កំពុងផ្ញើ... សូមរង់ចាំ</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck size={16} />
+                      <span>ផ្ញើភស្តុតាងបង់ប្រាក់ផ្លូវការ</span>
+                    </>
+                  )}
                 </button>
               </form>
             </div>
