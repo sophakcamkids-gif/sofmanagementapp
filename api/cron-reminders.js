@@ -15,7 +15,9 @@
 
 const TG = process.env.TELEGRAM_BOT_TOKEN;
 const SB_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const SB_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+// Service role key: the anon key can no longer read/write app_state after the RLS
+// lockdown, so this server-only job must use the service key (it bypasses RLS).
+const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 const CRON_SECRET = process.env.CRON_SECRET || '';
 
 async function sbGet(key) {

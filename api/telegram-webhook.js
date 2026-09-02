@@ -22,7 +22,9 @@
 const TG = process.env.TELEGRAM_BOT_TOKEN;
 const GEMINI = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 const SB_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const SB_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+// Service role key: the anon key can no longer read/write app_state after the RLS
+// lockdown, so this server-only handler must use the service key (it bypasses RLS).
+const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 const SECRET = process.env.WEBHOOK_SECRET || '';
 
 // ── Supabase app_state (key/value) via REST ──────────────────────────────────
