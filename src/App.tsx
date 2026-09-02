@@ -66,6 +66,11 @@ const prefetchLazyKeys = () => {
   }
 };
 
+// Local calendar date as YYYY-MM-DD (NOT UTC) — new Date().toISOString() would roll
+// to the previous/next day for Cambodia (UTC+7) in the evening/early morning.
+const localDateStr = (d: Date = new Date()): string =>
+  new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+
 // Admin login credentials, synced across devices via the cloud (sof_ → sof_live_).
 // The admin identifier is an email; a stored sof_admin_auth (if the admin changed
 // their credentials) overrides these defaults.
@@ -1442,7 +1447,7 @@ function PageView({
                     phone: row['លេខទូរស័ព្ទ'] || '-',
                     dob: row['ថ្ងៃខែឆ្នាំកំណើត'] || '-',
                     address: row['ទីលំនៅ'] || '-',
-                    joinDate: new Date().toISOString().split('T')[0],
+                    joinDate: localDateStr(),
                     spouse: '-',
                     relation: '-',
                     img: `https://i.pravatar.cc/150?u=${newIdNum}`
@@ -2708,7 +2713,7 @@ function Members() {
                     phone: row['លេខទូរស័ព្ទ'] || '-',
                     dob: row['ថ្ងៃខែឆ្នាំកំណើត'] || '-',
                     address: row['ទីលំនៅ'] || '-',
-                    joinDate: new Date().toISOString().split('T')[0],
+                    joinDate: localDateStr(),
                     spouse: '-',
                     relation: '-',
                     img: `https://i.pravatar.cc/150?u=${newIdNum}`
@@ -5835,7 +5840,7 @@ function SettingsPage() {
     if (!annTitle.trim() && !annBody.trim()) return;
     const title = annTitle.trim() || 'សេចក្តីជូនដំណឹង';
     const body = annBody.trim();
-    const next = [{ id: Date.now(), title, body, date: new Date().toISOString().split('T')[0] }, ...announcements];
+    const next = [{ id: Date.now(), title, body, date: localDateStr() }, ...announcements];
     setStoredData('sof_announcements', next);
     setAnnouncements(next);
     setAnnTitle(''); setAnnBody('');
@@ -5941,7 +5946,7 @@ function SettingsPage() {
       const lArr = flatMap(loans);
       if (lArr.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(lArr), "Active Loans");
 
-      XLSX.writeFile(wb, `SOF_Backup_${new Date().toISOString().split('T')[0]}.xlsx`);
+      XLSX.writeFile(wb, `SOF_Backup_${localDateStr()}.xlsx`);
     } catch (e) {
       alert("Error exporting to Excel: " + e.message);
     }
@@ -6003,7 +6008,7 @@ function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `sof_backup_${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `sof_backup_${localDateStr()}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -6523,7 +6528,7 @@ function MemberReport() {
   const [repGuarantor2, setRepGuarantor2] = useState('');
   const [repGuarantor2Id, setRepGuarantor2Id] = useState('');
   const [repFreq, setRepFreq] = useState<'monthly' | 'weekly'>('monthly'); // payments fall on the request day-of-month each month
-  const [repLoanDate, setRepLoanDate] = useState(new Date().toISOString().split('T')[0]); // loan/request date → schedule start
+  const [repLoanDate, setRepLoanDate] = useState(localDateStr()); // loan/request date → schedule start
   const [contractNum, setContractNum] = useState('MFC-2026-008');
   const [selectedReportYear, setSelectedReportYear] = useState('2026');
   const [summaryMonth, setSummaryMonth] = useState('');  // '' = auto (latest month with data)
@@ -6558,7 +6563,7 @@ function MemberReport() {
   const [paymentAmount, setPaymentAmount] = useState('0.00');
   const [loanPrincipal, setLoanPrincipal] = useState('0.00');
   const [loanInterest, setLoanInterest] = useState('0.00');
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentDate, setPaymentDate] = useState(localDateStr());
   const [transactionId, setTransactionId] = useState('');
   const [proofImage, setProofImage] = useState<string | null>(null);
   const [proofFilename, setProofFilename] = useState('');
@@ -6749,7 +6754,7 @@ function MemberReport() {
     setLoanReqBusy(true);
     const code = (localStorage.getItem('memberId') || '').toUpperCase();
     const now = new Date();
-    const date = now.toISOString().split('T')[0];
+    const date = localDateStr(now);
     const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
     const monthKey = `${KHM[now.getMonth()]} ${now.getFullYear()}`;
     const caption =
@@ -6810,7 +6815,7 @@ function MemberReport() {
     setLoanReqBusy(true);
     const code = (localStorage.getItem('memberId') || '').toUpperCase();
     const now = new Date();
-    const date = now.toISOString().split('T')[0];
+    const date = localDateStr(now);
     const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
     const monthKey = `${KHM[now.getMonth()]} ${now.getFullYear()}`;
     const caption =
@@ -6893,9 +6898,9 @@ function MemberReport() {
     }
 
     const code = (localStorage.getItem('memberId') || '').toUpperCase();
-    // The payment date is stamped automatically at submit time (the day the member
-    // sends the proof) — not an editable field the member could set wrongly.
-    const today = new Date().toISOString().split('T')[0];
+    // The payment date is stamped at submit time. Use the LOCAL date (Cambodia),
+    // not UTC — toISOString() rolled to the previous day early in the morning.
+    const today = paymentDate || localDateStr();
     const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
     const parts = today.split('-');
     const monthKey = parts.length === 3 ? `${KHM[parseInt(parts[1], 10) - 1]} ${parts[0]}` : '';
@@ -6948,7 +6953,7 @@ function MemberReport() {
     setTransactionId('');
     setProofImage(null);
     setProofFilename('');
-    setPaymentDate(new Date().toISOString().split('T')[0]);
+    setPaymentDate(localDateStr());
     if (!synced) {
       alert("⚠️ ភ្ជាប់ប្រព័ន្ធមិនបានសម្រេច! ការស្នើមិនទាន់ចូលដល់គណៈកម្មការទេ។\n\nសូមចេញ (Logout) ហើយចូល (Login) ម្តងទៀត រួចផ្ញើសាថ្មី។ (បើនៅតែមិនបាន សូមប្រាប់គណៈកម្មការ។)");
       return;
@@ -7495,7 +7500,7 @@ function MemberReport() {
               }
               const code = (localStorage.getItem('memberId') || '').toUpperCase();
               const now = new Date();
-              const date = now.toISOString().split('T')[0];
+              const date = localDateStr(now);
               const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
               const monthKey = `${KHM[now.getMonth()]} ${now.getFullYear()}`;
               const text =
