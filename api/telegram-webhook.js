@@ -70,6 +70,97 @@ async function findMember(code) {
   return null;
 }
 
+// ── Approvals — mirror applyPayment / monthRowsOrCarry / MONTHS_2026 in src/App.tsx.
+// Keep these in sync with the app or the by-month ledger will diverge. ──────────
+const MONTHS_2026 = ['មករា 2026', 'កុម្ភៈ 2026', 'មីនា 2026', 'មេសា 2026', 'ឧសភា 2026', 'មិថុនា 2026', 'កក្កដា 2026', 'សីហា 2026', 'កញ្ញា 2026', 'តុលា 2026', 'វិច្ឆិកា 2026', 'ធ្នូ 2026'];
+
+async function resolveMemberCode(input) {
+  const u = String(input || '').toUpperCase();
+  if (!u) return '';
+  const list = (await sbGet('sof_live_member_list_data')) || [];
+  const m = Array.isArray(list) ? list.find((x) =>
+    String(x.code || '').toUpperCase() === u ||
+    String(x.id || '').toUpperCase().endsWith(' ' + u) ||
+    String(x.id || '').toUpperCase() === u) : null;
+  if (m) return codeOf(m);
+  return codeOf({ id: u });
+}
+
+function monthRowsOrCarry(store, monthKey, isLoan) {
+  if (Array.isArray(store[monthKey]) && store[monthKey].length) return store[monthKey];
+  const idx = MONTHS_2026.indexOf(monthKey);
+  if (idx < 0) return null;
+  for (let i = idx - 1; i >= 0; i--) {
+    const prev = store[MONTHS_2026[i]];
+    if (Array.isArray(prev) && prev.length) {
+      store[monthKey] = prev.map((r) => isLoan
+        ? { ...r, loanValue: r.remaining ?? r.loanValue, newLoan: '-', repayment: '-', interestPaid: '-' }
+        : { ...r, startCapital: r.total ?? r.startCapital, addSaving: '-', withdraw: '-', deductFee: '-', actualFee: '-', profit: '0' });
+      return store[monthKey];
+    }
+  }
+  return null;
+}
+
+async function applyPayment(txn) {
+  const isLoan = txn.type === 'loan';
+  const keys = isLoan
+    ? ['sof_live_loans_by_month', 'sof_live_loans_deposit_by_month']
+    : ['sof_live_savings_by_month', 'sof_live_deposit_by_month'];
+  const canonicalCode = await resolveMemberCode(txn.memberCode);
+  const rawTxnCode = String(txn.memberCode || '').toUpperCase();
+  for (const key of keys) {
+    const store = (await sbGet(key)) || {};
+    const rows = monthRowsOrCarry(store, txn.monthKey, isLoan);
+    if (!Array.isArray(rows)) continue;
+    const r = rows.find((x) => {
+      const rowId = String(x.id || x.code || '').toUpperCase();
+      const codeX = codeOf(x);
+      if (rowId === rawTxnCode || codeX === canonicalCode) return true;
+      const dX = codeX.replace(/\D/g, ''); const dC = canonicalCode.replace(/\D/g, '');
+      return dX && dC && dX === dC;
+    });
+    if (!r) continue;
+    if (isLoan) {
+      r.repayment = (num(r.repayment) + (txn.principal || 0)).toFixed(2);
+      r.interestPaid = (num(r.interestPaid) + (txn.interest || 0)).toFixed(2);
+      r.remaining = (num(r.loanValue) + num(r.newLoan) - num(r.repayment)).toFixed(2);
+    } else {
+      r.addSaving = (num(r.addSaving) + (txn.amount || 0)).toFixed(2);
+      r.total = (num(r.total) + (txn.amount || 0)).toFixed(2);
+    }
+    await sbSet(key, store);
+    return true;
+  }
+  return false;
+}
+
+async function tgAnswerCallback(id, text) {
+  try {
+    await fetch(`https://api.telegram.org/bot${TG}/answerCallbackQuery`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callback_query_id: id, text: text || '' }),
+    });
+  } catch { /* ignore */ }
+}
+async function tgClearButtons(chatId, messageId) {
+  try {
+    await fetch(`https://api.telegram.org/bot${TG}/editMessageReplyMarkup`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } }),
+    });
+  } catch { /* ignore */ }
+}
+// The Telegram chat a member linked with the bot (for the approval DM), or null.
+async function memberChatId(code) {
+  const chats = (await sbGet('sof_live_member_chats')) || {};
+  const want = codeOf({ code });
+  for (const cid of Object.keys(chats)) {
+    if (codeOf({ code: chats[cid] }) === want) return cid;
+  }
+  return null;
+}
+
 async function buildDigest(code) {
   const sav = (await sbGet('sof_live_savings_by_month')) || {};
   const savLines = []; let latestSav = 0;
@@ -153,6 +244,61 @@ export default async function handler(req, res) {
   if (SECRET && req.headers['x-telegram-bot-api-secret-token'] !== SECRET) return res.status(401).send('unauthorized');
 
   const update = req.body || {};
+
+  // ── Committee approve/reject buttons (tapped in the committee Telegram group) ──
+  if (update.callback_query) {
+    const cq = update.callback_query;
+    const [action, id] = String(cq.data || '').split(':');
+    const fromName = (cq.from && (cq.from.first_name || cq.from.username)) || 'គណៈកម្មការ';
+    const chatId = cq.message && cq.message.chat && cq.message.chat.id;
+    const messageId = cq.message && cq.message.message_id;
+    try {
+      // Only the configured committee/group chat may approve.
+      const cfg = (await sbGet('sof_live_telegram_config')) || {};
+      const allowed = String(cfg.committeeChatId || cfg.chatId || '');
+      if (allowed && String(chatId) !== allowed) {
+        await tgAnswerCallback(cq.id, 'អ្នកមិនមានសិទ្ធិអនុម័តទេ។');
+        return res.status(200).json({ ok: true });
+      }
+      const pending = (await sbGet('sof_live_pending_payments')) || [];
+      const idx = Array.isArray(pending) ? pending.findIndex((t) => t.id === id) : -1;
+      if (idx < 0) {
+        await tgAnswerCallback(cq.id, 'ការស្នើនេះបានដោះស្រាយរួច ឬរកមិនឃើញ។');
+        await tgClearButtons(chatId, messageId);
+        return res.status(200).json({ ok: true });
+      }
+      const txn = pending[idx];
+      const label = `${txn.memberName || txn.memberCode} (${txn.memberCode}) · ${txn.type === 'loan' ? 'បង់កម្ចី' : 'ដាក់សន្សំ'} ខែ ${txn.monthKey} · $${money(num(txn.amount))}`;
+      if (action === 'apv') {
+        const ok = await applyPayment(txn);
+        if (!ok) {
+          await tgAnswerCallback(cq.id, 'រកមិនឃើញជួរសមាជិកសម្រាប់ខែនេះ — សូមអនុម័តក្នុង App។');
+          return res.status(200).json({ ok: true });
+        }
+        pending.splice(idx, 1);
+        await sbSet('sof_live_pending_payments', pending);
+        await tgClearButtons(chatId, messageId);
+        await tgSend(chatId, `✅ បានអនុម័ត៖ ${label}\n👤 ដោយ ${fromName}`);
+        const mc = await memberChatId(txn.memberCode);
+        if (mc) await tgSend(mc, `✅ ការបង់ប្រាក់របស់អ្នកត្រូវបានអនុម័ត!\n${txn.type === 'loan' ? 'បង់សងកម្ចី' : 'ដាក់សន្សំ'} ខែ ${txn.monthKey} · ចំនួន $${money(num(txn.amount))}`);
+        await tgAnswerCallback(cq.id, 'អនុម័តរួច ✅');
+      } else if (action === 'rej') {
+        pending.splice(idx, 1);
+        await sbSet('sof_live_pending_payments', pending);
+        await tgClearButtons(chatId, messageId);
+        await tgSend(chatId, `❌ បានបដិសេធ៖ ${label}\n👤 ដោយ ${fromName}`);
+        const mc = await memberChatId(txn.memberCode);
+        if (mc) await tgSend(mc, `❌ ការស្នើបង់ប្រាក់របស់អ្នក (${txn.type === 'loan' ? 'បង់កម្ចី' : 'ដាក់សន្សំ'} ខែ ${txn.monthKey}) ត្រូវបានបដិសេធ។ សូមទាក់ទងគណៈកម្មការ។`);
+        await tgAnswerCallback(cq.id, 'បដិសេធរួច ❌');
+      } else {
+        await tgAnswerCallback(cq.id, '');
+      }
+    } catch (e) {
+      await tgAnswerCallback(cq.id, 'មានបញ្ហាបច្ចេកទេស។');
+    }
+    return res.status(200).json({ ok: true });
+  }
+
   const msg = update.message || update.edited_message;
   if (!msg || !msg.chat) return res.status(200).json({ ok: true });
   if (msg.chat.type !== 'private') return res.status(200).json({ ok: true }); // មិនឆ្លើយក្នុង Group ទេ

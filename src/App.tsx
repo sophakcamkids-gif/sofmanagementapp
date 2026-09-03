@@ -89,7 +89,7 @@ const committeeChat = (): string => { const c = getTelegramConfig(); return c.co
 // Send a proof image + caption to the COMMITTEE Telegram group via the Bot API
 // (api.telegram.org allows cross-origin calls from the browser). Returns true on
 // success so the caller can drop the base64 image from cloud storage.
-const sendTelegramPhoto = async (dataUrl: string, caption: string): Promise<boolean> => {
+const sendTelegramPhoto = async (dataUrl: string, caption: string, replyMarkup?: any): Promise<boolean> => {
   const { token, enabled } = getTelegramConfig();
   const target = committeeChat();
   if (!enabled || !token || !target || !dataUrl) return false;
@@ -99,6 +99,7 @@ const sendTelegramPhoto = async (dataUrl: string, caption: string): Promise<bool
     form.append('chat_id', target);
     form.append('caption', caption);
     form.append('photo', blob, 'proof.jpg');
+    if (replyMarkup) form.append('reply_markup', JSON.stringify(replyMarkup));  // ✅/❌ approve buttons
     const res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: form });
     const j = await res.json().catch(() => ({ ok: false }));
     return !!j.ok;
@@ -6926,18 +6927,26 @@ function MemberReport() {
       (savings > 0 ? `• ដាក់សន្សំ៖ $${savings.toFixed(2)}\n` : '') +
       (loanTotal > 0 ? `• បង់កម្ចី៖ $${loanTotal.toFixed(2)}  (ដើម $${principal.toFixed(2)} + ការ $${interest.toFixed(2)})\n` : '') +
       `កាលបរិច្ឆេទ៖ ${today}   Txn៖ ${transactionId || 'N/A'}`;
-    const sent = await sendTelegramPhoto(proofImage, caption);
 
+    // Build the pending items FIRST so the Telegram proof can carry ✅/❌ buttons that
+    // reference each item's id — the committee can then approve straight from Telegram.
     const base = {
       memberCode: code, memberName, date: today, monthKey,
       transactionId: transactionId || "N/A", status: 'pending' as 'approved' | 'pending',
       proofName: proofFilename || 'screenshot.png',
-      proofImg: sent ? '' : proofImage,   // drop base64 once it's safely in Telegram
-      sentToTelegram: sent,
+      proofImg: '',
+      sentToTelegram: false,
     };
     const newTxns: any[] = [];
     if (savings > 0) newTxns.push({ ...base, id: `TXN-${Date.now()}-S`, type: 'savings', amount: savings });
     if (loanTotal > 0) newTxns.push({ ...base, id: `TXN-${Date.now()}-L`, type: 'loan', amount: loanTotal, principal, interest });
+
+    const keyboard = { inline_keyboard: newTxns.map((t) => [
+      { text: `✅ អនុម័ត${t.type === 'loan' ? 'កម្ចី' : 'សន្សំ'}`, callback_data: `apv:${t.id}` },
+      { text: '❌ បដិសេធ', callback_data: `rej:${t.id}` },
+    ]) };
+    const sent = await sendTelegramPhoto(proofImage, caption, keyboard);
+    newTxns.forEach((t) => { t.sentToTelegram = sent; t.proofImg = sent ? '' : proofImage; });
 
     const all = getStoredData('sof_pending_payments', []) || [];
     setStoredData('sof_pending_payments', [...newTxns, ...all]);
