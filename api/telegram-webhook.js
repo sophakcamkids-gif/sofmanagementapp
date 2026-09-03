@@ -256,6 +256,8 @@ export default async function handler(req, res) {
       // Only the configured committee/group chat may approve.
       const cfg = (await sbGet('sof_live_telegram_config')) || {};
       const allowed = String(cfg.committeeChatId || cfg.chatId || '');
+      // TEMP diagnostic (remove after): surfaces the ids in the group so we can see why.
+      try { await tgSend(chatId, `🔧 tap · chat=${chatId} · allowed=${allowed} · data=${cq.data}`); } catch { /* ignore */ }
       if (allowed && String(chatId) !== allowed) {
         await tgAnswerCallback(cq.id, 'អ្នកមិនមានសិទ្ធិអនុម័តទេ។');
         return res.status(200).json({ ok: true });
