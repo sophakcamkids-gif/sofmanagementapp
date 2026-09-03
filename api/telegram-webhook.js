@@ -240,7 +240,22 @@ async function askGemini(prompt) {
 const HELP_UNLINKED = 'សួស្តី! ខ្ញុំជា SOF Bot 🤖\nសូមផ្ញើលេខ ID សមាជិករបស់អ្នក (ឧ. C001) ដើម្បីភ្ជាប់គណនី។';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(200).send('SOF member bot webhook');
+  if (req.method !== 'POST') {
+    // TEMP self-diagnostic (remove after): confirms this build is live + config.
+    if (req.query && req.query.diag === 'sofcheck') {
+      const cfg = (await sbGet('sof_live_telegram_config')) || {};
+      const pend = (await sbGet('sof_live_pending_payments')) || [];
+      return res.status(200).json({
+        version: 'v2-approve-buttons',
+        tgToken: !!TG,
+        committeeChatId: cfg.committeeChatId || null,
+        chatId: cfg.chatId || null,
+        pendingCount: Array.isArray(pend) ? pend.length : 0,
+        pendingIds: Array.isArray(pend) ? pend.slice(0, 5).map((t) => t.id) : [],
+      });
+    }
+    return res.status(200).send('SOF member bot webhook');
+  }
   if (SECRET && req.headers['x-telegram-bot-api-secret-token'] !== SECRET) return res.status(401).send('unauthorized');
 
   const update = req.body || {};
