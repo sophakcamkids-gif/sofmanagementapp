@@ -1,4 +1,4 @@
-import { getToken, getApiRole, apiLoadState, apiSet } from './secureApi';
+import { getToken, apiLoadState, apiSet } from './secureApi';
 
 /**
  * Cloud persistence layer for the app's key/value state.
@@ -18,14 +18,25 @@ export async function loadAllCloudState(): Promise<Record<string, any>> {
   return await apiLoadState();
 }
 
+// Broadcast whether the last admin cloud write reached Supabase, so the UI can warn
+// the admin instead of silently losing data (a lost/expired session made writes fail
+// quietly). The App listens for the 'sof-cloud' event.
+function emitCloud(ok: boolean): void {
+  try { window.dispatchEvent(new CustomEvent('sof-cloud', { detail: { ok } })); } catch { /* SSR/none */ }
+}
+
 // Mirror a single key/value pair to the cloud. Safe to call fire-and-forget.
-//   • admin  → writes any key through the server (service key bypasses RLS).
+//   • admin  → writes any key through the server (service key bypasses RLS); emits
+//     success/failure so the UI can flag a broken session.
 //   • member → skipped here; a member's few permitted writes (own password,
 //     own pending submission) go through the dedicated secureApi helpers at
 //     their call sites, which the server authorises per-item.
 //   • signed out → skipped (LocalStorage still holds the working copy).
 export async function saveCloudState(key: string, value: any): Promise<void> {
-  if (!getToken()) return;
-  if (getApiRole() !== 'admin') return;
-  await apiSet(key, value);
+  let isAdmin = false;
+  try { isAdmin = localStorage.getItem('userRole') === 'admin'; } catch { /* ignore */ }
+  if (!isAdmin) return;
+  if (!getToken()) { emitCloud(false); return; }
+  const ok = await apiSet(key, value);
+  emitCloud(ok);
 }

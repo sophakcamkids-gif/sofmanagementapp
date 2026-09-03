@@ -853,6 +853,14 @@ export default function App() {
   const [botOpen, setBotOpen] = useState(false);  // SOF Bot (AI assistant) modal
   const [notifOpen, setNotifOpen] = useState(false);  // notifications / announcements
   const [installOpen, setInstallOpen] = useState(false);  // "install to home screen" guide
+  // Tracks whether admin writes are reaching the cloud; a broken/expired session made
+  // saves fail silently (data stayed only on that computer). We warn instead.
+  const [cloudOk, setCloudOk] = useState(true);
+  useEffect(() => {
+    const h = (e: any) => setCloudOk(!!(e && e.detail && e.detail.ok));
+    window.addEventListener('sof-cloud', h);
+    return () => window.removeEventListener('sof-cloud', h);
+  }, []);
   const announcementCount = (() => {
     const shared = ((getStoredData('sof_announcements', []) as any[]) || []).length;
     const code = (localStorage.getItem('memberId') || '').toUpperCase();
@@ -1020,6 +1028,17 @@ export default function App() {
   return (
     <Router>
       <div className="min-h-screen bg-[#eef8f2] text-slate-800 font-sans flex flex-col">
+        {/* Cloud-write failure warning — data isn't reaching Supabase (broken session). */}
+        {userRole === 'admin' && !cloudOk && (
+          <div className="w-full px-4 py-2 text-[12px] font-bold flex items-center justify-center gap-3 flex-wrap text-center" style={{ background: '#fef2f2', borderBottom: '1px solid #fecaca', color: '#b91c1c' }}>
+            <span>⚠️ ការភ្ជាប់ Cloud ដាច់ — ទិន្នន័យថ្មីមិនបានរក្សាទុកទេ! សូមចេញ/ចូលម្ដងទៀត រួចបញ្ចូលឡើងវិញ។</span>
+            <button
+              type="button"
+              onClick={() => { localStorage.removeItem('userRole'); localStorage.removeItem('memberId'); clearToken(); window.location.href = '/login'; }}
+              className="px-3 py-1 rounded-lg bg-rose-600 text-white font-black hover:bg-rose-700 cursor-pointer"
+            >ចូលម្ដងទៀត</button>
+          </div>
+        )}
         {/* Top Header Wrapper */}
         <div className="w-full bg-[#eef8f2] border-b border-slate-200/40">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
