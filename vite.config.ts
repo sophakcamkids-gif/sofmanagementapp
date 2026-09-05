@@ -5,6 +5,11 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    // Baked-in build id (Vercel's commit sha) so the running app can detect when a
+    // newer version has been deployed and auto-reload — see /api/version + App.tsx.
+    define: {
+      __APP_VERSION__: JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA || 'dev'),
+    },
     plugins: [react(), tailwindcss()],
     resolve: {
       preserveSymlinks: true,

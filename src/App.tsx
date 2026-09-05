@@ -22,6 +22,10 @@ import {
   LineChart as LineChartIcon, RefreshCw, Smartphone, Monitor, Link2, Database
 } from 'lucide-react';
 
+// Build id baked in at compile time (Vercel commit sha); compared to /api/version to
+// auto-reload when a newer build is deployed. See vite.config.ts.
+declare const __APP_VERSION__: string;
+
 const getStoredData = (key: string, defaultValue: any) => {
   if (typeof window === 'undefined') return defaultValue;
   const mappedKey = key.startsWith('sof_') ? key.replace('sof_', 'sof_live_') : key;
@@ -886,6 +890,39 @@ export default function App() {
     const h = (e: any) => setCloudOk(!!(e && e.detail && e.detail.ok));
     window.addEventListener('sof-cloud', h);
     return () => window.removeEventListener('sof-cloud', h);
+  }, []);
+
+  // Auto-update: when a newer build is deployed, reload so users (esp. members who
+  // never hard-refresh) pick up new code AND fresh config — checked when they return
+  // to the app (a natural moment to reload). A sessionStorage guard avoids any loop.
+  useEffect(() => {
+    let busy = false;
+    const check = async () => {
+      if (busy) return;
+      busy = true;
+      try {
+        const r = await fetch('/api/version', { cache: 'no-store' });
+        if (r.ok) {
+          const j = await r.json();
+          const deployed = j && j.version;
+          const mine = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev';
+          if (deployed && deployed !== 'dev' && mine !== 'dev' && deployed !== mine) {
+            let already = '';
+            try { already = sessionStorage.getItem('sof_reloaded_for') || ''; } catch { /* ignore */ }
+            if (already !== deployed) {
+              try { sessionStorage.setItem('sof_reloaded_for', deployed); } catch { /* ignore */ }
+              window.location.reload();
+              return;
+            }
+          }
+        }
+      } catch { /* ignore */ }
+      busy = false;
+    };
+    const onVis = () => { if (document.visibilityState === 'visible') check(); };
+    document.addEventListener('visibilitychange', onVis);
+    check();  // also once on mount
+    return () => document.removeEventListener('visibilitychange', onVis);
   }, []);
   const announcementCount = (() => {
     const shared = ((getStoredData('sof_announcements', []) as any[]) || []).length;
