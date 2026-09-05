@@ -10,7 +10,7 @@ import { exportElementToPdf, exportElementToImage, renderElementToPngDataUrl } f
 import FitToWidth from './FitToWidth';
 import { db } from './lib/db';
 import { loadAllCloudState, saveCloudState } from './lib/cloudStore';
-import { apiLogin, apiLoadState, apiMemberAppend, apiMemberPassword, apiGetKey, clearToken } from './lib/secureApi';
+import { apiLogin, apiLoadState, apiMemberAppend, apiMemberPassword, apiGetKey, getToken, clearToken } from './lib/secureApi';
 import { computeSavings, computeLoan, DEFAULT_RATES } from './lib/calcEngine';
 import { 
   Bell, Settings, Users, Wallet, 
@@ -65,6 +65,32 @@ const prefetchLazyKeys = () => {
       .catch(() => { /* ignore */ });
   }
 };
+
+// If a member's session has expired (mobile backgrounding pauses the auto-logout
+// timer, so the token can lapse while they still look "logged in"), send them back to
+// log in BEFORE sending anything — otherwise the proof reached Telegram but the save
+// 401'd, they re-tapped, and Telegram filled with duplicates. Returns false (and
+// redirects) when the session is dead; true (proceed) otherwise.
+function memberSessionExpired(): void {
+  try {
+    alert('⚠️ វគ្គចូលប្រើផុតកំណត់! សូមចូល (Login) ម្ដងទៀត រួចផ្ញើសាថ្មី។');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('memberId');
+    clearToken();
+    window.location.href = '/login';
+  } catch { /* ignore */ }
+}
+async function ensureMemberSession(): Promise<boolean> {
+  const tok = getToken();
+  if (!tok) { memberSessionExpired(); return false; }
+  try {
+    const r = await fetch('/api/state?key=sof_live_group_info', { headers: { Authorization: 'Bearer ' + tok } });
+    if (r.status === 401) { memberSessionExpired(); return false; }
+    return true;
+  } catch {
+    return true; // network hiccup — don't block; let the submit itself try
+  }
+}
 
 // Local calendar date as YYYY-MM-DD (NOT UTC) — new Date().toISOString() would roll
 // to the previous/next day for Cambodia (UTC+7) in the evening/early morning.
@@ -6772,6 +6798,7 @@ function MemberReport() {
       return;
     }
     setLoanReqBusy(true);
+    if (!(await ensureMemberSession())) { setLoanReqBusy(false); return; }
     const code = (localStorage.getItem('memberId') || '').toUpperCase();
     const now = new Date();
     const date = localDateStr(now);
@@ -6833,6 +6860,7 @@ function MemberReport() {
     if (amt <= 0) { alert('សូមបញ្ចូលទំហំកម្ចីឲ្យត្រឹមត្រូវ!'); return; }
     if (!repBorrower.trim()) { alert('សូមបញ្ចូលឈ្មោះអ្នកទទួលកម្ចី!'); return; }
     setLoanReqBusy(true);
+    if (!(await ensureMemberSession())) { setLoanReqBusy(false); return; }
     const code = (localStorage.getItem('memberId') || '').toUpperCase();
     const now = new Date();
     const date = localDateStr(now);
@@ -6939,6 +6967,7 @@ function MemberReport() {
     // One proof screenshot covers both lines; the caption lists whichever were entered.
     setPaymentBusy(true);
     try {
+    if (!(await ensureMemberSession())) return;  // dead session → re-login before sending
     const caption =
       `🧾 ការទូទាត់\n` +
       `ឈ្មោះ៖ ${memberName} (${code})\n` +
@@ -7526,6 +7555,7 @@ function MemberReport() {
                 alert("សូមបញ្ចូលចំនួនទឹកប្រាក់កម្ចីឲ្យត្រឹមត្រូវ!");
                 return;
               }
+              if (!(await ensureMemberSession())) return;  // dead session → re-login first
               const code = (localStorage.getItem('memberId') || '').toUpperCase();
               const now = new Date();
               const date = localDateStr(now);
