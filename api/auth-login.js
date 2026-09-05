@@ -51,7 +51,9 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       ok: true, role: 'member', code,
-      token: signToken({ role: 'member', code }),
+      // Members get a long-lived session (30 days) so deposits/loan submits don't fail
+      // from an expired token — members use their own phones (lower risk than admin).
+      token: signToken({ role: 'member', code }, 30 * 24 * 60 * 60),
       state: allowedFrom(all, 'member'),
     });
   } catch (e) {

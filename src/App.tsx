@@ -989,10 +989,11 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
-  // Auto-logout after 20 minutes of inactivity — so a signed-in account left open on
-  // a shared/lost phone doesn't stay accessible. Any interaction resets the timer.
+  // Auto-logout after 20 minutes of inactivity — ADMIN ONLY (full access = biggest
+  // risk). Members are NOT auto-logged-out: they use their own phones and were being
+  // frustrated by re-logins / failed deposits when the session lapsed.
   useEffect(() => {
-    if (!userRole) return;
+    if (userRole !== 'admin') return;
     let timer: ReturnType<typeof setTimeout>;
     const logout = () => {
       localStorage.removeItem('userRole');
