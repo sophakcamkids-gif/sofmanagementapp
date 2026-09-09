@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx';
-import { exportElementToPdf, exportElementToImage, renderElementToPdfBlob } from './utils/exportPdf';
+import { exportElementToPdf, exportElementToImage, renderElementToPagedPdfBlob } from './utils/exportPdf';
 import FitToWidth from './FitToWidth';
 import { db } from './lib/db';
 import { loadAllCloudState, saveCloudState } from './lib/cloudStore';
@@ -6915,8 +6915,9 @@ function MemberReport() {
     try {
       const el = document.querySelector('.loan-request-sheet') as HTMLElement | null;
       if (el) {
-        // Send the filled loan-request sheet as a proper A4 PDF document (not a photo).
-        const pdf = await renderElementToPdfBlob(el, 820);
+        // Send the filled loan-request sheet as a multi-page A4 PDF (fills the page
+        // width, spans pages — so the 48-month table stays readable, not shrunk).
+        const pdf = await renderElementToPagedPdfBlob(el, 820);
         sent = await sendTelegramDocument(pdf, `Loan-Request-${contractNum || code}.pdf`, caption);
       }
       if (!sent) sent = await sendTelegramMessage(caption);

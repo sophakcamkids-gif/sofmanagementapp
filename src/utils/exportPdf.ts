@@ -281,6 +281,42 @@ export async function renderElementToPdfBlob(el: HTMLElement, fixedWidth?: numbe
   return pdf.output('blob');
 }
 
+// Render a (possibly tall) element to a MULTI-PAGE A4 PDF at readable size: the
+// content fills the page WIDTH and is sliced across as many portrait pages as needed,
+// instead of being shrunk to fit a single page. For long tables (e.g. a 48-month loan
+// schedule) where fit-to-one-page makes the text too small to read.
+export async function renderElementToPagedPdfBlob(el: HTMLElement, fixedWidth?: number): Promise<Blob> {
+  const canvas = await renderElementToCanvas(el, fixedWidth);
+  const imgW = canvas.width;
+  const imgH = canvas.height;
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+  const margin = 18;
+  const usableW = pageW - margin * 2;
+  const usableH = pageH - margin * 2;
+  const scale = usableW / imgW;                       // fill the page width
+  const srcSlicePx = Math.max(1, Math.floor(usableH / scale)); // source px shown per page
+  const pageCount = Math.max(1, Math.ceil(imgH / srcSlicePx));
+
+  for (let p = 0; p < pageCount; p++) {
+    if (p > 0) pdf.addPage();
+    const sy = p * srcSlicePx;
+    const sh = Math.min(srcSlicePx, imgH - sy);
+    const slice = document.createElement('canvas');
+    slice.width = imgW;
+    slice.height = sh;
+    const ctx = slice.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, imgW, sh);
+      ctx.drawImage(canvas, 0, sy, imgW, sh, 0, 0, imgW, sh);
+    }
+    pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, usableW, sh * scale, undefined, 'FAST');
+  }
+  return pdf.output('blob');
+}
+
 // Render an element to a single-image PDF page and download it (mobile: open/share).
 export async function exportElementToPdf(el: HTMLElement, filename: string, fixedWidth?: number): Promise<void> {
   const blob = await renderElementToPdfBlob(el, fixedWidth);
