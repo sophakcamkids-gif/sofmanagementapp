@@ -7138,11 +7138,20 @@ function MemberReport() {
     const deposit = getStoredData('sof_deposit_by_month', {}) || {};
     const fixedterm = getStoredData('sof_fixedterm_by_month', FIXEDTERM_BY_MONTH) || {};
     const out: any[] = [];
+    const matchFn = (x: any) => String(x.id || x.code || '').toUpperCase() === memberCode || codeOf(x) === codeOf({ id: memberCode });
     memberMonths.forEach((m, i) => {
-      const matchFn = (x: any) => String(x.id || x.code || '').toUpperCase() === memberCode || codeOf(x) === codeOf({ id: memberCode });
-      const a = Array.isArray(active[m]) ? active[m].find(matchFn) : null;
-      const d = (!a && Array.isArray(deposit[m])) ? deposit[m].find(matchFn) : null;
-      const f = (!a && !d && Array.isArray(fixedterm[m])) ? fixedterm[m].find(matchFn) : null;
+      // Only months where this member actually has a saved row.
+      const hasA = Array.isArray(active[m]) && active[m].some(matchFn);
+      const hasD = Array.isArray(deposit[m]) && deposit[m].some(matchFn);
+      const f = (!hasA && !hasD && Array.isArray(fixedterm[m])) ? fixedterm[m].find(matchFn) : null;
+      if (!hasA && !hasD && !f) return;
+      // Use the LIVE-recomputed distribution (share/profit/total) so this matches the
+      // admin Savings page exactly — which recomputes the same way from the current
+      // income statement — instead of reading a possibly-stale saved snapshot. Falls
+      // back to the stored row if the live pass can't be computed (e.g. other years).
+      const live = savingsLiveTotals(m);
+      const a = hasA ? ((live && Array.isArray(live.active) && live.active.find(matchFn)) || active[m].find(matchFn)) : null;
+      const d = (!a && hasD) ? ((live && Array.isArray(live.deposit) && live.deposit.find(matchFn)) || deposit[m].find(matchFn)) : null;
       const r = a || d || f;
       if (r) {
         const row: any = { seq: String(i + 1).padStart(2, '0'), mi: i, monthName: m.split(' ')[0], ...r };
