@@ -260,8 +260,9 @@ async function renderElementToCanvas(el: HTMLElement, fixedWidth?: number): Prom
   }
 }
 
-// Render an element to a single-image PDF page (landscape if wider than tall).
-export async function exportElementToPdf(el: HTMLElement, filename: string, fixedWidth?: number): Promise<void> {
+// Render an element to a single-image A4 PDF and return it as a Blob (no download).
+// Used to attach a proper PDF file (e.g. a loan-request sheet) to a Telegram message.
+export async function renderElementToPdfBlob(el: HTMLElement, fixedWidth?: number): Promise<Blob> {
   const canvas = await renderElementToCanvas(el, fixedWidth);
   const imgW = canvas.width;
   const imgH = canvas.height;
@@ -277,8 +278,14 @@ export async function exportElementToPdf(el: HTMLElement, filename: string, fixe
   const y = (pageH - h) / 2;
 
   pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', x, y, w, h, undefined, 'FAST');
+  return pdf.output('blob');
+}
+
+// Render an element to a single-image PDF page and download it (mobile: open/share).
+export async function exportElementToPdf(el: HTMLElement, filename: string, fixedWidth?: number): Promise<void> {
+  const blob = await renderElementToPdfBlob(el, fixedWidth);
   const name = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
-  deliverBlob(pdf.output('blob'), name);
+  deliverBlob(blob, name);
 }
 
 // Rasterize an element and return the PNG as a data URL (no download / overlay).
