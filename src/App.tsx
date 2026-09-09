@@ -6603,7 +6603,7 @@ function MemberReport() {
   // Loan report states based on the contract sheet
   const [repLoanAmt, setRepLoanAmt] = useState('1804.58'); // matching the total loan shown in member's dashboard screenshot $1,804.58!
   const [repLoanTerm, setRepLoanTerm] = useState(12);
-  const [repLoanRate, setRepLoanRate] = useState(0.8);
+  const [repLoanRate, setRepLoanRate] = useState(1.5); // default 1.5%/month, editable on the sheet
   const [repPurpose, setRepPurpose] = useState(''); // loan purpose (គោលបំណង), shown on the sheet
   const [repBorrower, setRepBorrower] = useState('ជន សុភាក់');
   const [repBorrowerId, setRepBorrowerId] = useState('CM008');
@@ -6757,7 +6757,7 @@ function MemberReport() {
   const calculateSchedule = () => {
     const amt = parseFloat(repLoanAmt) || 0;
     const term = repLoanTerm || 12;
-    const r = (repLoanRate || 0.8) / 100;
+    const r = (repLoanRate || 1.5) / 100;
     
     const schedule = [];
     let currentBal = amt;
