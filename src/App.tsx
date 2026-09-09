@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx';
-import { exportElementToPdf, exportElementToImage, renderElementToPagedPdfBlob } from './utils/exportPdf';
+import { exportElementToPdf, exportElementToPagedPdf, exportElementToImage, renderElementToPagedPdfBlob } from './utils/exportPdf';
 import FitToWidth from './FitToWidth';
 import { db } from './lib/db';
 import { loadAllCloudState, saveCloudState } from './lib/cloudStore';
@@ -7297,13 +7297,13 @@ function MemberReport() {
 
   // Generic sheet exporter (loan/savings reports). `busyKey` tracks which button spins.
   const [exportBusy, setExportBusy] = useState('');
-  const exportSheet = async (selector: string, kind: 'pdf' | 'img', name: string, busyKey: string, fixedWidth = 800) => {
+  const exportSheet = async (selector: string, kind: 'pdf' | 'img', name: string, busyKey: string, fixedWidth = 800, paged = false) => {
     const el = document.querySelector(selector) as HTMLElement | null;
     if (!el) return;
     if (!el.id) el.id = 'sof-export-' + busyKey.replace(/[^a-z0-9]/gi, '');
     setExportBusy(busyKey);
     try {
-      if (kind === 'pdf') await exportElementToPdf(el, name, fixedWidth);
+      if (kind === 'pdf') await (paged ? exportElementToPagedPdf : exportElementToPdf)(el, name, fixedWidth);
       else await exportElementToImage(el, name, fixedWidth);
     } catch (err) {
       console.error('Export failed:', err);
@@ -8076,7 +8076,7 @@ function MemberReport() {
             <>
               {/* Export + submit buttons — OUTSIDE the sheet so they aren't captured */}
               <div className="no-print flex flex-wrap justify-end gap-2">
-                <button type="button" onClick={() => exportSheet('.loan-request-sheet', 'pdf', `គំរូស្នើកម្ចី-${memberCode}`, 'lreq-pdf', 820)} disabled={exportBusy === 'lreq-pdf'}
+                <button type="button" onClick={() => exportSheet('.loan-request-sheet', 'pdf', `គំរូស្នើកម្ចី-${memberCode}`, 'lreq-pdf', 820, true)} disabled={exportBusy === 'lreq-pdf'}
                   className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-60">
                   <Download size={14} /> <span>{exportBusy === 'lreq-pdf' ? 'កំពុងបង្កើត...' : 'PDF'}</span>
                 </button>

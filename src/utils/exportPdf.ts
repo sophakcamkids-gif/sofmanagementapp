@@ -324,6 +324,13 @@ export async function exportElementToPdf(el: HTMLElement, filename: string, fixe
   deliverBlob(blob, name);
 }
 
+// Download a MULTI-PAGE A4 PDF (fills width, spans pages) — for long tables.
+export async function exportElementToPagedPdf(el: HTMLElement, filename: string, fixedWidth?: number): Promise<void> {
+  const blob = await renderElementToPagedPdfBlob(el, fixedWidth);
+  const name = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+  deliverBlob(blob, name);
+}
+
 // Rasterize an element and return the PNG as a data URL (no download / overlay).
 // Used to attach an on-screen sheet (e.g. a loan-request template) to a Telegram
 // message.
