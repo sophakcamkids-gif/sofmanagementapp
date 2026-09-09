@@ -6604,6 +6604,7 @@ function MemberReport() {
   const [repLoanAmt, setRepLoanAmt] = useState('1804.58'); // matching the total loan shown in member's dashboard screenshot $1,804.58!
   const [repLoanTerm, setRepLoanTerm] = useState(12);
   const [repLoanRate, setRepLoanRate] = useState(0.8);
+  const [repPurpose, setRepPurpose] = useState(''); // loan purpose (គោលបំណង), shown on the sheet
   const [repBorrower, setRepBorrower] = useState('ជន សុភាក់');
   const [repBorrowerId, setRepBorrowerId] = useState('CM008');
   const [repPhone, setRepPhone] = useState('012 345 678');
@@ -6909,6 +6910,7 @@ function MemberReport() {
       `ឈ្មោះ៖ ${repBorrower} (${code})\n` +
       `ទំហំកម្ចី៖ $${amt.toLocaleString()}\n` +
       `រយៈពេល៖ ${repLoanTerm} ខែ · អត្រា ${repLoanRate}%/ខែ\n` +
+      `គោលបំណង៖ ${repPurpose || '-'}\n` +
       `កិច្ចសន្យាលេខ៖ ${contractNum}\n` +
       `កាលបរិច្ឆេទ៖ ${date}`;
     let sent = false;
@@ -6931,6 +6933,7 @@ function MemberReport() {
       amount: amt,
       term: repLoanTerm,
       rate: repLoanRate,
+      purpose: repPurpose,
       contractNum,
       phone: repPhone,
       date,
@@ -7930,7 +7933,7 @@ function MemberReport() {
                </div>
              </div>
              <button 
-               onClick={() => setShowDigitalForm(true)}
+               onClick={() => document.querySelector('.loan-request-sheet')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                className="bg-[#0a6652] hover:bg-[#085241] text-white font-bold text-xs py-2.5 px-4 rounded-xl active:scale-95 transition-all shadow-md shadow-emerald-900/10 flex items-center justify-center gap-1.5 self-start sm:self-auto shrink-0"
              >
                <FileText size={14} /> <span>បំពេញសំណើកម្ចីឥឡូវនេះ</span>
@@ -7947,7 +7950,7 @@ function MemberReport() {
                <p className="text-[11px] text-slate-500 leading-relaxed mb-2">អ្នកអាចបំពេញតម្រូវការប្រាក់កម្ចីសន្សំ សរសេរអំពីគោលបំណង និងរយៈពេលសងត្រឡប់ ដើម្បីបង្កើតជាឯកសារសំណើផ្លូវការភ្លាមៗ។</p>
                <button
                  type="button"
-                 onClick={() => setShowDigitalForm(true)}
+                 onClick={() => document.querySelector('.loan-request-sheet')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                  className="text-[#0a6652] hover:text-[#085241] font-extrabold text-[11px] flex items-center gap-1 transition-colors hover:underline"
                >
                  👉 បំពេញសំណើកម្ចីឥឡូវនេះ
@@ -8191,6 +8194,21 @@ function MemberReport() {
                   </td>
                   </tr></tbody>
                 </table>
+
+                {/* Loan purpose (full width) — auto-flows into the sheet/PDF. */}
+                <div className="mb-8" style={boxSt}>
+                  <div className="flex items-start gap-2 text-xs">
+                    <span className="text-slate-500 font-semibold shrink-0" style={{ paddingTop: '2px' }}>គោលបំណងនៃកម្ចី៖</span>
+                    <input
+                      type="text"
+                      value={repPurpose}
+                      onChange={(e) => setRepPurpose(e.target.value)}
+                      placeholder="ឧ. ពង្រីកអាជីវកម្ម, ទិញសម្ភារៈ, កសិកម្ម..."
+                      className={inputCls + ' flex-1'}
+                      style={{ ...inSt, textAlign: 'left', width: '100%' }}
+                    />
+                  </div>
+                </div>
 
                 {/* Amortization schedule */}
                 <div className="mb-3" style={{ textAlign: 'left' }}>
