@@ -248,10 +248,12 @@ export default async function handler(req, res) {
   // ── Committee approve/reject buttons (tapped in the committee Telegram group) ──
   if (update.callback_query) {
     const cq = update.callback_query;
-    const [action, id] = String(cq.data || '').split(':');
+    const [action, idStr] = String(cq.data || '').split(':');
+    const ids = String(idStr || '').split(',').filter(Boolean); // one submission can carry savings + loan
     const fromName = (cq.from && (cq.from.first_name || cq.from.username)) || 'គណៈកម្មការ';
     const chatId = cq.message && cq.message.chat && cq.message.chat.id;
     const messageId = cq.message && cq.message.message_id;
+    const desc = (t) => `${t.type === 'loan' ? 'បង់កម្ចី' : 'ដាក់សន្សំ'} $${money(num(t.amount))}`;
     try {
       // Only the configured committee/group chat may approve.
       const cfg = (await sbGet('sof_live_telegram_config')) || {};
@@ -261,34 +263,42 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true });
       }
       const pending = (await sbGet('sof_live_pending_payments')) || [];
-      const idx = Array.isArray(pending) ? pending.findIndex((t) => t.id === id) : -1;
-      if (idx < 0) {
+      const arr = Array.isArray(pending) ? pending : [];
+      const items = ids.map((id) => arr.find((t) => t.id === id)).filter(Boolean);
+      if (!items.length) {
         await tgAnswerCallback(cq.id, 'ការស្នើនេះបានដោះស្រាយរួច ឬរកមិនឃើញ។');
         await tgClearButtons(chatId, messageId);
         return res.status(200).json({ ok: true });
       }
-      const txn = pending[idx];
-      const label = `${txn.memberName || txn.memberCode} (${txn.memberCode}) · ${txn.type === 'loan' ? 'បង់កម្ចី' : 'ដាក់សន្សំ'} ខែ ${txn.monthKey} · $${money(num(txn.amount))}`;
+      const who = `${items[0].memberName || items[0].memberCode} (${items[0].memberCode})`;
+      const mon = items[0].monthKey;
       if (action === 'apv') {
-        const ok = await applyPayment(txn);
-        if (!ok) {
-          await tgAnswerCallback(cq.id, 'រកមិនឃើញជួរសមាជិកសម្រាប់ខែនេះ — សូមអនុម័តក្នុង App។');
-          return res.status(200).json({ ok: true });
+        const applied = [];
+        const failed = [];
+        for (const t of items) {
+          if (await applyPayment(t)) applied.push(t); else failed.push(t);
         }
-        pending.splice(idx, 1);
-        await sbSet('sof_live_pending_payments', pending);
-        await tgClearButtons(chatId, messageId);
-        await tgSend(chatId, `✅ បានអនុម័ត៖ ${label}\n👤 ដោយ ${fromName}`);
-        const mc = await memberChatId(txn.memberCode);
-        if (mc) await tgSend(mc, `✅ ការបង់ប្រាក់របស់អ្នកត្រូវបានអនុម័ត!\n${txn.type === 'loan' ? 'បង់សងកម្ចី' : 'ដាក់សន្សំ'} ខែ ${txn.monthKey} · ចំនួន $${money(num(txn.amount))}`);
-        await tgAnswerCallback(cq.id, 'អនុម័តរួច ✅');
+        if (applied.length) {
+          const done = new Set(applied.map((t) => t.id));
+          await sbSet('sof_live_pending_payments', arr.filter((t) => !done.has(t.id)));
+        }
+        if (!failed.length) {
+          await tgClearButtons(chatId, messageId);
+          await tgSend(chatId, `✅ បានអនុម័ត៖ ${who} · ${applied.map(desc).join(' + ')} · ខែ ${mon}\n👤 ដោយ ${fromName}`);
+          const mc = await memberChatId(items[0].memberCode);
+          if (mc) await tgSend(mc, `✅ ការបង់ប្រាក់របស់អ្នកត្រូវបានអនុម័ត!\n${applied.map(desc).join(' + ')} · ខែ ${mon}`);
+          await tgAnswerCallback(cq.id, 'អនុម័តរួច ✅');
+        } else {
+          if (applied.length) await tgSend(chatId, `✅ អនុម័តផ្នែក៖ ${who} · ${applied.map(desc).join(' + ')} · ខែ ${mon}\n⚠️ នៅសល់៖ ${failed.map(desc).join(' + ')} — សូមអនុម័តក្នុង App។`);
+          await tgAnswerCallback(cq.id, 'ខ្លះមិនអាចអនុម័ត — សូមពិនិត្យ App។');
+        }
       } else if (action === 'rej') {
-        pending.splice(idx, 1);
-        await sbSet('sof_live_pending_payments', pending);
+        const rej = new Set(items.map((t) => t.id));
+        await sbSet('sof_live_pending_payments', arr.filter((t) => !rej.has(t.id)));
         await tgClearButtons(chatId, messageId);
-        await tgSend(chatId, `❌ បានបដិសេធ៖ ${label}\n👤 ដោយ ${fromName}`);
-        const mc = await memberChatId(txn.memberCode);
-        if (mc) await tgSend(mc, `❌ ការស្នើបង់ប្រាក់របស់អ្នក (${txn.type === 'loan' ? 'បង់កម្ចី' : 'ដាក់សន្សំ'} ខែ ${txn.monthKey}) ត្រូវបានបដិសេធ។ សូមទាក់ទងគណៈកម្មការ។`);
+        await tgSend(chatId, `❌ បានបដិសេធ៖ ${who} · ${items.map(desc).join(' + ')} · ខែ ${mon}\n👤 ដោយ ${fromName}`);
+        const mc = await memberChatId(items[0].memberCode);
+        if (mc) await tgSend(mc, `❌ ការស្នើបង់ប្រាក់របស់អ្នក (${items.map(desc).join(' + ')} · ខែ ${mon}) ត្រូវបានបដិសេធ។ សូមទាក់ទងគណៈកម្មការ។`);
         await tgAnswerCallback(cq.id, 'បដិសេធរួច ❌');
       } else {
         await tgAnswerCallback(cq.id, '');

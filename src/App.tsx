@@ -7032,10 +7032,16 @@ function MemberReport() {
     if (savings > 0) newTxns.push({ ...base, id: `TXN-${Date.now()}-S`, type: 'savings', amount: savings });
     if (loanTotal > 0) newTxns.push({ ...base, id: `TXN-${Date.now()}-L`, type: 'loan', amount: loanTotal, principal, interest });
 
-    const keyboard = { inline_keyboard: newTxns.map((t) => [
-      { text: `✅ អនុម័ត${t.type === 'loan' ? 'កម្ចី' : 'សន្សំ'}`, callback_data: `apv:${t.id}` },
-      { text: '❌ បដិសេធ', callback_data: `rej:${t.id}` },
-    ]) };
+    // ONE approve/reject row that covers the whole submission (savings AND/OR loan) —
+    // the callback_data carries every line's id so a single tap approves them together.
+    const allIds = newTxns.map((t) => t.id).join(',');
+    const apvLabel = newTxns.length > 1
+      ? '✅ អនុម័ត (សន្សំ+កម្ចី)'
+      : `✅ អនុម័ត${newTxns[0].type === 'loan' ? 'កម្ចី' : 'សន្សំ'}`;
+    const keyboard = { inline_keyboard: [[
+      { text: apvLabel, callback_data: `apv:${allIds}` },
+      { text: '❌ បដិសេធ', callback_data: `rej:${allIds}` },
+    ]] };
     const sent = await sendTelegramPhoto(proofImage, caption, keyboard);
     newTxns.forEach((t) => { t.sentToTelegram = sent; t.proofImg = sent ? '' : proofImage; });
 
