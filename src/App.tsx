@@ -356,8 +356,8 @@ const fmtNum = (v: any): string =>
 
 const FormattedInput = ({ value, onBlur, className, ...props }: any) => {
   const [isFocused, setIsFocused] = React.useState(false);
-  const displayValue = isFocused 
-    ? (value === '-' || value == null ? '' : value) 
+  const displayValue = isFocused
+    ? (value === '-' || value == null ? '' : value)
     : (value === '-' || value === null || value === undefined || value === '' ? '' : fmtMoney(num(value)));
   
   return (
@@ -366,7 +366,13 @@ const FormattedInput = ({ value, onBlur, className, ...props }: any) => {
       type="text"
       className={className}
       value={displayValue}
-      onFocus={() => setIsFocused(true)}
+      onFocus={(e) => {
+        setIsFocused(true);
+        // Select the whole value so typing REPLACES the 0.00 default instead of
+        // appending to it (which produced "0.0050", "0.01"…). Decimals still work.
+        const el = e.currentTarget;
+        setTimeout(() => { try { el.select(); } catch { /* ignore */ } }, 0);
+      }}
       onBlur={(e) => {
         setIsFocused(false);
         if (onBlur) onBlur(e);
