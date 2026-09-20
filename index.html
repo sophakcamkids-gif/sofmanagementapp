@@ -7,6 +7,18 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;500;600;700;800&family=Tinos:wght@400;700&display=swap" rel="stylesheet" />
+    <!-- Self-hosted Khmer OS Siemreap so the loan contract renders identically on EVERY
+         device (phones don't ship this font). LGPL, free to redistribute. -->
+    <link rel="preload" as="font" type="font/ttf" href="/fonts/KhmerOSsiemreap.ttf" crossorigin />
+    <style>
+      @font-face {
+        font-family: 'Khmer OS Siemreap';
+        src: url('/fonts/KhmerOSsiemreap.ttf') format('truetype');
+        font-weight: 400 700;
+        font-style: normal;
+        font-display: swap;
+      }
+    </style>
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
