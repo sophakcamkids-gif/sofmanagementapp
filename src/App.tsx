@@ -8153,7 +8153,7 @@ function MemberReport() {
           const td = (extra: React.CSSProperties = {}): React.CSSProperties => ({ padding: '9px 12px', border: '1px solid #eef2f6', ...extra });
           const inSt: React.CSSProperties = { color: '#1e293b', fontWeight: 700, textAlign: 'right' };
           // Inline fill-in field for the contract sentences (centered on its dotted line).
-          const ctIn: React.CSSProperties = { border: 'none', borderBottom: '1px dotted #94a3b8', background: 'transparent', outline: 'none', fontWeight: 700, color: '#1e293b', padding: '0 3px', fontFamily: 'inherit', fontSize: '13px', minWidth: '50px', textAlign: 'center' };
+          const ctIn: React.CSSProperties = { border: 'none', borderBottom: '1px dotted #94a3b8', background: 'transparent', outline: 'none', fontWeight: 700, color: '#000000', padding: '0 3px', fontFamily: 'inherit', fontSize: '13px', minWidth: '50px', textAlign: 'center' };
           // One thumbprint cell: label + print image + the person's name (no "ឈ្មោះ៖"
           // word — just the centered, editable name). Pass nameSetter = null to omit the
           // name line (the lender box). Compact to keep the contract on 1 page.
@@ -8371,9 +8371,9 @@ function MemberReport() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', margin: '2px 0 6px' }}>
-                  <span style={{ width: '120px' }}></span>
+                  <span style={{ width: '175px', flex: '0 0 auto' }}></span>
                   <h1 style={{ color: '#0a6652', fontWeight: 800, fontSize: '16px', margin: 0, textAlign: 'center', flex: 1 }}>កិច្ចសន្យាខ្ចីប្រាក់</h1>
-                  <span style={{ whiteSpace: 'nowrap', width: '120px', textAlign: 'right' }}>លេខយោង៖ <input value={contractNum} onChange={(e) => setContractNum(e.target.value)} style={{ ...ctIn, width: '90px' }} /></span>
+                  <span style={{ whiteSpace: 'nowrap', width: '175px', flex: '0 0 auto', textAlign: 'right' }}>លេខយោង៖ <input value={contractNum} onChange={(e) => setContractNum(e.target.value)} style={{ ...ctIn, width: '112px' }} /></span>
                 </div>
 
                 <p style={{ textIndent: '2em', textAlign: 'justify', margin: '5px 0' }}>
