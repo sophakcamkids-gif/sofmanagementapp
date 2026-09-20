@@ -8409,11 +8409,10 @@ function MemberReport() {
                   <tbody>
                     <tr><td style={{ textAlign: 'center', paddingBottom: '2px', fontWeight: 700, color: '#0a6652' }}>បានឃើញ និងអនុម័ត</td></tr>
                     <tr>
-                      {tpBox('ស្នាមមេដៃភាគី (ក) អ្នកផ្ដល់កម្ចី', ctManager, null, tpLender, setTpLender)}
+                      {tpBox('ស្នាមមេដៃភាគី (ក) អ្នកផ្ដល់កម្ចី', ctManager, setCtManager, tpLender, setTpLender)}
                     </tr>
                   </tbody>
                 </table>
-                <div style={{ textAlign: 'right', marginTop: '2px' }}>ឈ្មោះអ្នកគ្រប់គ្រងក្រុម៖ <b style={{ color: '#1e293b' }}>{ctManager}</b></div>
               </div>
               </FitToWidth>
             </>
