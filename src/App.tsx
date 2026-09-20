@@ -8117,7 +8117,7 @@ function MemberReport() {
               {/* Fixed-width design (no md: breakpoints) scaled to fit via FitToWidth,
                   so the Telegram/PDF snapshot is identical on phone and desktop. */}
               <FitToWidth designWidth={820}>
-              <div className="loan-request-sheet w-full bg-white p-8 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left relative overflow-hidden">
+              <div className="loan-request-sheet w-full bg-white p-8 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left relative overflow-hidden" style={{ fontFamily: "'Times New Roman', 'Tinos', 'Kantumruy Pro', serif" }}>
                 {/* Header */}
                 <div className="mb-6" style={{ textAlign: 'center' }}>
                   <p className="text-sm font-bold" style={{ color: '#334155' }}>ព្រះរាជាណាចក្រកម្ពុជា</p>
