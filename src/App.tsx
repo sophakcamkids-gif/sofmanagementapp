@@ -6623,8 +6623,8 @@ function MemberReport() {
 
   // ── Loan CONTRACT (កិច្ចសន្យាខ្ចីប្រាក់) — shared borrower/amount/term/guarantors come
   // from the rep* fields above; these are the contract-only fields + thumbprint images.
-  const [ctLender, setCtLender] = useState('');        // ភាគី(ក) ឈ្មោះអ្នកតំណាង SOF
-  const [ctLenderGender, setCtLenderGender] = useState('');
+  const [ctLender, setCtLender] = useState('លឹវ វី');   // ភាគី(ក) ឈ្មោះអ្នកតំណាង SOF
+  const [ctLenderGender, setCtLenderGender] = useState('ប្រុស');
   const [ctBGender, setCtBGender] = useState('');      // ភេទ អ្នកខ្ចី
   const [ctBAge, setCtBAge] = useState('');            // អាយុ
   const [ctBDob, setCtBDob] = useState('');            // ថ្ងៃខែឆ្នាំកំណើត
@@ -6637,11 +6637,7 @@ function MemberReport() {
   const [ctRemark, setCtRemark] = useState('');        // កំណត់សំគាល់
   const [ctGuarantor3, setCtGuarantor3] = useState(''); // អ្នកធានាទី៣
   const [ctGuardian, setCtGuardian] = useState('');    // អ្នកអាណាព្យាបាល/សាក្សី
-  const [ctManager, setCtManager] = useState('');      // ឈ្មោះអ្នកគ្រប់គ្រងក្រុម
-  const [ctPlace, setCtPlace] = useState('ភ្នំពេញ');
-  const [ctDay, setCtDay] = useState('');
-  const [ctMonth, setCtMonth] = useState('');
-  const [ctYear, setCtYear] = useState('');
+  const [ctManager, setCtManager] = useState('លឹវ វី'); // ឈ្មោះអ្នកគ្រប់គ្រងក្រុម (auto)
   // Thumbprints (ស្នាមមេដៃ) — base64 PNG, uploaded from a photo of the inked print.
   const [tpBorrower, setTpBorrower] = useState('');
   const [tpG1, setTpG1] = useState('');
@@ -8152,21 +8148,28 @@ function MemberReport() {
           const th = (extra: React.CSSProperties = {}): React.CSSProperties => ({ padding: '10px 12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#64748b', fontWeight: 700, fontSize: '10px', textTransform: 'uppercase', ...extra });
           const td = (extra: React.CSSProperties = {}): React.CSSProperties => ({ padding: '9px 12px', border: '1px solid #eef2f6', ...extra });
           const inSt: React.CSSProperties = { color: '#1e293b', fontWeight: 700, textAlign: 'right' };
-          // One thumbprint cell (upload a photo of the inked print; shown in the PDF).
-          const tpBox = (label: string, name: string, img: string, setter: (v: string) => void) => (
+          // Inline fill-in field for the contract sentences (centered on its dotted line).
+          const ctIn: React.CSSProperties = { border: 'none', borderBottom: '1px dotted #94a3b8', background: 'transparent', outline: 'none', fontWeight: 700, color: '#1e293b', padding: '0 4px', fontFamily: 'inherit', fontSize: '12px', minWidth: '60px', textAlign: 'center' };
+          // One thumbprint cell: photo upload + (optionally) an editable, centered name.
+          // Pass nameSetter = null to hide the name line (e.g. the lender box).
+          const tpBox = (label: string, name: string, nameSetter: ((v: string) => void) | null, img: string, imgSetter: (v: string) => void) => (
             <td style={{ width: '20%', verticalAlign: 'top', textAlign: 'center', padding: '6px' }}>
               <div style={{ fontSize: '9px', color: '#334155', fontWeight: 700, marginBottom: '4px', minHeight: '26px', lineHeight: 1.2 }}>{label}</div>
               <label style={{ display: 'block', cursor: 'pointer' }}>
                 <div style={{ width: '74px', height: '84px', margin: '0 auto', border: '1px solid #cbd5e1', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#ffffff' }}>
                   {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <span style={{ fontSize: '9px', color: '#cbd5e1' }}>ស្នាមមេដៃ</span>}
                 </div>
-                <input type="file" accept="image/*" onChange={onThumbPick(setter)} style={{ display: 'none' }} />
+                <input type="file" accept="image/*" onChange={onThumbPick(imgSetter)} style={{ display: 'none' }} />
               </label>
-              <div style={{ fontSize: '9px', color: '#475569', marginTop: '4px' }}>ឈ្មោះ៖ {name || '.............'}</div>
+              {nameSetter && (
+                <div style={{ fontSize: '9px', color: '#475569', marginTop: '4px' }}>ឈ្មោះ៖ <input value={name} onChange={(e) => nameSetter(e.target.value)} style={{ ...ctIn, width: '84px', fontSize: '9px', minWidth: '50px' }} /></div>
+              )}
             </td>
           );
-          // Inline fill-in field for the contract sentences.
-          const ctIn: React.CSSProperties = { border: 'none', borderBottom: '1px dotted #94a3b8', background: 'transparent', outline: 'none', fontWeight: 700, color: '#1e293b', padding: '0 4px', fontFamily: 'inherit', fontSize: '12px', minWidth: '60px' };
+          // Auto date for the contract footer — today's local date, in Khmer.
+          const _ctKM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
+          const _ctNow = new Date();
+          const ctAutoDate = `ធ្វើនៅ​ភ្នំពេញ ថ្ងៃទី ${toKhmerNum(String(_ctNow.getDate()).padStart(2, '0'))} ខែ${_ctKM[_ctNow.getMonth()]} ឆ្នាំ ${toKhmerNum(_ctNow.getFullYear())}`;
           return (
             <>
               {/* Export + submit buttons — OUTSIDE the sheet so they aren't captured */}
@@ -8353,9 +8356,14 @@ function MemberReport() {
 
               <FitToWidth designWidth={820}>
               <div className="loan-contract-sheet w-full bg-white p-8 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left relative overflow-hidden" style={{ fontFamily: "'Times New Roman', 'Tinos', 'Kantumruy Pro', serif", fontSize: '12px', color: '#1e293b', lineHeight: 1.9 }}>
-                <div style={{ textAlign: 'center', marginBottom: '6px' }}>
-                  <h3 style={{ color: '#ecb22e', fontWeight: 700, fontSize: '13px', margin: 0 }}>ក្រុមសន្សំប្រាក់អនាគតយើង</h3>
-                  <p style={{ color: '#0a6652', fontWeight: 700, fontSize: '11px', margin: 0 }}>Saving for Our Future Group (SOF)</p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '6px' }}>
+                  <div style={{ width: '56px', height: '56px', flex: '0 0 auto', border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff' }}>
+                    <img src="https://i.ibb.co/Kp7CxnjC/Picture1.jpg" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} referrerPolicy="no-referrer" />
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <h3 style={{ color: '#ecb22e', fontWeight: 700, fontSize: '13px', margin: 0 }}>ក្រុមសន្សំប្រាក់អនាគតយើង</h3>
+                    <p style={{ color: '#0a6652', fontWeight: 700, fontSize: '11px', margin: 0 }}>Saving for Our Future Group (SOF)</p>
+                  </div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', margin: '8px 0 12px' }}>
                   <span style={{ width: '120px' }}></span>
@@ -8381,24 +8389,26 @@ function MemberReport() {
 
                 <table style={{ width: '100%', marginTop: '12px', borderCollapse: 'collapse' }}>
                   <tbody><tr>
-                    {tpBox('ស្នាមមេដៃភាគី (ខ) អ្នកខ្ចីប្រាក់', repBorrower, tpBorrower, setTpBorrower)}
-                    {tpBox('ស្នាមមេដៃអ្នកធានាទី១', repGuarantor1, tpG1, setTpG1)}
-                    {tpBox('ស្នាមមេដៃអ្នកធានាទី២', repGuarantor2, tpG2, setTpG2)}
-                    {tpBox('ស្នាមមេដៃអ្នកធានាទី៣', ctGuarantor3, tpG3, setTpG3)}
-                    {tpBox('អ្នកអាណាព្យាបាល / សាក្សី', ctGuardian, tpGuardian, setTpGuardian)}
+                    {tpBox('ស្នាមមេដៃភាគី (ខ) អ្នកខ្ចីប្រាក់', repBorrower, setRepBorrower, tpBorrower, setTpBorrower)}
+                    {tpBox('ស្នាមមេដៃអ្នកធានាទី១', repGuarantor1, setRepGuarantor1, tpG1, setTpG1)}
+                    {tpBox('ស្នាមមេដៃអ្នកធានាទី២', repGuarantor2, setRepGuarantor2, tpG2, setTpG2)}
+                    {tpBox('ស្នាមមេដៃអ្នកធានាទី៣', ctGuarantor3, setCtGuarantor3, tpG3, setTpG3)}
+                    {tpBox('អ្នកអាណាព្យាបាល / សាក្សី', ctGuardian, setCtGuardian, tpGuardian, setTpGuardian)}
                   </tr></tbody>
                 </table>
 
                 <div style={{ textAlign: 'right', marginTop: '16px' }}>
-                  <p style={{ margin: 0 }}>ធ្វើនៅ <input value={ctPlace} onChange={(e) => setCtPlace(e.target.value)} style={{ ...ctIn, width: '64px', textAlign: 'center' }} /> ថ្ងៃទី <input value={ctDay} onChange={(e) => setCtDay(e.target.value)} style={{ ...ctIn, width: '40px', textAlign: 'center' }} /> ខែ <input value={ctMonth} onChange={(e) => setCtMonth(e.target.value)} style={{ ...ctIn, width: '48px', textAlign: 'center' }} /> ឆ្នាំ ២០២<input value={ctYear} onChange={(e) => setCtYear(e.target.value)} style={{ ...ctIn, width: '28px', textAlign: 'center' }} /></p>
-                  <p style={{ margin: '4px 0', fontWeight: 700, color: '#0a6652' }}>បានឃើញ និងអនុម័ត</p>
+                  <p style={{ margin: 0 }}>{ctAutoDate}</p>
                 </div>
                 <table style={{ width: '40%', marginLeft: 'auto', borderCollapse: 'collapse' }}>
-                  <tbody><tr>
-                    {tpBox('ស្នាមមេដៃភាគី (ក) អ្នកផ្ដល់កម្ចី', ctManager, tpLender, setTpLender)}
-                  </tr></tbody>
+                  <tbody>
+                    <tr><td style={{ textAlign: 'center', paddingBottom: '2px', fontWeight: 700, color: '#0a6652' }}>បានឃើញ និងអនុម័ត</td></tr>
+                    <tr>
+                      {tpBox('ស្នាមមេដៃភាគី (ក) អ្នកផ្ដល់កម្ចី', ctManager, null, tpLender, setTpLender)}
+                    </tr>
+                  </tbody>
                 </table>
-                <div style={{ textAlign: 'right', marginTop: '2px' }}>ឈ្មោះអ្នកគ្រប់គ្រងក្រុម៖ <input value={ctManager} onChange={(e) => setCtManager(e.target.value)} style={{ ...ctIn, width: '160px' }} /></div>
+                <div style={{ textAlign: 'right', marginTop: '2px' }}>ឈ្មោះអ្នកគ្រប់គ្រងក្រុម៖ <b style={{ color: '#1e293b' }}>{ctManager}</b></div>
               </div>
               </FitToWidth>
             </>
