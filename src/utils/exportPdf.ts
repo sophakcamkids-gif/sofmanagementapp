@@ -285,14 +285,14 @@ export async function renderElementToPdfBlob(el: HTMLElement, fixedWidth?: numbe
 // content fills the page WIDTH and is sliced across as many portrait pages as needed,
 // instead of being shrunk to fit a single page. For long tables (e.g. a 48-month loan
 // schedule) where fit-to-one-page makes the text too small to read.
-export async function renderElementToPagedPdfBlob(el: HTMLElement, fixedWidth?: number): Promise<Blob> {
+export async function renderElementToPagedPdfBlob(el: HTMLElement, fixedWidth?: number, marginPt = 18): Promise<Blob> {
   const canvas = await renderElementToCanvas(el, fixedWidth);
   const imgW = canvas.width;
   const imgH = canvas.height;
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
-  const margin = 18;
+  const margin = marginPt;
   const usableW = pageW - margin * 2;
   const usableH = pageH - margin * 2;
   const scale = usableW / imgW;                       // fill the page width
@@ -325,8 +325,8 @@ export async function exportElementToPdf(el: HTMLElement, filename: string, fixe
 }
 
 // Download a MULTI-PAGE A4 PDF (fills width, spans pages) — for long tables.
-export async function exportElementToPagedPdf(el: HTMLElement, filename: string, fixedWidth?: number): Promise<void> {
-  const blob = await renderElementToPagedPdfBlob(el, fixedWidth);
+export async function exportElementToPagedPdf(el: HTMLElement, filename: string, fixedWidth?: number, marginPt = 18): Promise<void> {
+  const blob = await renderElementToPagedPdfBlob(el, fixedWidth, marginPt);
   const name = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
   deliverBlob(blob, name);
 }

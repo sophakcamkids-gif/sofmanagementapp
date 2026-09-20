@@ -6977,7 +6977,9 @@ function MemberReport() {
       // Also send the signed loan CONTRACT (with thumbprints) as its own A4 PDF.
       const ctEl = document.querySelector('.loan-contract-sheet') as HTMLElement | null;
       if (ctEl) {
-        const ctPdf = await renderElementToPagedPdfBlob(ctEl, 820);
+        // Capture narrow (630px) so the sheet scales UP to fill the A4 text column
+        // → body text lands at ~11pt (Khmer OS Siemreap) instead of tiny. 1cm margins.
+        const ctPdf = await renderElementToPagedPdfBlob(ctEl, 630, 28.35);
         await sendTelegramDocument(ctPdf, `Loan-Contract-${contractNum || code}.pdf`, `📄 កិច្ចសន្យាខ្ចីប្រាក់ · ${repBorrower} (${code}) · ខែ ${monthKey}`);
       }
       if (!sent) sent = await sendTelegramMessage(caption);
@@ -7373,13 +7375,13 @@ function MemberReport() {
 
   // Generic sheet exporter (loan/savings reports). `busyKey` tracks which button spins.
   const [exportBusy, setExportBusy] = useState('');
-  const exportSheet = async (selector: string, kind: 'pdf' | 'img', name: string, busyKey: string, fixedWidth = 800, paged = false) => {
+  const exportSheet = async (selector: string, kind: 'pdf' | 'img', name: string, busyKey: string, fixedWidth = 800, paged = false, marginPt = 18) => {
     const el = document.querySelector(selector) as HTMLElement | null;
     if (!el) return;
     if (!el.id) el.id = 'sof-export-' + busyKey.replace(/[^a-z0-9]/gi, '');
     setExportBusy(busyKey);
     try {
-      if (kind === 'pdf') await (paged ? exportElementToPagedPdf : exportElementToPdf)(el, name, fixedWidth);
+      if (kind === 'pdf') await (paged ? (e: HTMLElement, n: string, w?: number) => exportElementToPagedPdf(e, n, w, marginPt) : exportElementToPdf)(el, name, fixedWidth);
       else await exportElementToImage(el, name, fixedWidth);
     } catch (err) {
       console.error('Export failed:', err);
@@ -8348,14 +8350,14 @@ function MemberReport() {
               {/* ===== LOAN CONTRACT (កិច្ចសន្យាខ្ចីប្រាក់) — A4 printable, thumbprints ===== */}
               <div className="no-print flex flex-wrap items-center justify-between gap-2 mt-10 mb-2">
                 <span className="text-sm font-extrabold" style={{ color: '#0a6652', borderLeft: '4px solid #0a6652', paddingLeft: '10px' }}>កិច្ចសន្យាខ្ចីប្រាក់</span>
-                <button type="button" onClick={() => exportSheet('.loan-contract-sheet', 'pdf', `កិច្ចសន្យាកម្ចី-${memberCode}`, 'ct-pdf', 820, true)} disabled={exportBusy === 'ct-pdf'}
+                <button type="button" onClick={() => exportSheet('.loan-contract-sheet', 'pdf', `កិច្ចសន្យាកម្ចី-${memberCode}`, 'ct-pdf', 630, true, 28.35)} disabled={exportBusy === 'ct-pdf'}
                   className="bg-[#0a6652] hover:bg-[#085241] text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-900/10 transition-all active:scale-95 disabled:opacity-60">
                   <Download size={14} /> <span>{exportBusy === 'ct-pdf' ? 'កំពុងបង្កើត...' : 'PDF កិច្ចសន្យា'}</span>
                 </button>
               </div>
 
-              <FitToWidth designWidth={820}>
-              <div className="loan-contract-sheet w-full bg-white p-8 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left relative overflow-hidden" style={{ fontFamily: "'Times New Roman', 'Tinos', 'Kantumruy Pro', serif", fontSize: '12px', color: '#1e293b', lineHeight: 1.9 }}>
+              <FitToWidth designWidth={630}>
+              <div className="loan-contract-sheet w-full bg-white p-8 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left relative overflow-hidden" style={{ fontFamily: "'Khmer OS Siemreap', 'Times New Roman', 'Tinos', 'Kantumruy Pro', serif", fontSize: '13px', color: '#1e293b', lineHeight: 1.9 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '6px' }}>
                   <div style={{ width: '56px', height: '56px', flex: '0 0 auto', border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff' }}>
                     <img src="https://i.ibb.co/Kp7CxnjC/Picture1.jpg" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} referrerPolicy="no-referrer" />
@@ -8377,12 +8379,12 @@ function MemberReport() {
 
                 <p style={{ margin: '4px 0' }}>ភាគី(ខ)ទទួលកម្ចីឈ្មោះ <input value={repBorrower} onChange={(e) => setRepBorrower(e.target.value)} style={{ ...ctIn, width: '120px' }} /> លេខកូដ <input value={repBorrowerId} onChange={(e) => setRepBorrowerId(e.target.value)} style={{ ...ctIn, width: '64px' }} /> ភេទ <input value={ctBGender} onChange={(e) => setCtBGender(e.target.value)} style={{ ...ctIn, width: '36px' }} /> អាយុ <input value={ctBAge} onChange={(e) => setCtBAge(e.target.value)} style={{ ...ctIn, width: '36px' }} /></p>
                 <p style={{ margin: '4px 0' }}>ថ្ងៃ ខែ ឆ្នាំកំណើត <input value={ctBDob} onChange={(e) => setCtBDob(e.target.value)} style={{ ...ctIn, width: '120px' }} /> កាន់អត្តសញ្ញាណប័ណ្ណលេខ <input value={ctBIdCard} onChange={(e) => setCtBIdCard(e.target.value)} style={{ ...ctIn, width: '140px' }} /></p>
-                <p style={{ margin: '4px 0' }}>អាសយដ្ឋានបច្ចុប្បន្ន <input value={ctBAddress} onChange={(e) => setCtBAddress(e.target.value)} style={{ ...ctIn, width: '400px' }} /></p>
+                <p style={{ margin: '4px 0' }}>អាសយដ្ឋានបច្ចុប្បន្ន <input value={ctBAddress} onChange={(e) => setCtBAddress(e.target.value)} style={{ ...ctIn, width: '330px' }} /></p>
                 <p style={{ margin: '4px 0' }}>មុខរបរ <input value={ctBJob} onChange={(e) => setCtBJob(e.target.value)} style={{ ...ctIn, width: '150px' }} /> នៅស្ថាប័ន <input value={ctBOrg} onChange={(e) => setCtBOrg(e.target.value)} style={{ ...ctIn, width: '150px' }} /></p>
                 <p style={{ margin: '4px 0' }}>លេខទូរស័ព្ទ <input value={repPhone} onChange={(e) => setRepPhone(e.target.value)} style={{ ...ctIn, width: '110px' }} /> អ៊ីម៉ែល <input value={ctBEmail} onChange={(e) => setCtBEmail(e.target.value)} style={{ ...ctIn, width: '160px' }} /></p>
                 <p style={{ margin: '4px 0', textAlign: 'justify' }}>បានខ្ចីប្រាក់ចំនួន <b>${fmt2(parseFloat(repLoanAmt) || 0)}</b> ជាអក្សរ <input value={ctAmtWords} onChange={(e) => setCtAmtWords(e.target.value)} style={{ ...ctIn, width: '230px' }} /> ពីក្រុមសន្សំប្រាក់អនាគតយើង ដែលរយៈពេលនៃការខ្ចី និងសងត្រលប់មកវិញមានរយៈពេល <input type="number" value={repLoanTerm} onChange={(e) => setRepLoanTerm(parseInt(e.target.value) || 0)} style={{ ...ctIn, width: '44px' }} /> ខែ ដោយគិតចាប់ពីថ្ងៃផ្ដិតមេដៃលើកិច្ចសន្យានេះ។</p>
-                <p style={{ margin: '4px 0' }}>មូលហេតុនៃការខ្ចីប្រាក់៖ <input value={repPurpose} onChange={(e) => setRepPurpose(e.target.value)} style={{ ...ctIn, width: '360px' }} /></p>
-                <p style={{ margin: '4px 0' }}>កំណត់សំគាល់៖ <input value={ctRemark} onChange={(e) => setCtRemark(e.target.value)} style={{ ...ctIn, width: '390px' }} /></p>
+                <p style={{ margin: '4px 0' }}>មូលហេតុនៃការខ្ចីប្រាក់៖ <input value={repPurpose} onChange={(e) => setRepPurpose(e.target.value)} style={{ ...ctIn, width: '320px' }} /></p>
+                <p style={{ margin: '4px 0' }}>កំណត់សំគាល់៖ <input value={ctRemark} onChange={(e) => setCtRemark(e.target.value)} style={{ ...ctIn, width: '380px' }} /></p>
 
                 <p style={{ textIndent: '2em', textAlign: 'justify', margin: '8px 0 4px' }}>អាស្រ័យហេតុដូចបានជម្រាបជូនខាងលើ សូមគណៈកម្មាការ និងអ្នកគ្រប់គ្រងក្រុមសន្សំ មេត្តាឱ្យ ខ្ញុំបាទ / នាងខ្ញុំ បានខ្ចីនូវចំនួនទឹកប្រាក់ដែលបានកំណត់ខាងលើ។ ក្នុងករណី ខ្ញុំបាទ / នាងខ្ញុំ រំលោភបំពានលើសេចក្តីទុកចិត្ត ឬមិនគោរពតាមគោលការណ៍នៃការខ្ចីសង ខ្ញុំបាទ / នាងខ្ញុំ សុខចិត្តទទួលខុសត្រូវចំពោះមុខច្បាប់។</p>
                 <p style={{ textIndent: '2em', textAlign: 'justify', margin: '4px 0' }}>ក្នុងករណីដែលអ្នកខ្ចីមិនមានលទ្ធភាពសងត្រលប់ប្រាក់មកក្រុមសន្សំវិញ អ្នកអាណាព្យាបាល / ប្ដី / ប្រពន្ធ ដែលបានផ្ដិតមេដៃ ជាអ្នកទទួលខុសត្រូវក្នុងការសងត្រលប់មុនគេ។ ក្នុងករណី កម្ចីមិនមានអ្នកអាណាព្យាបាល / ប្ដី / ប្រពន្ធជាអ្នកធានា នោះអ្នកធានាទាំងបីនាក់ដែលបានផ្ដិតមេដៃនឹងទទួលខុសត្រូវក្នុងការសងត្រលប់ម្នាក់ពាក់កណ្ដាល នៃកម្ចីដែលនៅសល់។</p>
