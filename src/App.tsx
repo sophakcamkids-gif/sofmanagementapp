@@ -8154,9 +8154,10 @@ function MemberReport() {
           const inSt: React.CSSProperties = { color: '#1e293b', fontWeight: 700, textAlign: 'right' };
           // Inline fill-in field for the contract sentences (centered on its dotted line).
           const ctIn: React.CSSProperties = { border: 'none', borderBottom: '1px dotted #94a3b8', background: 'transparent', outline: 'none', fontWeight: 700, color: '#1e293b', padding: '0 3px', fontFamily: 'inherit', fontSize: '13px', minWidth: '50px', textAlign: 'center' };
-          // One thumbprint cell: just the label + the print image (names live in the body
-          // sentences above, so no redundant ឈ្មោះ line here). Compact to keep 1 page.
-          const tpBox = (label: string, img: string, imgSetter: (v: string) => void) => (
+          // One thumbprint cell: label + print image + the person's name (no "ឈ្មោះ៖"
+          // word — just the centered, editable name). Pass nameSetter = null to omit the
+          // name line (the lender box). Compact to keep the contract on 1 page.
+          const tpBox = (label: string, name: string, nameSetter: ((v: string) => void) | null, img: string, imgSetter: (v: string) => void) => (
             <td style={{ width: '20%', verticalAlign: 'top', textAlign: 'center', padding: '4px' }}>
               <div style={{ fontSize: '9px', color: '#334155', fontWeight: 700, marginBottom: '3px', minHeight: '24px', lineHeight: 1.15 }}>{label}</div>
               <label style={{ display: 'block', cursor: 'pointer' }}>
@@ -8165,6 +8166,9 @@ function MemberReport() {
                 </div>
                 <input type="file" accept="image/*" onChange={onThumbPick(imgSetter)} style={{ display: 'none' }} />
               </label>
+              {nameSetter && (
+                <div style={{ marginTop: '3px' }}><input value={name} onChange={(e) => nameSetter(e.target.value)} style={{ ...ctIn, width: '96px', fontSize: '11px', minWidth: '40px' }} /></div>
+              )}
             </td>
           );
           // Auto date for the contract footer — today's local date, in Khmer.
@@ -8390,11 +8394,11 @@ function MemberReport() {
 
                 <table style={{ width: '100%', marginTop: '6px', borderCollapse: 'collapse' }}>
                   <tbody><tr>
-                    {tpBox('ស្នាមមេដៃភាគី (ខ) អ្នកខ្ចីប្រាក់', tpBorrower, setTpBorrower)}
-                    {tpBox('ស្នាមមេដៃអ្នកធានាទី១', tpG1, setTpG1)}
-                    {tpBox('ស្នាមមេដៃអ្នកធានាទី២', tpG2, setTpG2)}
-                    {tpBox('ស្នាមមេដៃអ្នកធានាទី៣', tpG3, setTpG3)}
-                    {tpBox('អ្នកអាណាព្យាបាល / សាក្សី', tpGuardian, setTpGuardian)}
+                    {tpBox('ស្នាមមេដៃភាគី (ខ) អ្នកខ្ចីប្រាក់', repBorrower, setRepBorrower, tpBorrower, setTpBorrower)}
+                    {tpBox('ស្នាមមេដៃអ្នកធានាទី១', repGuarantor1, setRepGuarantor1, tpG1, setTpG1)}
+                    {tpBox('ស្នាមមេដៃអ្នកធានាទី២', repGuarantor2, setRepGuarantor2, tpG2, setTpG2)}
+                    {tpBox('ស្នាមមេដៃអ្នកធានាទី៣', ctGuarantor3, setCtGuarantor3, tpG3, setTpG3)}
+                    {tpBox('អ្នកអាណាព្យាបាល / សាក្សី', ctGuardian, setCtGuardian, tpGuardian, setTpGuardian)}
                   </tr></tbody>
                 </table>
 
@@ -8405,7 +8409,7 @@ function MemberReport() {
                   <tbody>
                     <tr><td style={{ textAlign: 'center', paddingBottom: '2px', fontWeight: 700, color: '#0a6652' }}>បានឃើញ និងអនុម័ត</td></tr>
                     <tr>
-                      {tpBox('ស្នាមមេដៃភាគី (ក) អ្នកផ្ដល់កម្ចី', tpLender, setTpLender)}
+                      {tpBox('ស្នាមមេដៃភាគី (ក) អ្នកផ្ដល់កម្ចី', ctManager, null, tpLender, setTpLender)}
                     </tr>
                   </tbody>
                 </table>
