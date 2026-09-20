@@ -6978,6 +6978,12 @@ function MemberReport() {
         const pdf = await renderElementToPagedPdfBlob(el, 820);
         sent = await sendTelegramDocument(pdf, `Loan-Request-${contractNum || code}.pdf`, caption);
       }
+      // Also send the signed loan CONTRACT (with thumbprints) as its own A4 PDF.
+      const ctEl = document.querySelector('.loan-contract-sheet') as HTMLElement | null;
+      if (ctEl) {
+        const ctPdf = await renderElementToPagedPdfBlob(ctEl, 820);
+        await sendTelegramDocument(ctPdf, `Loan-Contract-${contractNum || code}.pdf`, `📄 កិច្ចសន្យាខ្ចីប្រាក់ · ${repBorrower} (${code}) · ខែ ${monthKey}`);
+      }
       if (!sent) sent = await sendTelegramMessage(caption);
     } catch { /* network issue — still record below */ }
 
