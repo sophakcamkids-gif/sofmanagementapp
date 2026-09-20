@@ -8701,7 +8701,7 @@ function MemberReport() {
               </div>
 
               <h1 className="text-lg font-extrabold text-slate-800 tracking-wide mb-1 flex items-center justify-center gap-2">
-                <span className="text-[#0a6652]">របាយការណ៍សន្សំប្រាក់សមាជិកសន្សំ</span>
+                <span className="text-[#0a6652]">របាយការណ៍ប្រាក់សន្សំ</span>
               </h1>
               
               <div className="flex items-center justify-center gap-3 mt-2 flex-wrap">
@@ -8723,6 +8723,26 @@ function MemberReport() {
                     <option value="2028">2028</option>
                   </select>
                 </div>
+              </div>
+            </div>
+
+            {/* Account summary — holder / type / number / current balance */}
+            <div className="mb-6 rounded-2xl border border-slate-300 bg-white shadow-sm overflow-hidden relative">
+              <div className="grid grid-cols-2">
+                {([
+                  ['ឈ្មោះម្ចាស់គណនី', 'Account Holder Name', memberName || '-'],
+                  ['ប្រភេទគណនី', 'Account Type', (memberProfile && (memberProfile as any).type === 'បញ្ញើ') ? 'គណនីបញ្ញើសន្សំ' : 'គណនីសន្សំ'],
+                  ['លេខគណនី', 'Account Number', memberCode || '-'],
+                  ['សមតុល្យបច្ចុប្បន្ន', 'Current Balance', `$${memberSavingClosing.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+                ] as [string, string, string][]).map(([km, en, val], i) => (
+                  <div key={i} className={`flex items-center justify-between gap-3 px-4 py-2.5 ${i % 2 === 0 ? 'border-r border-slate-200' : ''} ${i < 2 ? 'border-b border-slate-200' : ''}`}>
+                    <div className="leading-tight">
+                      <div className="text-[11px] font-bold text-[#0a6652]">{km}</div>
+                      <div className="text-[8px] text-slate-400 uppercase tracking-wide">{en}</div>
+                    </div>
+                    <div className="text-[12px] font-extrabold text-slate-800 text-right">{val}</div>
+                  </div>
+                ))}
               </div>
             </div>
 
