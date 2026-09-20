@@ -262,7 +262,7 @@ async function renderElementToCanvas(el: HTMLElement, fixedWidth?: number): Prom
 
 // Render an element to a single-image A4 PDF and return it as a Blob (no download).
 // Used to attach a proper PDF file (e.g. a loan-request sheet) to a Telegram message.
-export async function renderElementToPdfBlob(el: HTMLElement, fixedWidth?: number): Promise<Blob> {
+export async function renderElementToPdfBlob(el: HTMLElement, fixedWidth?: number, marginPt = 0): Promise<Blob> {
   const canvas = await renderElementToCanvas(el, fixedWidth);
   const imgW = canvas.width;
   const imgH = canvas.height;
@@ -271,7 +271,10 @@ export async function renderElementToPdfBlob(el: HTMLElement, fixedWidth?: numbe
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
 
-  const ratio = Math.min(pageW / imgW, pageH / imgH);
+  // Fit the whole element inside the printable area (page minus margins) — always 1 page.
+  const availW = pageW - marginPt * 2;
+  const availH = pageH - marginPt * 2;
+  const ratio = Math.min(availW / imgW, availH / imgH);
   const w = imgW * ratio;
   const h = imgH * ratio;
   const x = (pageW - w) / 2;
@@ -318,8 +321,8 @@ export async function renderElementToPagedPdfBlob(el: HTMLElement, fixedWidth?: 
 }
 
 // Render an element to a single-image PDF page and download it (mobile: open/share).
-export async function exportElementToPdf(el: HTMLElement, filename: string, fixedWidth?: number): Promise<void> {
-  const blob = await renderElementToPdfBlob(el, fixedWidth);
+export async function exportElementToPdf(el: HTMLElement, filename: string, fixedWidth?: number, marginPt = 0): Promise<void> {
+  const blob = await renderElementToPdfBlob(el, fixedWidth, marginPt);
   const name = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
   deliverBlob(blob, name);
 }

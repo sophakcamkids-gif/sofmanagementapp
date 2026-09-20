@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx';
-import { exportElementToPdf, exportElementToPagedPdf, exportElementToImage, renderElementToPagedPdfBlob } from './utils/exportPdf';
+import { exportElementToPdf, exportElementToPagedPdf, exportElementToImage, renderElementToPagedPdfBlob, renderElementToPdfBlob } from './utils/exportPdf';
 import FitToWidth from './FitToWidth';
 import { db } from './lib/db';
 import { loadAllCloudState, saveCloudState } from './lib/cloudStore';
@@ -6977,9 +6977,9 @@ function MemberReport() {
       // Also send the signed loan CONTRACT (with thumbprints) as its own A4 PDF.
       const ctEl = document.querySelector('.loan-contract-sheet') as HTMLElement | null;
       if (ctEl) {
-        // Capture narrow (630px) so the sheet scales UP to fill the A4 text column
-        // → body text lands at ~11pt (Khmer OS Siemreap) instead of tiny. 1cm margins.
-        const ctPdf = await renderElementToPagedPdfBlob(ctEl, 630, 28.35);
+        // Single A4 page (the contract is fixed-length): fit the whole sheet inside the
+        // 1cm margins so it can never spill to a 2nd page. Captured at 667px → ~10.5pt.
+        const ctPdf = await renderElementToPdfBlob(ctEl, 667, 28.35);
         await sendTelegramDocument(ctPdf, `Loan-Contract-${contractNum || code}.pdf`, `📄 កិច្ចសន្យាខ្ចីប្រាក់ · ${repBorrower} (${code}) · ខែ ${monthKey}`);
       }
       if (!sent) sent = await sendTelegramMessage(caption);
@@ -7381,8 +7381,10 @@ function MemberReport() {
     if (!el.id) el.id = 'sof-export-' + busyKey.replace(/[^a-z0-9]/gi, '');
     setExportBusy(busyKey);
     try {
-      if (kind === 'pdf') await (paged ? (e: HTMLElement, n: string, w?: number) => exportElementToPagedPdf(e, n, w, marginPt) : exportElementToPdf)(el, name, fixedWidth);
-      else await exportElementToImage(el, name, fixedWidth);
+      if (kind === 'pdf') {
+        if (paged) await exportElementToPagedPdf(el, name, fixedWidth, marginPt);
+        else await exportElementToPdf(el, name, fixedWidth, marginPt);
+      } else await exportElementToImage(el, name, fixedWidth);
     } catch (err) {
       console.error('Export failed:', err);
       alert(kind === 'pdf' ? 'មិនអាចទាញយក PDF បានទេ។ សូមព្យាយាមម្តងទៀត។' : 'មិនអាចទាញយករូបភាពបានទេ។ សូមព្យាយាមម្តងទៀត។');
@@ -8151,21 +8153,18 @@ function MemberReport() {
           const td = (extra: React.CSSProperties = {}): React.CSSProperties => ({ padding: '9px 12px', border: '1px solid #eef2f6', ...extra });
           const inSt: React.CSSProperties = { color: '#1e293b', fontWeight: 700, textAlign: 'right' };
           // Inline fill-in field for the contract sentences (centered on its dotted line).
-          const ctIn: React.CSSProperties = { border: 'none', borderBottom: '1px dotted #94a3b8', background: 'transparent', outline: 'none', fontWeight: 700, color: '#1e293b', padding: '0 4px', fontFamily: 'inherit', fontSize: '12px', minWidth: '60px', textAlign: 'center' };
-          // One thumbprint cell: photo upload + (optionally) an editable, centered name.
-          // Pass nameSetter = null to hide the name line (e.g. the lender box).
-          const tpBox = (label: string, name: string, nameSetter: ((v: string) => void) | null, img: string, imgSetter: (v: string) => void) => (
-            <td style={{ width: '20%', verticalAlign: 'top', textAlign: 'center', padding: '6px' }}>
-              <div style={{ fontSize: '9px', color: '#334155', fontWeight: 700, marginBottom: '4px', minHeight: '26px', lineHeight: 1.2 }}>{label}</div>
+          const ctIn: React.CSSProperties = { border: 'none', borderBottom: '1px dotted #94a3b8', background: 'transparent', outline: 'none', fontWeight: 700, color: '#1e293b', padding: '0 3px', fontFamily: 'inherit', fontSize: '13px', minWidth: '50px', textAlign: 'center' };
+          // One thumbprint cell: just the label + the print image (names live in the body
+          // sentences above, so no redundant ឈ្មោះ line here). Compact to keep 1 page.
+          const tpBox = (label: string, img: string, imgSetter: (v: string) => void) => (
+            <td style={{ width: '20%', verticalAlign: 'top', textAlign: 'center', padding: '4px' }}>
+              <div style={{ fontSize: '9px', color: '#334155', fontWeight: 700, marginBottom: '3px', minHeight: '24px', lineHeight: 1.15 }}>{label}</div>
               <label style={{ display: 'block', cursor: 'pointer' }}>
-                <div style={{ width: '74px', height: '84px', margin: '0 auto', border: '1px solid #cbd5e1', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#ffffff' }}>
+                <div style={{ width: '62px', height: '54px', margin: '0 auto', border: '1px solid #cbd5e1', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#ffffff' }}>
                   {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <span style={{ fontSize: '9px', color: '#cbd5e1' }}>ស្នាមមេដៃ</span>}
                 </div>
                 <input type="file" accept="image/*" onChange={onThumbPick(imgSetter)} style={{ display: 'none' }} />
               </label>
-              {nameSetter && (
-                <div style={{ fontSize: '9px', color: '#475569', marginTop: '4px' }}>ឈ្មោះ៖ <input value={name} onChange={(e) => nameSetter(e.target.value)} style={{ ...ctIn, width: '84px', fontSize: '9px', minWidth: '50px' }} /></div>
-              )}
             </td>
           );
           // Auto date for the contract footer — today's local date, in Khmer.
@@ -8350,16 +8349,16 @@ function MemberReport() {
               {/* ===== LOAN CONTRACT (កិច្ចសន្យាខ្ចីប្រាក់) — A4 printable, thumbprints ===== */}
               <div className="no-print flex flex-wrap items-center justify-between gap-2 mt-10 mb-2">
                 <span className="text-sm font-extrabold" style={{ color: '#0a6652', borderLeft: '4px solid #0a6652', paddingLeft: '10px' }}>កិច្ចសន្យាខ្ចីប្រាក់</span>
-                <button type="button" onClick={() => exportSheet('.loan-contract-sheet', 'pdf', `កិច្ចសន្យាកម្ចី-${memberCode}`, 'ct-pdf', 630, true, 28.35)} disabled={exportBusy === 'ct-pdf'}
+                <button type="button" onClick={() => exportSheet('.loan-contract-sheet', 'pdf', `កិច្ចសន្យាកម្ចី-${memberCode}`, 'ct-pdf', 667, false, 28.35)} disabled={exportBusy === 'ct-pdf'}
                   className="bg-[#0a6652] hover:bg-[#085241] text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-900/10 transition-all active:scale-95 disabled:opacity-60">
                   <Download size={14} /> <span>{exportBusy === 'ct-pdf' ? 'កំពុងបង្កើត...' : 'PDF កិច្ចសន្យា'}</span>
                 </button>
               </div>
 
-              <FitToWidth designWidth={630}>
-              <div className="loan-contract-sheet w-full bg-white p-8 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left relative overflow-hidden" style={{ fontFamily: "'Khmer OS Siemreap', 'Times New Roman', 'Tinos', 'Kantumruy Pro', serif", fontSize: '13px', color: '#1e293b', lineHeight: 1.9 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '6px' }}>
-                  <div style={{ width: '56px', height: '56px', flex: '0 0 auto', border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff' }}>
+              <FitToWidth designWidth={667}>
+              <div className="loan-contract-sheet w-full bg-white rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left relative overflow-hidden" style={{ fontFamily: "'Khmer OS Siemreap', 'Times New Roman', 'Tinos', 'Kantumruy Pro', serif", fontSize: '13px', color: '#1e293b', lineHeight: 1.5, padding: '20px 26px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '2px' }}>
+                  <div style={{ width: '44px', height: '44px', flex: '0 0 auto', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff' }}>
                     <img src="https://i.ibb.co/Kp7CxnjC/Picture1.jpg" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} referrerPolicy="no-referrer" />
                   </div>
                   <div style={{ textAlign: 'center' }}>
@@ -8367,50 +8366,50 @@ function MemberReport() {
                     <p style={{ color: '#0a6652', fontWeight: 700, fontSize: '11px', margin: 0 }}>Saving for Our Future Group (SOF)</p>
                   </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', margin: '8px 0 12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', margin: '2px 0 6px' }}>
                   <span style={{ width: '120px' }}></span>
-                  <h1 style={{ color: '#0a6652', fontWeight: 800, fontSize: '18px', margin: 0, textAlign: 'center', flex: 1 }}>កិច្ចសន្យាខ្ចីប្រាក់</h1>
+                  <h1 style={{ color: '#0a6652', fontWeight: 800, fontSize: '16px', margin: 0, textAlign: 'center', flex: 1 }}>កិច្ចសន្យាខ្ចីប្រាក់</h1>
                   <span style={{ whiteSpace: 'nowrap', width: '120px', textAlign: 'right' }}>លេខយោង៖ <input value={contractNum} onChange={(e) => setContractNum(e.target.value)} style={{ ...ctIn, width: '90px' }} /></span>
                 </div>
 
-                <p style={{ textIndent: '2em', textAlign: 'justify', margin: '4px 0' }}>
-                  ភាគី(ក)ផ្ដល់កម្ចីឈ្មោះ <input value={ctLender} onChange={(e) => setCtLender(e.target.value)} style={{ ...ctIn, width: '120px' }} /> ភេទ <input value={ctLenderGender} onChange={(e) => setCtLenderGender(e.target.value)} style={{ ...ctIn, width: '36px' }} /> ជាអ្នកតំណាងឱ្យក្រុមសន្សំប្រាក់អនាគតយើង ដោយបានធ្វើការផ្ដល់កម្ចីទៅអោយភាគី(ខ)ជាអ្នកទទួលកម្ចីឈ្មោះ <input value={repBorrower} onChange={(e) => setRepBorrower(e.target.value)} style={{ ...ctIn, width: '120px' }} /> នូវទឹកប្រាក់ចំនួន <b>${fmt2(parseFloat(repLoanAmt) || 0)}</b> នៅក្នុងរយៈពេល <input type="number" value={repLoanTerm} onChange={(e) => setRepLoanTerm(parseInt(e.target.value) || 0)} style={{ ...ctIn, width: '44px' }} /> ខែ។
+                <p style={{ textIndent: '2em', textAlign: 'justify', margin: '2px 0' }}>
+                  ភាគី(ក)ផ្ដល់កម្ចីឈ្មោះ <input value={ctLender} onChange={(e) => setCtLender(e.target.value)} style={{ ...ctIn, width: '110px' }} /> ភេទ <input value={ctLenderGender} onChange={(e) => setCtLenderGender(e.target.value)} style={{ ...ctIn, width: '54px' }} /> ជាអ្នកតំណាងឱ្យក្រុមសន្សំប្រាក់អនាគតយើង ដោយបានធ្វើការផ្ដល់កម្ចីទៅអោយភាគី(ខ)ជាអ្នកទទួលកម្ចីឈ្មោះ <input value={repBorrower} onChange={(e) => setRepBorrower(e.target.value)} style={{ ...ctIn, width: '110px' }} /> នូវទឹកប្រាក់ចំនួន <b>${fmt2(parseFloat(repLoanAmt) || 0)}</b> នៅក្នុងរយៈពេល <input type="number" value={repLoanTerm} onChange={(e) => setRepLoanTerm(parseInt(e.target.value) || 0)} style={{ ...ctIn, width: '44px' }} /> ខែ។
                 </p>
 
-                <p style={{ margin: '4px 0' }}>ភាគី(ខ)ទទួលកម្ចីឈ្មោះ <input value={repBorrower} onChange={(e) => setRepBorrower(e.target.value)} style={{ ...ctIn, width: '120px' }} /> លេខកូដ <input value={repBorrowerId} onChange={(e) => setRepBorrowerId(e.target.value)} style={{ ...ctIn, width: '64px' }} /> ភេទ <input value={ctBGender} onChange={(e) => setCtBGender(e.target.value)} style={{ ...ctIn, width: '36px' }} /> អាយុ <input value={ctBAge} onChange={(e) => setCtBAge(e.target.value)} style={{ ...ctIn, width: '36px' }} /></p>
-                <p style={{ margin: '4px 0' }}>ថ្ងៃ ខែ ឆ្នាំកំណើត <input value={ctBDob} onChange={(e) => setCtBDob(e.target.value)} style={{ ...ctIn, width: '120px' }} /> កាន់អត្តសញ្ញាណប័ណ្ណលេខ <input value={ctBIdCard} onChange={(e) => setCtBIdCard(e.target.value)} style={{ ...ctIn, width: '140px' }} /></p>
-                <p style={{ margin: '4px 0' }}>អាសយដ្ឋានបច្ចុប្បន្ន <input value={ctBAddress} onChange={(e) => setCtBAddress(e.target.value)} style={{ ...ctIn, width: '330px' }} /></p>
-                <p style={{ margin: '4px 0' }}>មុខរបរ <input value={ctBJob} onChange={(e) => setCtBJob(e.target.value)} style={{ ...ctIn, width: '150px' }} /> នៅស្ថាប័ន <input value={ctBOrg} onChange={(e) => setCtBOrg(e.target.value)} style={{ ...ctIn, width: '150px' }} /></p>
-                <p style={{ margin: '4px 0' }}>លេខទូរស័ព្ទ <input value={repPhone} onChange={(e) => setRepPhone(e.target.value)} style={{ ...ctIn, width: '110px' }} /> អ៊ីម៉ែល <input value={ctBEmail} onChange={(e) => setCtBEmail(e.target.value)} style={{ ...ctIn, width: '160px' }} /></p>
-                <p style={{ margin: '4px 0', textAlign: 'justify' }}>បានខ្ចីប្រាក់ចំនួន <b>${fmt2(parseFloat(repLoanAmt) || 0)}</b> ជាអក្សរ <input value={ctAmtWords} onChange={(e) => setCtAmtWords(e.target.value)} style={{ ...ctIn, width: '230px' }} /> ពីក្រុមសន្សំប្រាក់អនាគតយើង ដែលរយៈពេលនៃការខ្ចី និងសងត្រលប់មកវិញមានរយៈពេល <input type="number" value={repLoanTerm} onChange={(e) => setRepLoanTerm(parseInt(e.target.value) || 0)} style={{ ...ctIn, width: '44px' }} /> ខែ ដោយគិតចាប់ពីថ្ងៃផ្ដិតមេដៃលើកិច្ចសន្យានេះ។</p>
-                <p style={{ margin: '4px 0' }}>មូលហេតុនៃការខ្ចីប្រាក់៖ <input value={repPurpose} onChange={(e) => setRepPurpose(e.target.value)} style={{ ...ctIn, width: '320px' }} /></p>
-                <p style={{ margin: '4px 0' }}>កំណត់សំគាល់៖ <input value={ctRemark} onChange={(e) => setCtRemark(e.target.value)} style={{ ...ctIn, width: '380px' }} /></p>
+                <p style={{ margin: '2px 0' }}>ភាគី(ខ)ទទួលកម្ចីឈ្មោះ <input value={repBorrower} onChange={(e) => setRepBorrower(e.target.value)} style={{ ...ctIn, width: '110px' }} /> លេខកូដ <input value={repBorrowerId} onChange={(e) => setRepBorrowerId(e.target.value)} style={{ ...ctIn, width: '64px' }} /> ភេទ <input value={ctBGender} onChange={(e) => setCtBGender(e.target.value)} style={{ ...ctIn, width: '54px' }} /> អាយុ <input value={ctBAge} onChange={(e) => setCtBAge(e.target.value)} style={{ ...ctIn, width: '44px' }} /></p>
+                <p style={{ margin: '2px 0' }}>ថ្ងៃ ខែ ឆ្នាំកំណើត <input value={ctBDob} onChange={(e) => setCtBDob(e.target.value)} style={{ ...ctIn, width: '120px' }} /> កាន់អត្តសញ្ញាណប័ណ្ណលេខ <input value={ctBIdCard} onChange={(e) => setCtBIdCard(e.target.value)} style={{ ...ctIn, width: '140px' }} /></p>
+                <p style={{ margin: '2px 0' }}>អាសយដ្ឋានបច្ចុប្បន្ន <input value={ctBAddress} onChange={(e) => setCtBAddress(e.target.value)} style={{ ...ctIn, width: '330px' }} /></p>
+                <p style={{ margin: '2px 0' }}>មុខរបរ <input value={ctBJob} onChange={(e) => setCtBJob(e.target.value)} style={{ ...ctIn, width: '150px' }} /> នៅស្ថាប័ន <input value={ctBOrg} onChange={(e) => setCtBOrg(e.target.value)} style={{ ...ctIn, width: '150px' }} /></p>
+                <p style={{ margin: '2px 0' }}>លេខទូរស័ព្ទ <input value={repPhone} onChange={(e) => setRepPhone(e.target.value)} style={{ ...ctIn, width: '110px' }} /> អ៊ីម៉ែល <input value={ctBEmail} onChange={(e) => setCtBEmail(e.target.value)} style={{ ...ctIn, width: '160px' }} /></p>
+                <p style={{ margin: '2px 0', textAlign: 'justify' }}>បានខ្ចីប្រាក់ចំនួន <b>${fmt2(parseFloat(repLoanAmt) || 0)}</b> ជាអក្សរ <input value={ctAmtWords} onChange={(e) => setCtAmtWords(e.target.value)} style={{ ...ctIn, width: '230px' }} /> ពីក្រុមសន្សំប្រាក់អនាគតយើង ដែលរយៈពេលនៃការខ្ចី និងសងត្រលប់មកវិញមានរយៈពេល <input type="number" value={repLoanTerm} onChange={(e) => setRepLoanTerm(parseInt(e.target.value) || 0)} style={{ ...ctIn, width: '44px' }} /> ខែ ដោយគិតចាប់ពីថ្ងៃផ្ដិតមេដៃលើកិច្ចសន្យានេះ។</p>
+                <p style={{ margin: '2px 0' }}>មូលហេតុនៃការខ្ចីប្រាក់៖ <input value={repPurpose} onChange={(e) => setRepPurpose(e.target.value)} style={{ ...ctIn, width: '320px' }} /></p>
+                <p style={{ margin: '2px 0' }}>កំណត់សំគាល់៖ <input value={ctRemark} onChange={(e) => setCtRemark(e.target.value)} style={{ ...ctIn, width: '380px' }} /></p>
 
-                <p style={{ textIndent: '2em', textAlign: 'justify', margin: '8px 0 4px' }}>អាស្រ័យហេតុដូចបានជម្រាបជូនខាងលើ សូមគណៈកម្មាការ និងអ្នកគ្រប់គ្រងក្រុមសន្សំ មេត្តាឱ្យ ខ្ញុំបាទ / នាងខ្ញុំ បានខ្ចីនូវចំនួនទឹកប្រាក់ដែលបានកំណត់ខាងលើ។ ក្នុងករណី ខ្ញុំបាទ / នាងខ្ញុំ រំលោភបំពានលើសេចក្តីទុកចិត្ត ឬមិនគោរពតាមគោលការណ៍នៃការខ្ចីសង ខ្ញុំបាទ / នាងខ្ញុំ សុខចិត្តទទួលខុសត្រូវចំពោះមុខច្បាប់។</p>
-                <p style={{ textIndent: '2em', textAlign: 'justify', margin: '4px 0' }}>ក្នុងករណីដែលអ្នកខ្ចីមិនមានលទ្ធភាពសងត្រលប់ប្រាក់មកក្រុមសន្សំវិញ អ្នកអាណាព្យាបាល / ប្ដី / ប្រពន្ធ ដែលបានផ្ដិតមេដៃ ជាអ្នកទទួលខុសត្រូវក្នុងការសងត្រលប់មុនគេ។ ក្នុងករណី កម្ចីមិនមានអ្នកអាណាព្យាបាល / ប្ដី / ប្រពន្ធជាអ្នកធានា នោះអ្នកធានាទាំងបីនាក់ដែលបានផ្ដិតមេដៃនឹងទទួលខុសត្រូវក្នុងការសងត្រលប់ម្នាក់ពាក់កណ្ដាល នៃកម្ចីដែលនៅសល់។</p>
+                <p style={{ textIndent: '2em', textAlign: 'justify', margin: '4px 0 2px' }}>អាស្រ័យហេតុដូចបានជម្រាបជូនខាងលើ សូមគណៈកម្មាការ និងអ្នកគ្រប់គ្រងក្រុមសន្សំ មេត្តាឱ្យ ខ្ញុំបាទ / នាងខ្ញុំ បានខ្ចីនូវចំនួនទឹកប្រាក់ដែលបានកំណត់ខាងលើ។ ក្នុងករណី ខ្ញុំបាទ / នាងខ្ញុំ រំលោភបំពានលើសេចក្តីទុកចិត្ត ឬមិនគោរពតាមគោលការណ៍នៃការខ្ចីសង ខ្ញុំបាទ / នាងខ្ញុំ សុខចិត្តទទួលខុសត្រូវចំពោះមុខច្បាប់។</p>
+                <p style={{ textIndent: '2em', textAlign: 'justify', margin: '2px 0' }}>ក្នុងករណីដែលអ្នកខ្ចីមិនមានលទ្ធភាពសងត្រលប់ប្រាក់មកក្រុមសន្សំវិញ អ្នកអាណាព្យាបាល / ប្ដី / ប្រពន្ធ ដែលបានផ្ដិតមេដៃ ជាអ្នកទទួលខុសត្រូវក្នុងការសងត្រលប់មុនគេ។ ក្នុងករណី កម្ចីមិនមានអ្នកអាណាព្យាបាល / ប្ដី / ប្រពន្ធជាអ្នកធានា នោះអ្នកធានាទាំងបីនាក់ដែលបានផ្ដិតមេដៃនឹងទទួលខុសត្រូវក្នុងការសងត្រលប់ម្នាក់ពាក់កណ្ដាល នៃកម្ចីដែលនៅសល់។</p>
 
-                <table style={{ width: '100%', marginTop: '12px', borderCollapse: 'collapse' }}>
+                <table style={{ width: '100%', marginTop: '6px', borderCollapse: 'collapse' }}>
                   <tbody><tr>
-                    {tpBox('ស្នាមមេដៃភាគី (ខ) អ្នកខ្ចីប្រាក់', repBorrower, setRepBorrower, tpBorrower, setTpBorrower)}
-                    {tpBox('ស្នាមមេដៃអ្នកធានាទី១', repGuarantor1, setRepGuarantor1, tpG1, setTpG1)}
-                    {tpBox('ស្នាមមេដៃអ្នកធានាទី២', repGuarantor2, setRepGuarantor2, tpG2, setTpG2)}
-                    {tpBox('ស្នាមមេដៃអ្នកធានាទី៣', ctGuarantor3, setCtGuarantor3, tpG3, setTpG3)}
-                    {tpBox('អ្នកអាណាព្យាបាល / សាក្សី', ctGuardian, setCtGuardian, tpGuardian, setTpGuardian)}
+                    {tpBox('ស្នាមមេដៃភាគី (ខ) អ្នកខ្ចីប្រាក់', tpBorrower, setTpBorrower)}
+                    {tpBox('ស្នាមមេដៃអ្នកធានាទី១', tpG1, setTpG1)}
+                    {tpBox('ស្នាមមេដៃអ្នកធានាទី២', tpG2, setTpG2)}
+                    {tpBox('ស្នាមមេដៃអ្នកធានាទី៣', tpG3, setTpG3)}
+                    {tpBox('អ្នកអាណាព្យាបាល / សាក្សី', tpGuardian, setTpGuardian)}
                   </tr></tbody>
                 </table>
 
-                <div style={{ textAlign: 'center', marginTop: '16px' }}>
+                <div style={{ textAlign: 'right', marginTop: '8px' }}>
                   <p style={{ margin: 0 }}>{ctAutoDate}</p>
                 </div>
-                <table style={{ width: '40%', margin: '0 auto', borderCollapse: 'collapse' }}>
+                <table style={{ width: '40%', marginLeft: 'auto', borderCollapse: 'collapse' }}>
                   <tbody>
                     <tr><td style={{ textAlign: 'center', paddingBottom: '2px', fontWeight: 700, color: '#0a6652' }}>បានឃើញ និងអនុម័ត</td></tr>
                     <tr>
-                      {tpBox('ស្នាមមេដៃភាគី (ក) អ្នកផ្ដល់កម្ចី', ctManager, null, tpLender, setTpLender)}
+                      {tpBox('ស្នាមមេដៃភាគី (ក) អ្នកផ្ដល់កម្ចី', tpLender, setTpLender)}
                     </tr>
                   </tbody>
                 </table>
-                <div style={{ textAlign: 'center', marginTop: '2px' }}>ឈ្មោះអ្នកគ្រប់គ្រងក្រុម៖ <b style={{ color: '#1e293b' }}>{ctManager}</b></div>
+                <div style={{ textAlign: 'right', marginTop: '2px' }}>ឈ្មោះអ្នកគ្រប់គ្រងក្រុម៖ <b style={{ color: '#1e293b' }}>{ctManager}</b></div>
               </div>
               </FitToWidth>
             </>
