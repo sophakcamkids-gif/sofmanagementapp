@@ -6621,6 +6621,12 @@ function MemberReport() {
   const [repFreq, setRepFreq] = useState<'monthly' | 'weekly'>('monthly'); // payments fall on the request day-of-month each month
   const [repLoanDate, setRepLoanDate] = useState(localDateStr()); // loan/request date → schedule start
   const [contractNum, setContractNum] = useState('MFC-2026-008');
+  // Loan-contract (កិច្ចសន្យាខ្ចីប្រាក់) extra fields — the request sheet's figures
+  // (amount, rate, term, schedule, borrower, guarantors) are reused as-is.
+  const [conPlace, setConPlace] = useState('ភ្នំពេញ');
+  const [conLenderRep, setConLenderRep] = useState('លឹវ វី');
+  const [conBorrowerNid, setConBorrowerNid] = useState('');
+  const [conBorrowerAddr, setConBorrowerAddr] = useState('');
   const [selectedReportYear, setSelectedReportYear] = useState('2026');
   const [summaryMonth, setSummaryMonth] = useState('');  // '' = auto (latest month with data)
   // Report signature (image + name), saved per member.
@@ -7518,6 +7524,15 @@ function MemberReport() {
                   icon2Class: "text-purple-600 fill-purple-100/40"
                 },
                 {
+                  id: 'កិច្ចសន្យាកម្ចី',
+                  title: "កិច្ចសន្យាខ្ចីប្រាក់",
+                  desc: "ឯកសារកិច្ចសន្យាផ្លូវការ",
+                  icon1: <BookOpen size={16} strokeWidth={2.5} />,
+                  icon1Class: "bg-indigo-50 text-indigo-600",
+                  icon2: <FileText size={28} strokeWidth={1.5} />,
+                  icon2Class: "text-indigo-500 fill-indigo-100/40"
+                },
+                {
                   id: 'ការដាក់សន្សំ និងបង់កម្ចី',
                   title: "ការដាក់សន្សំ និងបង់កម្ចី",
                   desc: "ផ្ញើប្រាក់សន្សំ និងបង់កម្ចី",
@@ -8275,6 +8290,349 @@ function MemberReport() {
         })()}
        </div>
       )}
+
+      {/* ===== កិច្ចសន្យាខ្ចីប្រាក់ (formal loan agreement) =====
+          Reuses the request sheet's figures (amount, rate, term, schedule,
+          borrower, guarantors) so the contract can never disagree with the
+          application it is based on. */}
+      {activeTab === 'កិច្ចសន្យាកម្ចី' && (() => {
+        const sch = calculateSchedule();
+        const amt = parseFloat(repLoanAmt) || 0;
+        const totalInterest = sch.reduce((s, r) => s + r.interest, 0);
+        const totalToPay = sch.reduce((s, r) => s + r.total, 0);
+        const fmt2 = (v: number) => (v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
+        // "2026-07-04" → "ថ្ងៃទី ០៤ ខែកក្កដា ឆ្នាំ២០២៦" (same wording as the schedule rows).
+        const khDate = (iso: string) => {
+          const d = iso ? new Date(iso) : new Date();
+          if (isNaN(d.getTime())) return '-';
+          return `ថ្ងៃទី ${toKhmerNum(String(d.getDate()).padStart(2, '0'))} ខែ${KHM[d.getMonth()]} ឆ្នាំ${toKhmerNum(d.getFullYear())}`;
+        };
+        const firstDue = sch[0]?.dueDate || '-';
+        const lastDue = sch[sch.length - 1]?.dueDate || '-';
+        const freqWord = repFreq === 'monthly' ? 'ប្រចាំខែ' : 'ប្រចាំសប្តាហ៍';
+
+        // INLINE styles everywhere: html2canvas on iOS drops Tailwind-class visuals,
+        // so the PDF/image keeps its boxes, lines and colours only when set inline.
+        const inputCls = 'font-bold text-slate-800 bg-transparent focus:underline hover:bg-emerald-50/40 px-1 py-0.5 rounded focus:outline-none border-none';
+        const inSt: React.CSSProperties = { color: '#1e293b', fontWeight: 700 };
+        const boxSt: React.CSSProperties = { border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', borderRadius: '16px', padding: '16px' };
+        const rowSt: React.CSSProperties = { borderBottom: '1px dashed #e2e8f0', paddingBottom: '6px' };
+        const th = (extra: React.CSSProperties = {}): React.CSSProperties => ({ padding: '10px 12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#64748b', fontWeight: 700, fontSize: '10px', textTransform: 'uppercase', ...extra });
+        const td = (extra: React.CSSProperties = {}): React.CSSProperties => ({ padding: '9px 12px', border: '1px solid #eef2f6', ...extra });
+        const secSt: React.CSSProperties = { color: '#0a6652', borderLeft: '4px solid #0a6652', paddingLeft: '10px' };
+        const bodySt: React.CSSProperties = { color: '#334155', fontSize: '12px', lineHeight: 1.9, textAlign: 'justify' };
+        const artTitleSt: React.CSSProperties = { color: '#0a6652', fontWeight: 800, fontSize: '12.5px', marginBottom: '2px' };
+        const strong = (t: string) => <span style={{ fontWeight: 800, color: '#0a6652' }}>{t}</span>;
+
+        return (
+          <div className="max-w-4xl mx-auto space-y-6">
+            {/* Export buttons — OUTSIDE the sheet so they aren't captured */}
+            <div className="no-print flex flex-wrap justify-end gap-2">
+              <button type="button" onClick={() => exportSheet('.loan-contract-sheet', 'pdf', `កិច្ចសន្យាកម្ចី-${contractNum || memberCode}`, 'lcon-pdf', 820, true)} disabled={exportBusy === 'lcon-pdf'}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-60">
+                <Download size={14} /> <span>{exportBusy === 'lcon-pdf' ? 'កំពុងបង្កើត...' : 'PDF'}</span>
+              </button>
+              <button type="button" onClick={() => exportSheet('.loan-contract-sheet', 'img', `កិច្ចសន្យាកម្ចី-${contractNum || memberCode}`, 'lcon-img', 820)} disabled={exportBusy === 'lcon-img'}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-60">
+                <FileText size={14} /> <span>{exportBusy === 'lcon-img' ? 'កំពុងទាញយក...' : 'រូបភាព'}</span>
+              </button>
+            </div>
+
+            <p className="no-print text-[11px] text-slate-400 font-bold text-right">
+              តួលេខទាំងអស់យកតាម «ទម្រង់ស្នើសុំកម្ចី» — កែនៅទីនោះ នោះកិច្ចសន្យាប្តូរតាមភ្លាម។
+            </p>
+
+            {/* Fixed-width design scaled to fit, so the PDF is identical on phone and PC. */}
+            <FitToWidth designWidth={820}>
+            <div className="loan-contract-sheet w-full bg-white p-8 rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-left relative overflow-hidden" style={{ fontFamily: "'Times New Roman', 'Tinos', 'Kantumruy Pro', serif" }}>
+
+              {/* Header */}
+              <div className="mb-5" style={{ textAlign: 'center' }}>
+                <p className="text-sm font-bold" style={{ color: '#334155' }}>ព្រះរាជាណាចក្រកម្ពុជា</p>
+                <p className="text-xs font-bold" style={{ color: '#64748b' }}>ជាតិ សាសនា ព្រះមហាក្សត្រ</p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', margin: '12px 0' }}>
+                  <div style={{ width: '48px', height: '48px', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '2px', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <img src="https://i.ibb.co/Kp7CxnjC/Picture1.jpg" alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                  </div>
+                  <h3 className="text-xs font-bold uppercase tracking-wide" style={{ color: '#ecb22e' }}>ក្រុមសន្សំប្រាក់អនាគតយើង</h3>
+                </div>
+                <h1 className="text-lg font-extrabold tracking-wide" style={{ color: '#0a6652' }}>កិច្ចសន្យាខ្ចីប្រាក់</h1>
+                <div className="text-xs mt-1" style={{ color: '#64748b' }}>
+                  <span>លេខកិច្ចសន្យា៖ </span>
+                  <input type="text" value={contractNum} onChange={(e) => setContractNum(e.target.value)} className={inputCls + ' w-32'} style={{ ...inSt, textAlign: 'center' }} />
+                </div>
+                <p className="text-xs mt-1" style={{ color: '#64748b' }}>
+                  ធ្វើនៅ
+                  <input type="text" value={conPlace} onChange={(e) => setConPlace(e.target.value)} className={inputCls + ' w-24'} style={{ ...inSt, textAlign: 'center' }} />
+                  {khDate(repLoanDate)}
+                </p>
+              </div>
+
+              {/* Parties */}
+              <div className="mb-3" style={{ textAlign: 'left' }}>
+                <span className="text-sm font-extrabold tracking-wide" style={secSt}>ភាគីនៃកិច្ចសន្យា</span>
+              </div>
+              <table className="w-full mb-5" style={{ borderCollapse: 'separate', borderSpacing: 0, tableLayout: 'fixed' }}>
+                <tbody><tr>
+                  {/* Party 1 — the lender (the savings group) */}
+                  <td className="align-top" style={{ width: '50%', paddingRight: '1rem' }}>
+                    <div className="space-y-2.5" style={boxSt}>
+                      <p className="text-xs font-extrabold mb-1" style={{ color: '#0a6652' }}>ភាគីទី ១៖ អ្នកឲ្យខ្ចី</p>
+                      <div className="flex justify-between items-center text-xs" style={rowSt}>
+                        <span className="text-slate-500 font-semibold">ឈ្មោះ</span>
+                        <span style={{ color: '#1e293b', fontWeight: 700 }}>ក្រុមសន្សំប្រាក់អនាគតយើង</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs" style={rowSt}>
+                        <span className="text-slate-500 font-semibold">អក្សរកាត់</span>
+                        <span style={{ color: '#1e293b', fontWeight: 700 }}>SOF (Saving For Our Future)</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-500 font-semibold">តំណាងដោយ</span>
+                        <input type="text" value={conLenderRep} onChange={(e) => setConLenderRep(e.target.value)} className={inputCls + ' w-32'} style={{ ...inSt, textAlign: 'right' }} />
+                      </div>
+                    </div>
+                  </td>
+                  {/* Party 2 — the borrower */}
+                  <td className="align-top" style={{ width: '50%', paddingLeft: '1rem' }}>
+                    <div className="space-y-2.5" style={boxSt}>
+                      <p className="text-xs font-extrabold mb-1" style={{ color: '#0a6652' }}>ភាគីទី ២៖ អ្នកខ្ចី</p>
+                      <div className="flex justify-between items-center text-xs" style={rowSt}>
+                        <span className="text-slate-500 font-semibold">ឈ្មោះ</span>
+                        <input type="text" value={repBorrower} onChange={(e) => setRepBorrower(e.target.value)} className={inputCls + ' w-32'} style={{ ...inSt, textAlign: 'right' }} />
+                      </div>
+                      <div className="flex justify-between items-center text-xs" style={rowSt}>
+                        <span className="text-slate-500 font-semibold">លេខ ID សមាជិក</span>
+                        <input type="text" value={repBorrowerId} onChange={(e) => setRepBorrowerId(e.target.value)} className={inputCls + ' w-20'} style={{ ...inSt, textAlign: 'right' }} />
+                      </div>
+                      <div className="flex justify-between items-center text-xs" style={rowSt}>
+                        <span className="text-slate-500 font-semibold">លេខអត្តសញ្ញាណប័ណ្ណ</span>
+                        <input type="text" value={conBorrowerNid} onChange={(e) => setConBorrowerNid(e.target.value)} className={inputCls + ' w-28'} style={{ ...inSt, textAlign: 'right' }} />
+                      </div>
+                      <div className="flex justify-between items-center text-xs" style={rowSt}>
+                        <span className="text-slate-500 font-semibold">លេខទូរស័ព្ទ</span>
+                        <input type="text" value={repPhone} onChange={(e) => setRepPhone(e.target.value)} className={inputCls + ' w-28'} style={{ ...inSt, textAlign: 'right' }} />
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-500 font-semibold shrink-0">អាសយដ្ឋាន</span>
+                        <input type="text" value={conBorrowerAddr} onChange={(e) => setConBorrowerAddr(e.target.value)} placeholder="ភូមិ ឃុំ ស្រុក ខេត្ត" className={inputCls + ' w-36'} style={{ ...inSt, textAlign: 'right' }} />
+                      </div>
+                    </div>
+                  </td>
+                </tr></tbody>
+              </table>
+
+              {/* Guarantors */}
+              <div className="mb-5" style={boxSt}>
+                <p className="text-xs font-extrabold mb-2" style={{ color: '#0a6652' }}>អ្នកធានា</p>
+                <table className="w-full" style={{ borderCollapse: 'separate', borderSpacing: 0, tableLayout: 'fixed' }}>
+                  <tbody><tr>
+                    <td className="align-top" style={{ width: '50%', paddingRight: '0.75rem' }}>
+                      <div className="flex justify-between items-center text-xs" style={rowSt}>
+                        <span className="text-slate-500 font-semibold">អ្នកធានាទី ១</span>
+                        <input type="text" value={repGuarantor1} onChange={(e) => setRepGuarantor1(e.target.value)} className={inputCls + ' w-32'} style={{ ...inSt, textAlign: 'right' }} />
+                      </div>
+                      <div className="flex justify-between items-center text-xs pt-1.5">
+                        <span className="text-slate-500 font-semibold">លេខ ID ធានាទី ១</span>
+                        <input type="text" value={repGuarantor1Id} onChange={(e) => setRepGuarantor1Id(e.target.value)} className={inputCls + ' w-20'} style={{ ...inSt, textAlign: 'right' }} />
+                      </div>
+                    </td>
+                    <td className="align-top" style={{ width: '50%', paddingLeft: '0.75rem' }}>
+                      <div className="flex justify-between items-center text-xs" style={rowSt}>
+                        <span className="text-slate-500 font-semibold">អ្នកធានាទី ២</span>
+                        <input type="text" value={repGuarantor2} onChange={(e) => setRepGuarantor2(e.target.value)} className={inputCls + ' w-32'} style={{ ...inSt, textAlign: 'right' }} />
+                      </div>
+                      <div className="flex justify-between items-center text-xs pt-1.5">
+                        <span className="text-slate-500 font-semibold">លេខ ID ធានាទី ២</span>
+                        <input type="text" value={repGuarantor2Id} onChange={(e) => setRepGuarantor2Id(e.target.value)} className={inputCls + ' w-20'} style={{ ...inSt, textAlign: 'right' }} />
+                      </div>
+                    </td>
+                  </tr></tbody>
+                </table>
+              </div>
+
+              {/* Key terms at a glance */}
+              <div className="mb-3" style={{ textAlign: 'left' }}>
+                <span className="text-sm font-extrabold tracking-wide" style={secSt}>លក្ខខណ្ឌសំខាន់ៗ</span>
+              </div>
+              <div className="mb-6" style={{ border: '1px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden', backgroundColor: '#ffffff' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                  <tbody>
+                    <tr>
+                      <td style={td({ color: '#64748b', fontWeight: 700, width: '30%', backgroundColor: '#f8fafc' })}>ទំហំកម្ចី</td>
+                      <td style={td({ color: '#0a6652', fontWeight: 800, width: '20%', textAlign: 'right' })}>${fmt2(amt)}</td>
+                      <td style={td({ color: '#64748b', fontWeight: 700, width: '30%', backgroundColor: '#f8fafc' })}>អត្រាការប្រាក់</td>
+                      <td style={td({ color: '#334155', fontWeight: 800, textAlign: 'right' })}>{repLoanRate}%/ខែ</td>
+                    </tr>
+                    <tr>
+                      <td style={td({ color: '#64748b', fontWeight: 700, backgroundColor: '#f8fafc' })}>រយៈពេលកម្ចី</td>
+                      <td style={td({ color: '#334155', fontWeight: 800, textAlign: 'right' })}>{toKhmerNum(repLoanTerm)} ខែ</td>
+                      <td style={td({ color: '#64748b', fontWeight: 700, backgroundColor: '#f8fafc' })}>ប្រេកង់បង់</td>
+                      <td style={td({ color: '#334155', fontWeight: 800, textAlign: 'right' })}>{freqWord}</td>
+                    </tr>
+                    <tr>
+                      <td style={td({ color: '#64748b', fontWeight: 700, backgroundColor: '#f8fafc' })}>ការប្រាក់សរុប</td>
+                      <td style={td({ color: '#d97706', fontWeight: 800, textAlign: 'right' })}>${fmt2(totalInterest)}</td>
+                      <td style={td({ color: '#64748b', fontWeight: 700, backgroundColor: '#f8fafc' })}>ទឹកប្រាក់សរុបត្រូវបង់</td>
+                      <td style={td({ color: '#0a6652', fontWeight: 800, textAlign: 'right' })}>${fmt2(totalToPay)}</td>
+                    </tr>
+                    <tr>
+                      <td style={td({ color: '#64748b', fontWeight: 700, backgroundColor: '#f8fafc' })}>ថ្ងៃបង់លើកទី ១</td>
+                      <td style={td({ color: '#334155', fontWeight: 700, textAlign: 'right' })}>{firstDue}</td>
+                      <td style={td({ color: '#64748b', fontWeight: 700, backgroundColor: '#f8fafc' })}>ថ្ងៃបង់ចុងក្រោយ</td>
+                      <td style={td({ color: '#334155', fontWeight: 700, textAlign: 'right' })}>{lastDue}</td>
+                    </tr>
+                    <tr>
+                      <td style={td({ color: '#64748b', fontWeight: 700, backgroundColor: '#f8fafc' })}>គោលបំណងនៃកម្ចី</td>
+                      <td colSpan={3} style={td({ color: '#334155', fontWeight: 700 })}>{repPurpose || '—'}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Articles */}
+              <div className="mb-3" style={{ textAlign: 'left' }}>
+                <span className="text-sm font-extrabold tracking-wide" style={secSt}>ខ្លឹមសារនៃកិច្ចសន្យា</span>
+              </div>
+              <div className="space-y-3 mb-8">
+                <div>
+                  <p style={artTitleSt}>មាត្រា ១៖ វត្ថុបំណងនៃកិច្ចសន្យា</p>
+                  <p style={bodySt}>
+                    ភាគីទី ១ យល់ព្រមឲ្យភាគីទី ២ ខ្ចីប្រាក់ចំនួន {strong(`$${fmt2(amt)}`)} (ដុល្លារអាមេរិក)
+                    ហើយភាគីទី ២ យល់ព្រមទទួលយកប្រាក់កម្ចីនេះ ដើម្បីប្រើប្រាស់ក្នុងគោលបំណង៖ {strong(repPurpose || 'តាមការស្នើសុំ')}។
+                    ភាគីទី ២ មិនអាចយកប្រាក់កម្ចីនេះទៅប្រើក្នុងគោលបំណងផ្សេង ដោយគ្មានការយល់ព្រមជាលាយលក្ខណ៍អក្សរពីភាគីទី ១ ឡើយ។
+                  </p>
+                </div>
+                <div>
+                  <p style={artTitleSt}>មាត្រា ២៖ អត្រាការប្រាក់ និងរយៈពេល</p>
+                  <p style={bodySt}>
+                    អត្រាការប្រាក់គឺ {strong(`${repLoanRate}% ក្នុងមួយខែ`)} គិតលើ{strong('ប្រាក់ដើមនៅសល់')} ក្នុងរយៈពេល {strong(`${toKhmerNum(repLoanTerm)} ខែ`)}។
+                    ការប្រាក់សរុបប៉ាន់ស្មានគឺ {strong(`$${fmt2(totalInterest)}`)} និងទឹកប្រាក់សរុបត្រូវបង់ (ប្រាក់ដើម + ការប្រាក់) គឺ {strong(`$${fmt2(totalToPay)}`)}។
+                  </p>
+                </div>
+                <div>
+                  <p style={artTitleSt}>មាត្រា ៣៖ វិធីសងត្រលប់</p>
+                  <p style={bodySt}>
+                    ភាគីទី ២ ត្រូវបង់ប្រាក់ដើម និងការប្រាក់{freqWord} ចាប់ពី {strong(firstDue)} រហូតដល់ {strong(lastDue)}
+                    ស្របតាមតារាងបង់រំលស់ដែលភ្ជាប់ជាមួយកិច្ចសន្យានេះ ដែលចាត់ទុកជាផ្នែកមិនអាចបំបែកបាននៃកិច្ចសន្យា។
+                    ការបង់ប្រាក់ត្រូវធ្វើឡើងតាមរយៈគណនីផ្លូវការរបស់ក្រុម ឬប្រគល់ជូនតំណាងក្រុមដោយមានបង្កាន់ដៃ។
+                  </p>
+                </div>
+                <div>
+                  <p style={artTitleSt}>មាត្រា ៤៖ ការសងមុនកំណត់</p>
+                  <p style={bodySt}>
+                    ភាគីទី ២ មានសិទ្ធិសងប្រាក់ដើមមុនកាលកំណត់ ដោយមិនត្រូវពិន័យឡើយ។
+                    ក្នុងករណីនេះ ការប្រាក់ត្រូវគិតត្រឹមតែរយៈពេលដែលបានប្រើប្រាស់ប្រាក់កម្ចីពិតប្រាកដប៉ុណ្ណោះ។
+                  </p>
+                </div>
+                <div>
+                  <p style={artTitleSt}>មាត្រា ៥៖ ការបង់យឺត</p>
+                  <p style={bodySt}>
+                    ប្រសិនបើភាគីទី ២ បង់យឺត ការប្រាក់នៅតែបន្តគិតលើប្រាក់ដើមនៅសល់។
+                    ក្នុងករណីខកខានមិនបានបង់ចំនួន ៣ ដងជាប់ៗគ្នា ភាគីទី ១ មានសិទ្ធិទាមទារឲ្យសងប្រាក់ដើម និងការប្រាក់នៅសល់ទាំងអស់ភ្លាមៗ
+                    ពីភាគីទី ២ ឬពីអ្នកធានា។
+                  </p>
+                </div>
+                <div>
+                  <p style={artTitleSt}>មាត្រា ៦៖ កាតព្វកិច្ចអ្នកធានា</p>
+                  <p style={bodySt}>
+                    អ្នកធានាដែលមានឈ្មោះខាងលើ ធានារ៉ាប់រងជាសាមគ្គីភាពលើបំណុលនេះ។
+                    ប្រសិនបើភាគីទី ២ មិនអាចសងបាន អ្នកធានាត្រូវទទួលខុសត្រូវសងជំនួសនូវប្រាក់ដើម និងការប្រាក់នៅសល់។
+                  </p>
+                </div>
+                <div>
+                  <p style={artTitleSt}>មាត្រា ៧៖ កាតព្វកិច្ចផ្សេងៗរបស់អ្នកខ្ចី</p>
+                  <p style={bodySt}>
+                    ភាគីទី ២ ត្រូវរក្សាឋានៈជាសមាជិកសកម្មរបស់ក្រុម បន្តដាក់ប្រាក់សន្សំតាមគោលការណ៍ក្រុម
+                    និងត្រូវជូនដំណឹងដល់ក្រុមភ្លាមៗនៅពេលមានការប្តូរអាសយដ្ឋាន លេខទូរស័ព្ទ ឬស្ថានភាពប្រាក់ចំណូល។
+                  </p>
+                </div>
+                <div>
+                  <p style={artTitleSt}>មាត្រា ៨៖ ការដោះស្រាយវិវាទ</p>
+                  <p style={bodySt}>
+                    រាល់វិវាទដែលកើតចេញពីកិច្ចសន្យានេះ ត្រូវដោះស្រាយដោយការសម្រុះសម្រួលក្នុងក្រុមជាមុនសិន។
+                    ប្រសិនបើដោះស្រាយមិនបាន ភាគីទាំងពីរអាចដាក់ពាក្យទៅអាជ្ញាធរមានសមត្ថកិច្ច ស្របតាមច្បាប់នៃព្រះរាជាណាចក្រកម្ពុជា។
+                  </p>
+                </div>
+                <div>
+                  <p style={artTitleSt}>មាត្រា ៩៖ អានុភាពនៃកិច្ចសន្យា</p>
+                  <p style={bodySt}>
+                    កិច្ចសន្យានេះចូលជាធរមាននៅថ្ងៃដែលភាគីទាំងអស់បានចុះហត្ថលេខា និងបញ្ចប់នៅពេលភាគីទី ២ បានសងប្រាក់ដើម
+                    និងការប្រាក់គ្រប់ចំនួន។ កិច្ចសន្យានេះធ្វើឡើងជាច្បាប់ដើមចំនួនពីរ ដែលមានអានុភាពដូចគ្នា
+                    ដោយភាគីនីមួយៗកាន់កាប់មួយច្បាប់។ ភាគីទាំងអស់បានអាន យល់ និងព្រមព្រៀងតាមខ្លឹមសារទាំងស្រុង។
+                  </p>
+                </div>
+              </div>
+
+              {/* Signatures */}
+              <div className="mb-8">
+                <table className="w-full" style={{ borderCollapse: 'separate', borderSpacing: 0, tableLayout: 'fixed' }}>
+                  <tbody><tr>
+                    {[
+                      { role: 'ហត្ថលេខាអ្នកខ្ចី', name: repBorrower },
+                      { role: 'ហត្ថលេខាអ្នកធានាទី ១', name: repGuarantor1 },
+                      { role: 'ហត្ថលេខាអ្នកធានាទី ២', name: repGuarantor2 },
+                      { role: 'តំណាងក្រុមសន្សំ', name: conLenderRep, sig: true },
+                    ].map((p, i) => (
+                      <td key={i} className="align-top" style={{ width: '25%', padding: '0 6px', textAlign: 'center' }}>
+                        <p className="text-[11px] font-bold" style={{ color: '#475569' }}>{p.role}</p>
+                        <p className="text-[10px]" style={{ color: '#94a3b8' }}>(ស្នាមមេដៃ / ហត្ថលេខា)</p>
+                        <div style={{ height: '64px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                          {p.sig && sigImg
+                            ? <img src={sigImg} alt="signature" style={{ maxHeight: '60px', maxWidth: '100%', objectFit: 'contain' }} />
+                            : null}
+                        </div>
+                        <div style={{ borderTop: '1px dotted #94a3b8', paddingTop: '6px' }}>
+                          <p className="text-[11px] font-bold" style={{ color: '#1e293b' }}>{p.name || '.....................'}</p>
+                        </div>
+                      </td>
+                    ))}
+                  </tr></tbody>
+                </table>
+              </div>
+
+              {/* Attached repayment schedule */}
+              <div className="mb-3" style={{ textAlign: 'left' }}>
+                <span className="text-sm font-extrabold tracking-wide" style={secSt}>ឧបសម្ព័ន្ធ៖ តារាងបង់រំលស់</span>
+              </div>
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden', backgroundColor: '#ffffff' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                  <thead>
+                    <tr>
+                      <th style={th({ width: '44px', textAlign: 'center' })}>ល.រ</th>
+                      <th style={th({ textAlign: 'left' })}>ថ្ងៃទីខែឆ្នាំត្រូវបង់</th>
+                      <th style={th({ textAlign: 'right' })}>ទឹកប្រាក់ត្រូវបង់</th>
+                      <th style={th({ textAlign: 'right' })}>ការប្រាក់</th>
+                      <th style={th({ textAlign: 'right' })}>បង់រំលស់ប្រាក់ដើម</th>
+                      <th style={th({ textAlign: 'right' })}>តុល្យការ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sch.map((row) => (
+                      <tr key={row.num}>
+                        <td style={td({ textAlign: 'center', color: '#94a3b8', fontWeight: 700 })}>{row.num}</td>
+                        <td style={td({ color: '#475569' })}>{row.dueDate}</td>
+                        <td style={td({ textAlign: 'right', color: '#334155', fontWeight: 700 })}>${fmt2(row.total)}</td>
+                        <td style={td({ textAlign: 'right', color: '#d97706', fontWeight: 700 })}>${fmt2(row.interest)}</td>
+                        <td style={td({ textAlign: 'right', color: '#475569', fontWeight: 700 })}>${fmt2(row.principal)}</td>
+                        <td style={td({ textAlign: 'right', color: '#0a6652', fontWeight: 800 })}>${fmt2(row.balance)}</td>
+                      </tr>
+                    ))}
+                    <tr>
+                      <td colSpan={2} style={td({ textAlign: 'center', backgroundColor: '#f8fafc', color: '#0a6652', fontWeight: 800 })}>សរុប</td>
+                      <td style={td({ textAlign: 'right', backgroundColor: '#f8fafc', color: '#334155', fontWeight: 800 })}>${fmt2(totalToPay)}</td>
+                      <td style={td({ textAlign: 'right', backgroundColor: '#f8fafc', color: '#d97706', fontWeight: 800 })}>${fmt2(totalInterest)}</td>
+                      <td style={td({ textAlign: 'right', backgroundColor: '#f8fafc', color: '#334155', fontWeight: 800 })}>${fmt2(amt)}</td>
+                      <td style={td({ textAlign: 'right', backgroundColor: '#f8fafc', color: '#0a6652', fontWeight: 800 })}>$0.00</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            </FitToWidth>
+          </div>
+        );
+      })()}
 
       {activeTab === 'របាយការណ៍កម្ចី' && (
         <div className="max-w-4xl mx-auto space-y-6">
