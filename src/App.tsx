@@ -8399,10 +8399,10 @@ function MemberReport() {
                   </tr></tbody>
                 </table>
 
-                <div style={{ textAlign: 'right', marginTop: '16px' }}>
+                <div style={{ textAlign: 'center', marginTop: '16px' }}>
                   <p style={{ margin: 0 }}>{ctAutoDate}</p>
                 </div>
-                <table style={{ width: '40%', marginLeft: 'auto', borderCollapse: 'collapse' }}>
+                <table style={{ width: '40%', margin: '0 auto', borderCollapse: 'collapse' }}>
                   <tbody>
                     <tr><td style={{ textAlign: 'center', paddingBottom: '2px', fontWeight: 700, color: '#0a6652' }}>បានឃើញ និងអនុម័ត</td></tr>
                     <tr>
@@ -8410,7 +8410,7 @@ function MemberReport() {
                     </tr>
                   </tbody>
                 </table>
-                <div style={{ textAlign: 'right', marginTop: '2px' }}>ឈ្មោះអ្នកគ្រប់គ្រងក្រុម៖ <b style={{ color: '#1e293b' }}>{ctManager}</b></div>
+                <div style={{ textAlign: 'center', marginTop: '2px' }}>ឈ្មោះអ្នកគ្រប់គ្រងក្រុម៖ <b style={{ color: '#1e293b' }}>{ctManager}</b></div>
               </div>
               </FitToWidth>
             </>
