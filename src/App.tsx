@@ -7020,7 +7020,24 @@ function MemberReport() {
       setProofFilename(file.name);
       const reader = new FileReader();
       reader.onloadend = () => {
-        setProofImage(reader.result as string);
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const MAX_SIZE = 1200;
+          if (width > height) {
+            if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+          } else {
+            if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          setProofImage(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.src = reader.result as string;
       };
       reader.readAsDataURL(file);
     }
@@ -7102,7 +7119,10 @@ function MemberReport() {
       { text: apvLabel, callback_data: `apv:${allIds}` },
       { text: '❌ បដិសេធ', callback_data: `rej:${allIds}` },
     ]] };
-    const sent = await sendTelegramPhoto(proofImage, caption, keyboard);
+    let sent = await sendTelegramPhoto(proofImage, caption, keyboard);
+    if (!sent) {
+      sent = await sendTelegramMessage(caption + "\n(បរាជ័យក្នុងការផ្ញើរូបភាពភស្តុតាង! សូមពិនិត្យមើលរូបភាពនៅក្នុងប្រព័ន្ធ។)");
+    }
     newTxns.forEach((t) => { t.sentToTelegram = sent; t.proofImg = sent ? '' : proofImage; });
 
     const all = getStoredData('sof_pending_payments', []) || [];
