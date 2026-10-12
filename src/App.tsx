@@ -2134,11 +2134,12 @@ function DashboardGeneral() {
               color: "bg-indigo-50 text-indigo-600 border-indigo-100/60 hover:bg-indigo-100/90" 
             },
             { 
-              title: "ប្រវត្តិប្រតិបត្តិការ (History)", 
-              desc: "ពិនិត្យមើលរាល់សកម្មភាព និងប្រតិបត្តិការក្នុងប្រព័ន្ធ", 
+              title: "ការស្នើសុំដាក់សន្សំ និងបង់កម្ចី", 
+              desc: "ពិនិត្យ និងអនុម័តរាល់ការស្នើសុំដាក់សន្សំ និងបង់កម្ចី", 
               path: "/history", 
-              icon: <TrendingUp className="w-5 h-5" />, 
-              color: "bg-rose-50 text-rose-600 border-rose-100/60 hover:bg-rose-100/90" 
+              icon: <FileText className="w-5 h-5" />, 
+              color: "bg-rose-50 text-rose-600 border-rose-100/60 hover:bg-rose-100/90",
+              badge: ((getStoredData('sof_pending_payments', []) as any[]) || []).filter((p: any) => !p.status || p.status === 'pending').length
             },
             { 
               title: "ការកំណត់ប្រព័ន្ធ (Settings)", 
@@ -2147,7 +2148,7 @@ function DashboardGeneral() {
               icon: <Settings className="w-5 h-5" />, 
               color: "bg-slate-50 text-slate-600 border-slate-200/60 hover:bg-slate-100" 
             }
-          ].map((item) => (
+          ].map((item: any) => (
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
@@ -2157,7 +2158,14 @@ function DashboardGeneral() {
                 {item.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="font-extrabold text-xs text-slate-800 mb-1">{item.title}</h4>
+                <div className="flex items-center justify-between gap-1 mb-1">
+                  <h4 className="font-extrabold text-xs text-slate-800 truncate">{item.title}</h4>
+                  {item.badge != null && item.badge > 0 && (
+                    <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none shrink-0">
+                      {item.badge > 99 ? '99+' : item.badge}
+                    </span>
+                  )}
+                </div>
                 <p className="text-[10px] text-slate-500 font-bold leading-normal truncate">{item.desc}</p>
               </div>
             </button>
