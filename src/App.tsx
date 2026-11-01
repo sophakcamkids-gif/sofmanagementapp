@@ -5513,7 +5513,10 @@ function Reports() {
                 <div className="p-6 space-y-4">
                   <div className="flex justify-between items-center text-sm font-medium text-slate-700">
                     <span>ទុនបម្រុង</span>
-                    <span className="font-bold">{fmtMoney(bsReserve)}</span>
+                    {/* R001 reserve ABSORBS the balancing residual (rounding excess/shortfall
+                        from the monthly profit-share), so the balance sheet shows no separate
+                        "ចំណេញរក្សាទុក (លម្អៀងបង្គរ)" line — per the group's accounting choice. */}
+                    <span className="font-bold">{fmtMoney(bsReserve + bsRetainedEarnings)}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm font-medium text-slate-700">
                     <span>ទុនសង្គម</span>
@@ -5527,12 +5530,6 @@ function Reports() {
                     <span>ការប្រាក់រក្សាទុក</span>
                     <span className={bsUnpaidInterest ? "font-bold" : "font-bold text-slate-400"}>{bsUnpaidInterest ? fmtMoney(bsUnpaidInterest) : '-'}</span>
                   </div>
-                  {Math.abs(bsRetainedEarnings) > 0.005 && (
-                    <div className="flex justify-between items-center text-sm font-medium text-slate-700">
-                      <span>ចំណេញរក្សាទុក (លម្អៀងបង្គរ)</span>
-                      <span className="font-bold">{fmtMoney(bsRetainedEarnings)}</span>
-                    </div>
-                  )}
                 </div>
                 <div className="bg-indigo-50 px-6 py-4 border-t border-indigo-100 flex justify-between items-center">
                   <span className="font-bold text-indigo-700">សរុបដើមទុន</span>
