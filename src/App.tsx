@@ -2134,11 +2134,12 @@ function DashboardGeneral() {
               color: "bg-indigo-50 text-indigo-600 border-indigo-100/60 hover:bg-indigo-100/90" 
             },
             { 
-              title: "ប្រវត្តិប្រតិបត្តិការ (History)", 
-              desc: "ពិនិត្យមើលរាល់សកម្មភាព និងប្រតិបត្តិការក្នុងប្រព័ន្ធ", 
+              title: "ការស្នើសុំដាក់សន្សំ និងបង់កម្ចី", 
+              desc: "ពិនិត្យ និងអនុម័តរាល់ការស្នើសុំដាក់សន្សំ និងបង់កម្ចី", 
               path: "/history", 
-              icon: <TrendingUp className="w-5 h-5" />, 
-              color: "bg-rose-50 text-rose-600 border-rose-100/60 hover:bg-rose-100/90" 
+              icon: <FileText className="w-5 h-5" />, 
+              color: "bg-rose-50 text-rose-600 border-rose-100/60 hover:bg-rose-100/90",
+              badge: ((getStoredData('sof_pending_payments', []) as any[]) || []).filter((p: any) => !p.status || p.status === 'pending').length
             },
             { 
               title: "ការកំណត់ប្រព័ន្ធ (Settings)", 
@@ -2147,7 +2148,7 @@ function DashboardGeneral() {
               icon: <Settings className="w-5 h-5" />, 
               color: "bg-slate-50 text-slate-600 border-slate-200/60 hover:bg-slate-100" 
             }
-          ].map((item) => (
+          ].map((item: any) => (
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
@@ -2157,7 +2158,14 @@ function DashboardGeneral() {
                 {item.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="font-extrabold text-xs text-slate-800 mb-1">{item.title}</h4>
+                <div className="flex items-center justify-between gap-1 mb-1">
+                  <h4 className="font-extrabold text-xs text-slate-800 truncate">{item.title}</h4>
+                  {item.badge != null && item.badge > 0 && (
+                    <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none shrink-0">
+                      {item.badge > 99 ? '99+' : item.badge}
+                    </span>
+                  )}
+                </div>
                 <p className="text-[10px] text-slate-500 font-bold leading-normal truncate">{item.desc}</p>
               </div>
             </button>
@@ -5842,22 +5850,18 @@ function History() {
     }
     return false;
   };
-  // Remove a processed request from the shared store — keeps the cloud list lean
-  // (proof stays in Telegram, the amount is already in the savings/loan table).
-  const removeTxn = (id: string) => {
-    const all = (getStoredData('sof_pending_payments', []) || []).filter((t: any) => t.id !== id);
+  const updateTxnStatus = (id: string, newStatus: 'approved' | 'rejected') => {
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const all = (getStoredData('sof_pending_payments', []) || [])
+      .filter((t: any) => !t.status || t.status === 'pending' || (t.approvedAt && t.approvedAt > thirtyDaysAgo))
+      .map((t: any) => t.id === id ? { ...t, status: newStatus, approvedAt: Date.now(), proofImg: '' } : t);
     setStoredData('sof_pending_payments', all);
     setPayments(all);
   };
   const approve = (txn: any) => {
     const ok = applyPayment(txn);
-    // Once written into the by-month savings/loan table the payment is permanently
-    // recorded there (and shows in the member's history, which reads those tables),
-    // so drop it from the pending store to keep the synced list lean. If no matching
-    // row was found we keep it pending so the admin can fix and retry.
     if (ok) {
-      removeTxn(txn.id);
-      // Personal Telegram notification to the member (if they've linked the bot).
+      updateTxnStatus(txn.id, 'approved');
       const chat = getMemberChatId(txn.memberCode);
       if (chat) sendTelegramMessageTo(chat, `✅ ការបង់ប្រាក់របស់អ្នកត្រូវបានអនុម័ត!\n${txn.type === 'loan' ? 'បង់សងកម្ចី' : 'ដាក់សន្សំ'} ខែ ${txn.monthKey} · ចំនួន $${fmtMoney(num(txn.amount))}`);
     }
@@ -5865,9 +5869,10 @@ function History() {
       ? `បានអនុម័ត និងកត់ត្រាទៅតារាង${txn.type === 'loan' ? 'កម្ចី' : 'សន្សំ'} ខែ ${txn.monthKey} ដោយជោគជ័យ!`
       : `រកមិនឃើញជួររបស់ ${txn.memberCode} សម្រាប់ខែ ${txn.monthKey} — សូមពិនិត្យតារាង (មិនទាន់លុបចេញ)។`);
   };
-  const reject = (txn: any) => { if (window.confirm('បដិសេធការស្នើសុំនេះមែនទេ?')) removeTxn(txn.id); };
+  const reject = (txn: any) => { if (window.confirm('បដិសេធការស្នើសុំនេះមែនទេ?')) updateTxnStatus(txn.id, 'rejected'); };
 
-  const pending = payments.filter((p) => p.status === 'pending');
+  const pending = payments.filter((p) => !p.status || p.status === 'pending');
+  const history = payments.filter((p) => p.status === 'approved' || p.status === 'rejected').sort((a, b) => (b.approvedAt || 0) - (a.approvedAt || 0));
   const money = (n: number) => '$' + fmtMoney(num(n));
 
   return (
@@ -5902,6 +5907,37 @@ function History() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {history.length > 0 && (
+        <div className="mt-8">
+          <h3 className="text-slate-800 font-black text-sm mb-4 flex items-center gap-2">
+            <span>ប្រវត្តិអនុម័តរួច (Approved History)</span>
+            <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">រក្សាទុក ១ខែ</span>
+          </h3>
+          <div className="space-y-2 opacity-80">
+            {history.map((txn) => (
+              <div key={txn.id} className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-50 border border-slate-100 rounded-xl p-3 shadow-sm">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-bold text-slate-600 text-sm">{txn.memberName || txn.memberCode}</span>
+                    <span className="text-[10px] font-bold bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full">{txn.memberCode}</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${txn.type === 'loan' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>{txn.type === 'loan' ? 'បង់កម្ចី' : 'ដាក់សន្សំ'}</span>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${txn.status === 'approved' ? 'text-[#0a6652]' : 'text-rose-600'}`}>
+                      {txn.status === 'approved' ? '✅ អនុម័តរួច' : '❌ បដិសេធ'}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-1">
+                    ខែ {txn.monthKey} · ផ្ញើ៖ {txn.date} · {txn.approvedAt ? new Date(txn.approvedAt).toLocaleString('en-GB') : ''}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="font-bold text-slate-500 text-sm">{money(txn.amount)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -7043,7 +7079,24 @@ function MemberReport() {
       setProofFilename(file.name);
       const reader = new FileReader();
       reader.onloadend = () => {
-        setProofImage(reader.result as string);
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const MAX_SIZE = 1200;
+          if (width > height) {
+            if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+          } else {
+            if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          setProofImage(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.src = reader.result as string;
       };
       reader.readAsDataURL(file);
     }
@@ -7125,7 +7178,10 @@ function MemberReport() {
       { text: apvLabel, callback_data: `apv:${allIds}` },
       { text: '❌ បដិសេធ', callback_data: `rej:${allIds}` },
     ]] };
-    const sent = await sendTelegramPhoto(proofImage, caption, keyboard);
+    let sent = await sendTelegramPhoto(proofImage, caption, keyboard);
+    if (!sent) {
+      sent = await sendTelegramMessage(caption + "\n(បរាជ័យក្នុងការផ្ញើរូបភាពភស្តុតាង! សូមពិនិត្យមើលរូបភាពនៅក្នុងប្រព័ន្ធ។)");
+    }
     newTxns.forEach((t) => { t.sentToTelegram = sent; t.proofImg = sent ? '' : proofImage; });
 
     const all = getStoredData('sof_pending_payments', []) || [];
