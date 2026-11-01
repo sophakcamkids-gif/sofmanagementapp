@@ -5154,10 +5154,33 @@ function Reports() {
     const g = carryRows('sof_group_by_month').find((r: any) => (r.name || '').includes(needle));
     return g ? num(g.total) : 0;
   };
-  const carryFixedTerm = () => carryRows('sof_fixedterm_by_month', FIXEDTERM_BY_MONTH).reduce((s: number, r: any) => {
-    const t = num(r.total);
-    return s + (t || (num(r.startCapital) + num(r.addSaving) - num(r.withdraw)));
-  }, 0);
+  // Fixed-term closing balance for the selected month, computed by ROLLING FORWARD from
+  // January (each month's ending total becomes next month's opening), exactly like the
+  // Savings fixed-term editor (see the useEffect in SavingsManagement). This overrides a
+  // stored opening that went STALE — e.g. F04 added 1,000 in August but September's saved
+  // snapshot still opened at the old 3,000 — which otherwise under-states the liability and
+  // dumps the gap into "ចំណេញរក្សាទុក (លម្អៀងបង្គរ)". Member savings already avoid this via
+  // savingsLiveTotals; this gives fixed-term the same staleness-proof chain.
+  const carryFixedTerm = () => {
+    const by = getStoredData('sof_fixedterm_by_month', FIXEDTERM_BY_MONTH) || {};
+    const idx = months.indexOf(selectedMonth);
+    if (idx < 0) return 0;
+    let prevTotals: Record<string, number> | null = null;
+    let totals: Record<string, number> = {};
+    for (let i = 0; i <= idx; i++) {
+      const m = months[i];
+      const rows = (Array.isArray(by[m]) && by[m].length)
+        ? by[m]
+        : FIXEDTERM_ROSTER.map((r) => ({ id: r.id, startCapital: '0', addSaving: '0', withdraw: '0' }));
+      totals = { ...(prevTotals || {}) };
+      rows.forEach((r: any) => {
+        const begin = (prevTotals && prevTotals[r.id] !== undefined) ? prevTotals[r.id] : num(r.startCapital);
+        totals[r.id] = begin + num(r.addSaving) - num(r.withdraw);
+      });
+      prevTotals = totals;
+    }
+    return Object.keys(totals).reduce((s, id) => s + num(totals[id]), 0);
+  };
 
   // Fixed-term accounts: use the stored month if present, else the code seed for that
   // month (the seed carries Jan–May, but the stored key may hold only the months that
