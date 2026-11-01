@@ -4363,6 +4363,11 @@ function Loans() {
     const inp = (row: any, idx: number, field: string, align = 'text-right') =>
       <FormattedInput value={row[field]} onChange={(e) => editExt(which, idx, field, e.target.value)} onBlur={() => saveExt(which)}
         className={`w-full min-w-[70px] bg-transparent ${align} px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium`} />;
+    // PLAIN text input for non-numeric columns (name/gender/duration/note). FormattedInput
+    // runs values through fmtMoney(num(value)), which turns a text name into "0.00".
+    const txt = (row: any, idx: number, field: string, align = 'text-left') =>
+      <input type="text" value={row[field] === '-' || row[field] == null ? '' : row[field]} onChange={(e) => editExt(which, idx, field, e.target.value)} onBlur={() => saveExt(which)}
+        className={`w-full min-w-[70px] bg-transparent ${align} px-2 py-1 rounded border border-dashed border-slate-300 focus:border-[#0a6652] focus:bg-[#f3faf6] outline-none font-medium`} />;
     // Read-only computed/carried cell.
     const ro = (row: any, field: string, align = 'text-right') =>
       <span className={`block w-full min-w-[70px] ${align} px-2 py-1 font-medium`}>{row[field]}</span>;
@@ -4397,17 +4402,17 @@ function Loans() {
               {c.data.map((row: any, idx: number) => (
                 <tr key={`${row.id}-${idx}`} className="border-b border-slate-300 hover:bg-slate-50 transition-colors h-11">
                   <td className="px-3 py-2 border-r border-slate-300 text-center text-slate-500 font-medium">{typeof row.id === 'string' ? row.id.split(' ').pop() : row.id}</td>
-                  <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'name', 'text-left')}</td>
-                  <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'gender', 'text-center')}</td>
+                  <td className="px-1 py-1 border-r border-slate-300">{txt(row, idx, 'name', 'text-left')}</td>
+                  <td className="px-1 py-1 border-r border-slate-300">{txt(row, idx, 'gender', 'text-center')}</td>
                   <td className="px-1 py-1 border-r border-slate-300">{isFirstMonth ? inp(row, idx, 'received') : ro(row, 'received')}</td>
                   <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'repayment', 'text-right text-amber-600')}</td>
                   <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'interestRate', 'text-center')}</td>
-                  <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'duration', 'text-center')}</td>
+                  <td className="px-1 py-1 border-r border-slate-300">{txt(row, idx, 'duration', 'text-center')}</td>
                   <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'newLoan', 'text-right text-emerald-600')}</td>
                   <td className="px-1 py-1 border-r border-slate-300 bg-slate-50">{ro(row, 'remaining')}</td>
                   <td className="px-1 py-1 border-r border-slate-300 text-indigo-600">{ro(row, 'interest')}</td>
                   <td className="px-1 py-1 border-r border-slate-300 bg-[#fafdfa] text-[#0a6652] font-bold">{ro(row, 'totalToPay')}</td>
-                  <td className="px-1 py-1 border-r border-slate-300">{inp(row, idx, 'note', 'text-left')}</td>
+                  <td className="px-1 py-1 border-r border-slate-300">{txt(row, idx, 'note', 'text-left')}</td>
                   <td className="px-2 py-2 text-center">
                     <button onClick={() => delExtRow(which, idx)} title="លុបជួរ" className="text-rose-400 hover:text-rose-600 cursor-pointer"><Trash2 size={15} /></button>
                   </td>
