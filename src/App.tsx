@@ -601,13 +601,32 @@ function computeSavingsMonthLive(month: string, prevTotals: { active: Record<str
   }));
   const byId: Record<string, any> = {};
   computeSavings(pool, net).forEach((x) => { byId[x.id] = x; });
+  // Rounding reconciliation → R001 (ទុនបម្រុង). Each row's total is shown to 2 decimals, so the
+  // rounded totals don't sum to the exact monthly profit distribution; that few-cent remainder
+  // would otherwise pile up as the balance sheet's "ចំណេញរក្សាទុក (លម្អៀងបង្គរ)". Post it to the
+  // reserve's PROFIT share (a non-cash equity allocation) — NOT manualAdd/withdraw, which carry
+  // R001's real cash movements that must flow through the cash-flow statement. This makes the
+  // distribution tie to the cent so the balance sheet shows no residual.
+  const reserveAdj = Number(pool.reduce((s, p) => {
+    const c = byId[p.id];
+    return c ? s + (c.total - Number(c.total.toFixed(2))) : s;
+  }, 0).toFixed(2));
   const apply = (rows: any[]) => rows.map((r: any) => {
     if (r.id === 'R004') {
       const total = num(r.startCapital) + num(r.addSaving);
       return { ...r, share: '0.00%', profit: '0.00', total: total.toFixed(2) };
     }
     const c = byId[r.id];
-    return c ? { ...r, share: (c.share * 100).toFixed(2) + '%', profit: c.profit.toFixed(2), total: c.total.toFixed(2) } : r;
+    if (!c) return r;
+    if (r.id === 'R001' && reserveAdj !== 0) {
+      return {
+        ...r,
+        share: (c.share * 100).toFixed(2) + '%',
+        profit: (Number(c.profit.toFixed(2)) + reserveAdj).toFixed(2),
+        total: (Number(c.total.toFixed(2)) + reserveAdj).toFixed(2),
+      };
+    }
+    return { ...r, share: (c.share * 100).toFixed(2) + '%', profit: c.profit.toFixed(2), total: c.total.toFixed(2) };
   });
   return { active: apply(active), group: apply(group), deposit: deposit.map((r: any) => computeDepositRowLive(r)) };
 }
@@ -5513,10 +5532,10 @@ function Reports() {
                 <div className="p-6 space-y-4">
                   <div className="flex justify-between items-center text-sm font-medium text-slate-700">
                     <span>ទុនបម្រុង</span>
-                    {/* R001 reserve ABSORBS the balancing residual (rounding excess/shortfall
-                        from the monthly profit-share), so the balance sheet shows no separate
-                        "ចំណេញរក្សាទុក (លម្អៀងបង្គរ)" line — per the group's accounting choice. */}
-                    <span className="font-bold">{fmtMoney(bsReserve + bsRetainedEarnings)}</span>
+                    {/* bsReserve already carries the rounding reconciliation: computeSavingsMonthLive
+                        posts the monthly profit-share remainder into R001 (ទុនបន្ថែម(ដៃ)/ដកទុន),
+                        so the residual is ~0 here and the line below stays hidden. */}
+                    <span className="font-bold">{fmtMoney(bsReserve)}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm font-medium text-slate-700">
                     <span>ទុនសង្គម</span>
@@ -5530,6 +5549,12 @@ function Reports() {
                     <span>ការប្រាក់រក្សាទុក</span>
                     <span className={bsUnpaidInterest ? "font-bold" : "font-bold text-slate-400"}>{bsUnpaidInterest ? fmtMoney(bsUnpaidInterest) : '-'}</span>
                   </div>
+                  {Math.abs(bsRetainedEarnings) > 0.005 && (
+                    <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                      <span>ចំណេញរក្សាទុក (លម្អៀងបង្គរ)</span>
+                      <span className="font-bold">{fmtMoney(bsRetainedEarnings)}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="bg-indigo-50 px-6 py-4 border-t border-indigo-100 flex justify-between items-center">
                   <span className="font-bold text-indigo-700">សរុបដើមទុន</span>
