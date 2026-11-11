@@ -168,6 +168,21 @@ const sendTelegramMessageTo = async (chatId: string | number, text: string): Pro
   } catch { return false; }
 };
 
+// Notify a member SERVER-SIDE (via /api/notify-member) when the admin approves their
+// payment in-app — reliable (uses the server's bot token like the committee-group approval)
+// and doesn't depend on the admin's device holding the token. Fire-and-forget.
+const notifyMemberViaServer = async (code: string, text: string): Promise<void> => {
+  try {
+    const token = getToken();
+    if (!token || !code || !text) return;
+    await fetch('/api/notify-member', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ memberCode: code, text }),
+    });
+  } catch { /* best-effort */ }
+};
+
 // Look up a linked member's private chat_id by their code (reverse of the map).
 const getMemberChatId = (code: string): string => {
   const map = getStoredData('sof_member_chats', {}) || {};
@@ -5823,8 +5838,7 @@ function LoanRequests() {
   };
   const approve = (txn: any) => {
     removeReq(txn.id);
-    const chat = getMemberChatId(txn.memberCode);
-    if (chat) sendTelegramMessageTo(chat, `✅ ពាក្យស្នើសុំកម្ចីរបស់អ្នកត្រូវបានអនុម័ត!${num(txn.amount) > 0 ? ` (ចំនួន $${fmtMoney(num(txn.amount))})` : ''}\nគណៈកម្មការ SOF នឹងទាក់ទងអ្នកអំពីជំហានបន្ទាប់។`);
+    notifyMemberViaServer(txn.memberCode, `✅ ពាក្យស្នើសុំកម្ចីរបស់អ្នកត្រូវបានអនុម័ត!${num(txn.amount) > 0 ? ` (ចំនួន $${fmtMoney(num(txn.amount))})` : ''}\nគណៈកម្មការ SOF នឹងទាក់ទងអ្នកអំពីជំហានបន្ទាប់។`);
     alert(`បានអនុម័តពាក្យស្នើសុំកម្ចីរបស់ ${txn.memberName || txn.memberCode}។ សូមបញ្ចូលកម្ចីទៅតារាងកម្ចី (Loans) ដោយផ្ទាល់។`);
   };
   const reject = (txn: any) => { if (window.confirm('បដិសេធពាក្យស្នើសុំកម្ចីនេះមែនទេ?')) removeReq(txn.id); };
@@ -5937,14 +5951,18 @@ function History() {
     const ok = applyPayment(txn);
     if (ok) {
       updateTxnStatus(txn.id, 'approved');
-      const chat = getMemberChatId(txn.memberCode);
-      if (chat) sendTelegramMessageTo(chat, `✅ ការបង់ប្រាក់របស់អ្នកត្រូវបានអនុម័ត!\n${txn.type === 'loan' ? 'បង់សងកម្ចី' : 'ដាក់សន្សំ'} ខែ ${txn.monthKey} · ចំនួន $${fmtMoney(num(txn.amount))}`);
+      // Auto-notify the member on their linked Telegram (server-side — reliable).
+      notifyMemberViaServer(txn.memberCode, `✅ ការបង់ប្រាក់របស់អ្នកត្រូវបានអនុម័ត!\n${txn.type === 'loan' ? 'បង់សងកម្ចី' : 'ដាក់សន្សំ'} ខែ ${txn.monthKey} · ចំនួន $${fmtMoney(num(txn.amount))}`);
     }
     alert(ok
       ? `បានអនុម័ត និងកត់ត្រាទៅតារាង${txn.type === 'loan' ? 'កម្ចី' : 'សន្សំ'} ខែ ${txn.monthKey} ដោយជោគជ័យ!`
       : `រកមិនឃើញជួររបស់ ${txn.memberCode} សម្រាប់ខែ ${txn.monthKey} — សូមពិនិត្យតារាង (មិនទាន់លុបចេញ)។`);
   };
-  const reject = (txn: any) => { if (window.confirm('បដិសេធការស្នើសុំនេះមែនទេ?')) updateTxnStatus(txn.id, 'rejected'); };
+  const reject = (txn: any) => {
+    if (!window.confirm('បដិសេធការស្នើសុំនេះមែនទេ?')) return;
+    updateTxnStatus(txn.id, 'rejected');
+    notifyMemberViaServer(txn.memberCode, `❌ ការស្នើ${txn.type === 'loan' ? 'បង់កម្ចី' : 'ដាក់សន្សំ'} ខែ ${txn.monthKey} · $${fmtMoney(num(txn.amount))} ត្រូវបានបដិសេធ។ សូមទាក់ទងគណៈកម្មការ។`);
+  };
 
   const pending = payments.filter((p) => !p.status || p.status === 'pending');
   const history = payments.filter((p) => p.status === 'approved' || p.status === 'rejected').sort((a, b) => (b.approvedAt || 0) - (a.approvedAt || 0));
