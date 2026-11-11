@@ -917,6 +917,42 @@ export default function App() {
     return () => window.removeEventListener('sof-cloud', h);
   }, []);
 
+  // STALE-DEVICE GUARD. Cloud is pulled once at login; a tab left open never re-syncs, and an
+  // admin save overwrites the WHOLE key (last-write-wins, no merge — see /api/state). So if this
+  // tab is stale and the admin edits, the save silently clobbers whatever another device changed
+  // meanwhile ("data entered on the other device wasn't saved"). On returning to the tab we
+  // re-pull the cloud and, if an admin-owned key now differs from this device's copy, flag the
+  // tab so the admin RELOADS (adopting the fresh data) before editing. Non-blocking: no auto
+  // reload, so an in-progress edit is never lost.
+  const [staleData, setStaleData] = useState(false);
+  useEffect(() => {
+    if (userRole !== 'admin') return;
+    // Keys that churn from member actions / background polling — ignore so they don't false-flag.
+    const IGNORE = new Set([
+      'sof_live_pending_payments', 'sof_live_pending_loan_requests',
+      'sof_live_member_notifications', 'sof_live_member_chats', 'sof_live_member_credentials',
+      'sof_live_query_logs', 'sof_live_announcements', 'sof_live_report_signature',
+    ]);
+    let busy = false;
+    const check = async () => {
+      if (busy || staleData || document.visibilityState !== 'visible' || !getToken()) return;
+      busy = true;
+      try {
+        const cloud = await apiLoadState();
+        for (const [k, v] of Object.entries(cloud)) {
+          if (IGNORE.has(k)) continue;
+          let local: string | null = null;
+          try { local = localStorage.getItem(k); } catch { /* ignore */ }
+          // Only flag keys this device already has (so lazy/never-loaded keys don't false-trigger).
+          if (local !== null && JSON.stringify(v) !== local) { setStaleData(true); break; }
+        }
+      } catch { /* offline — leave as is */ } finally { busy = false; }
+    };
+    const onVis = () => { if (document.visibilityState === 'visible') check(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [userRole, staleData]);
+
   // Auto-update: when a newer build is deployed, reload so users (esp. members who
   // never hard-refresh) pick up new code AND fresh config — checked when they return
   // to the app (a natural moment to reload). A sessionStorage guard avoids any loop.
@@ -1126,6 +1162,18 @@ export default function App() {
               onClick={() => { localStorage.removeItem('userRole'); localStorage.removeItem('memberId'); clearToken(); window.location.href = '/login'; }}
               className="px-3 py-1 rounded-lg bg-rose-600 text-white font-black hover:bg-rose-700 cursor-pointer"
             >ចូលម្ដងទៀត</button>
+          </div>
+        )}
+        {/* Stale-device warning — another device changed the data; reload before editing so this
+            device's next save doesn't overwrite (clobber) those changes. */}
+        {userRole === 'admin' && cloudOk && staleData && (
+          <div className="w-full px-4 py-2 text-[12px] font-bold flex items-center justify-center gap-3 flex-wrap text-center" style={{ background: '#fffbeb', borderBottom: '1px solid #fde68a', color: '#92400e' }}>
+            <span>🔄 ទិន្នន័យថ្មីពីឧបករណ៍ផ្សេងមានហើយ។ សូមផ្ទុកឡើងវិញ មុននឹងកែបន្ត (បើមិនផ្ទុក ការកែរបស់អ្នកអាចសរសេរជាន់លើទិន្នន័យថ្មី)។</span>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="px-3 py-1 rounded-lg bg-amber-600 text-white font-black hover:bg-amber-700 cursor-pointer"
+            >ផ្ទុកឡើងវិញ</button>
           </div>
         )}
         {/* Top Header Wrapper */}
