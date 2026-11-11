@@ -7184,7 +7184,7 @@ function MemberReport() {
     // Once the loan is fully paid (memberLoanTotal <= 0) the loan fields are hidden, so ignore
     // any stale loanPrincipal/loanInterest state — otherwise a pure savings deposit still
     // carried the last month's interest (e.g. a $0 deposit submitted as $3.05).
-    const hasLoan = memberLoanTotal > 0;
+    const hasLoan = memberHasLoan;
     const savings = parseFloat(paymentAmount) || 0;
     const principal = hasLoan ? (parseFloat(loanPrincipal) || 0) : 0;
     const interest = hasLoan ? (parseFloat(loanInterest) || 0) : 0;
@@ -7446,12 +7446,15 @@ function MemberReport() {
   })();
 
   const memberLoanTotal = memberLoanRows.length ? num(memberLoanRows[memberLoanRows.length - 1].remaining) : 0;
+  // Treat a sub-cent balance as fully paid, so interest drops to 0.00 the instant the loan is
+  // cleared — no lingering remainder. Used everywhere the loan contribution is shown/charged.
+  const memberHasLoan = memberLoanTotal > 0.005;
 
   // Auto-fill the loan interest whenever the payment month changes.
   useEffect(() => {
     // Loan fully paid off → no interest is due; keep it at 0 so a pure savings deposit isn't
     // inflated by a stale interest figure.
-    if (memberLoanTotal <= 0) { setLoanInterest('0.00'); return; }
+    if (!memberHasLoan) { setLoanInterest('0.00'); return; }
     const parts = (paymentDate || '').split('-');
     if (parts.length !== 3) return;
     const KHM = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
@@ -7468,7 +7471,7 @@ function MemberReport() {
       setLoanInterest('0.00');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentDate, selectedReportYear, memberLoanTotal]);
+  }, [paymentDate, selectedReportYear, memberHasLoan]);
   const memberLoanSum = (f: string) => memberLoanRows.reduce((s, r) => s + num(r[f]), 0);
   // Loan-info-card figures. Start = first month the loan was disbursed (else first activity).
   const loanStartRow = memberLoanRows.find((r) => num(r.newLoan) > 0) || memberLoanRows[0] || null;
@@ -9057,7 +9060,7 @@ function MemberReport() {
                 </div>
 
                 {/* Loan repayment fields — hidden once the loan is fully paid (no remaining balance). */}
-                {memberLoanTotal > 0 && (
+                {memberHasLoan && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">បង់រំលស់ដើមកម្ចី (USD)</label>
@@ -9099,7 +9102,7 @@ function MemberReport() {
                   <div className="bg-emerald-50/40 border border-emerald-100/60 rounded-2xl p-3 flex flex-col justify-center">
                     <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">សរុបទូទាត់ (សន្សំ + កម្ចី)</span>
                     <span className="text-sm font-black text-[#0a6652] mt-1">
-                      ${((parseFloat(paymentAmount) || 0) + (memberLoanTotal > 0 ? (parseFloat(loanPrincipal) || 0) + (parseFloat(loanInterest) || 0) : 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                      ${((parseFloat(paymentAmount) || 0) + (memberHasLoan ? (parseFloat(loanPrincipal) || 0) + (parseFloat(loanInterest) || 0) : 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                     </span>
                   </div>
                   <div>
